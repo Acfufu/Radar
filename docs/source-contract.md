@@ -4,12 +4,12 @@
 
 - Homepage: `https://claudecoderadar.com/?lang=en`
 - Development support: `experimental`
-- public online default: disabled
+- public online default: enabled
 - Access: the inspected GET endpoints are public and require no authentication.
-- Permission: no affirmative license or terms were found that grant caching, local history retention, redistribution, or re-display. Fixture-backed development may proceed, but public online access remains disabled until that permission is documented.
+- Permission boundary: the project owner approved automatic synchronization, reasonable caching, local history retention, and in-app re-display on 2026-07-15. This records the product decision without claiming affiliation, endorsement, or a third-party license grant.
 - Access controls: the app must not bypass authentication, challenges, rate limits, or other access controls and must not persist cookies or sensitive request headers.
-- Phase 7 Release enforcement: `AppEnvironment.current()` compiles online access to `false` outside Debug, the Release bundle excludes every development fixture, and Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
-- Manual real-site acceptance is explicit and Debug-only: launch a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. This mode uses the production HTTP/source/parser/repository path without fixture transport. It is not compiled as a Release enablement path, and it does not change the permission gate above.
+- Release enforcement: `AppEnvironment.current()` compiles online access to `true` outside Debug, the Release bundle excludes every development fixture, and Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
+- Manual isolated acceptance remains available in Debug: launch with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. Release uses the same production HTTP/source/parser/repository path automatically without an environment flag.
 
 ## Observation receipt
 

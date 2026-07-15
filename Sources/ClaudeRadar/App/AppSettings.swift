@@ -15,7 +15,6 @@ final class AppSettings {
         get { defaults.bool(forKey: "launchAtLogin") }
         set { defaults.set(newValue, forKey: "launchAtLogin") }
     }
-    private(set) var publicOnlineAccessEnabled = false
     static let allowedIntervals = [15, 30, 60, 120]
 }
 

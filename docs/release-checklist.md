@@ -3,7 +3,7 @@
 ## Release classification
 
 - Fixture-backed core: local QA candidate.
-- Public online source: **BLOCKED**. The source is publicly accessible, but no affirmative permission for caching, history retention, redistribution, or re-display has been documented. Release keeps it disabled at compile time.
+- Public online source: **ENABLED**. The project owner approved automatic synchronization, reasonable caching, local history retention, and in-app re-display on 2026-07-15. Release enables the source by default while honoring cache headers, rate limits, and access controls.
 - External Developer ID distribution: **BLOCKED** unless the release evidence contains a Developer ID Application signature plus successful notarization, stapling, validation, and Gatekeeper receipts. An ad-hoc signature is local QA only.
 
 ## Final bundle
@@ -15,14 +15,14 @@
 - Raw diagnostics: `~/Library/Application Support/ClaudeRadar/RawSamples`
 - Preferences: `~/Library/Preferences/com.acfufu.ClaudeRadar.plist`
 
-Release assembly must contain no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. The online source must remain disabled unless ADR-011 permission is documented before rebuilding.
+Release assembly must contain only the production executable, `ClaudeRadar.icns`, and the Info plist: no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. ADR-011 documents the approved online boundary; Release must start the production source without a Debug environment flag.
 
 ## Upgrade
 
 1. Quit Claude Radar and verify no `ClaudeRadar` process remains.
 2. Replace `/Applications/ClaudeRadar.app` with the newer app bundle; do not delete the Application Support directory.
 3. Launch the replacement and verify compatible normalized history remains readable.
-4. Verify Settings still shows the same data directory and that online access remains disabled in Release.
+4. Verify Settings still shows the same data directory, reports the online source enabled, and completes a startup synchronization in Release.
 
 ## Data controls
 
@@ -42,7 +42,7 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 ## Required verification receipts
 
 - Full Swift tests, Debug and Release builds, explicit-Xcode Release build.
-- Plist lint and inventory showing no Release fixture/test resources.
+- Plist lint and inventory showing `ClaudeRadar.icns` as the only Release resource and no fixture/test resources.
 - `codesign --verify --deep --strict`, signing details, entitlements, dependencies, and nested-code inventory.
 - Credential classification from `security find-identity -v -p codesigning` and `ClaudeRadarNotary` availability, with secrets excluded.
 - Isolated install, second-build replacement, data-preservation, independent-clear, quit, and app-only uninstall evidence.

@@ -26,17 +26,7 @@ actor ClaudeCodeRadarSource: RadarSource {
         self.configuration = configuration
         self.transport = transport
         self.rawSampleStore = rawSampleStore
-        #if DEBUG
         descriptor = ClaudeRadarConfiguration.descriptor
-        #else
-        descriptor = RadarSourceDescriptor(
-            id: .claudeCodeRadar,
-            displayName: "Claude Code Radar",
-            supportLevel: .disabled,
-            homepageURL: ClaudeRadarConfiguration.descriptor.homepageURL,
-            seriesRevision: ClaudeRadarConfiguration.seriesRevision
-        )
-        #endif
     }
 
     func beginAcquisition(

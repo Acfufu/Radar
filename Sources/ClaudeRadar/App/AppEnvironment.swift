@@ -19,11 +19,7 @@ struct AppEnvironment: Sendable {
     let onlineSourceEnabled: Bool
 
     var onlineSupportLevel: SupportLevel {
-        #if DEBUG
         onlineSourceEnabled ? .experimental : .disabled
-        #else
-        .disabled
-        #endif
     }
 
     var rawSamplesRoot: URL {
@@ -76,7 +72,7 @@ struct AppEnvironment: Sendable {
         #if DEBUG
         let onlineSourceEnabled = mode == .sequence || mode == .online
         #else
-        let onlineSourceEnabled = false
+        let onlineSourceEnabled = true
         #endif
         return AppEnvironment(
             dataRoot: dataRoot,

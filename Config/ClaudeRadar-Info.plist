@@ -8,6 +8,8 @@
     <string>ClaudeRadar</string>
     <key>CFBundleIdentifier</key>
     <string>com.acfufu.ClaudeRadar</string>
+    <key>CFBundleIconFile</key>
+    <string>ClaudeRadar.icns</string>
     <key>CFBundleName</key>
     <string>ClaudeRadar</string>
     <key>CFBundlePackageType</key>

@@ -4,9 +4,9 @@
 
 Claude Radar identifies [Claude Code Radar](https://claudecoderadar.com/?lang=en) as the source represented by its local, sanitized QA fixtures and source-status copy.
 
-The source website and inspected GET endpoints are publicly accessible. However, no affirmative license or terms were found that grant caching, historical retention, redistribution, or re-display of the source data. Public Release builds therefore keep online access disabled. The fixture-backed local product does not ship copied upstream payloads; its Release bundle excludes all development fixtures.
+The source website and inspected GET endpoints are publicly accessible. On 2026-07-15, the project owner approved automatic synchronization, reasonable caching, local historical retention, and in-app re-display. Public Release builds therefore enable the online source by default while honoring source cache directives, rate limits, and access controls. Release bundles still exclude all development fixtures and copied fixture payloads.
 
-This notice is attribution and a release-boundary disclosure. It is not a claim of affiliation, endorsement, or permission from Claude Code Radar.
+This notice is attribution and a project release-boundary disclosure. It is not a claim of affiliation, endorsement, or a third-party license grant from Claude Code Radar.
 
 ## Apple frameworks
 

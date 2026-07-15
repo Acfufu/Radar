@@ -9,23 +9,32 @@ struct ReleaseReadinessTests {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    @Test("Release assembly excludes fixture and Debug resources")
+    @Test("Release assembly includes only the app icon and excludes fixture and Debug resources")
     func releaseAssemblyContract() throws {
         let script = try text("Scripts/build-app.sh")
+        let plist = try text("Config/ClaudeRadar-Info.plist")
         #expect(script.contains("if [[ -z \"${DEVELOPER_DIR:-}\" && -d \"/Applications/Xcode.app/Contents/Developer\" ]]"))
         #expect(script.contains("export DEVELOPER_DIR=\"/Applications/Xcode.app/Contents/Developer\""))
         #expect(script.contains("if [[ \"$CONFIGURATION\" == \"debug\" ]]"))
+        #expect(script.contains("Assets/ClaudeRadar.icns"))
+        #expect(script.contains("! -name \"$APP_NAME.icns\""))
         #expect(script.contains("Release bundle must not contain fixture or Debug resources"))
         #expect(script.contains("find \"$RESOURCES_DIR\""))
+        #expect(plist.contains("CFBundleIconFile"))
+        #expect(plist.contains("ClaudeRadar.icns"))
+        #expect(FileManager.default.fileExists(atPath: root.appending(path: "Assets/ClaudeRadar.png").path))
+        #expect(FileManager.default.fileExists(atPath: root.appending(path: "Assets/ClaudeRadar.icns").path))
     }
 
-    @Test("Release online source is compile-time disabled")
+    @Test("Release online source is enabled by the approved publication boundary")
     func releaseOnlineSourceContract() throws {
         let environment = try text("Sources/ClaudeRadar/App/AppEnvironment.swift")
+        let source = try text("Sources/ClaudeRadar/Sources/ClaudeCodeRadar/ClaudeCodeRadarSource.swift")
         #expect(environment.contains("case online"))
         #expect(environment.contains("mode == .sequence || mode == .online"))
-        #expect(environment.contains("#else\n        let onlineSourceEnabled = false"))
-        #expect(environment.contains("#else\n        .disabled"))
+        #expect(environment.contains("#else\n        let onlineSourceEnabled = true"))
+        #expect(source.contains("descriptor = ClaudeRadarConfiguration.descriptor"))
+        #expect(!source.contains("supportLevel: .disabled"))
         #expect(!environment.contains("PUBLIC_ONLINE"))
         #expect(!environment.contains("RADAR_ONLINE"))
     }
@@ -51,16 +60,17 @@ struct ReleaseReadinessTests {
         #expect(history.first?.models.first?.descriptor.displayName == "Release Upgrade Model")
     }
 
-    @Test("release declarations state exact paths and external blockers")
+    @Test("release declarations state exact paths, online permission, and signing blocker")
     func releaseDocumentationContract() throws {
         let checklist = try text("docs/release-checklist.md")
         #expect(checklist.contains("/Applications/ClaudeRadar.app"))
         #expect(checklist.contains("~/Library/Application Support/ClaudeRadar"))
+        #expect(checklist.contains("Public online source: **ENABLED**"))
         #expect(checklist.contains("BLOCKED"))
         let notices = try text("docs/third-party-notices.md")
         #expect(notices.contains("https://claudecoderadar.com/?lang=en"))
-        #expect(notices.contains("no affirmative"))
-        #expect(notices.contains("disabled"))
+        #expect(notices.contains("project owner"))
+        #expect(notices.contains("automatic synchronization"))
     }
 
     @MainActor
