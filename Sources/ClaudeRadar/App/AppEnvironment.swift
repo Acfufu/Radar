@@ -8,6 +8,7 @@ struct AppEnvironment: Sendable {
         case valid
         case nullFields = "null-fields"
         case invalid
+        case online
         case sequence
         case ui
         #endif
@@ -46,7 +47,7 @@ struct AppEnvironment: Sendable {
         case .valid: "claude-radar-valid"
         case .nullFields: "claude-radar-null-fields"
         case .invalid: "claude-radar-invalid"
-        case .disabled, .sequence, .ui: nil
+        case .disabled, .online, .sequence, .ui: nil
         }
         return name.flatMap { Bundle.main.url(forResource: $0, withExtension: "json") }
         #else
@@ -73,7 +74,7 @@ struct AppEnvironment: Sendable {
         #endif
 
         #if DEBUG
-        let onlineSourceEnabled = mode == .sequence
+        let onlineSourceEnabled = mode == .sequence || mode == .online
         #else
         let onlineSourceEnabled = false
         #endif
