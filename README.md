@@ -2,12 +2,14 @@
 
 <div align="center">
 
+<img alt="Claude Radar app icon" src="Assets/ClaudeRadar.png" width="128" height="128">
+
 # Claude Radar
 
 <div>
   <img alt="Platform: macOS 26 or later" src="https://img.shields.io/badge/macOS-26%2B-111111?logo=apple">
   <img alt="Swift 6.2" src="https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white">
-  <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-4C8BF5">
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-4C8BF5">
   <img alt="Status: local QA preview" src="https://img.shields.io/badge/status-local_QA_preview-D97706">
 </div>
 
@@ -17,7 +19,7 @@
 
 A native macOS workspace for inspecting model benchmark snapshots, trends, source health, and reproducible exports.
 
-Claude Radar turns Claude Code Radar-compatible snapshot data into a menu bar summary and a detailed SwiftUI workspace. The current repository is a **fixture-backed local QA preview**: public Release builds intentionally keep online collection disabled until upstream reuse permission is documented.
+Claude Radar turns Claude Code Radar- and Codex Radar-compatible snapshots into a menu bar summary and two independent SwiftUI workspaces. The current repository is a **source-backed local QA preview**: Release builds synchronize both public adapters automatically and preserve source-scoped history for later display.
 
 </div>
 
@@ -42,13 +44,14 @@ The generated app is ad-hoc signed for local use. It is not notarized for extern
 - Browses model metrics with search, sorting, dynamic columns, and per-model detail.
 - Charts historical quality, cost, token, and duration trends without joining incompatible source revisions.
 - Keeps benchmark, community-rating, and source-status segments independent so one failed segment does not erase the others.
+- Keeps Claude Code Radar and Codex Radar in separate source-scoped workspaces, histories, and exports; it never merges their models or scores.
 - Preserves normalized history and bounded raw diagnostic samples locally with explicit deletion controls.
 - Exports selected datasets to a paginated JSON ZIP with a manifest, optional date limits, and opt-in raw samples.
 - Stays available from the menu bar after the main workspace closes and can register itself as a login item.
 
 ## Use
 
-The Release build opens the full workspace, but its online source is disabled and a fresh install therefore contains no benchmark data. To exercise the implemented product surface with sanitized development fixtures:
+The Release build starts both public source runtimes automatically. Switching sources changes the displayed workspace only; it does not stop background synchronization. To exercise the product surface with sanitized development fixtures instead:
 
 ```bash
 ./Scripts/build-app.sh debug
@@ -61,6 +64,14 @@ Use the sidebar to open Overview, Models, Trends, Source Status, and Export. The
 
 For the deterministic synchronization sequence used by runtime QA, replace `RADAR_FIXTURE_MODE="ui"` with `RADAR_FIXTURE_MODE="sequence"` and use a fresh `RADAR_DATA_ROOT`.
 
+To exercise the Codex Radar adapter and source selector with sanitized fixtures:
+
+```bash
+RADAR_FIXTURE_MODE="codex" \
+RADAR_DATA_ROOT="/tmp/CodexRadar-Demo" \
+.build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
+```
+
 ## Data And Export
 
 Claude Radar stores its normal local data under:
@@ -68,6 +79,7 @@ Claude Radar stores its normal local data under:
 ```text
 ~/Library/Application Support/ClaudeRadar/
 ├── Radar.store
+├── SyncMetadata.json
 └── RawSamples/
 ```
 
@@ -77,8 +89,8 @@ Settings provides separate actions for clearing normalized history and raw diagn
 
 ## Privacy And Permissions
 
-- Release builds do not contact the Claude Code Radar endpoints.
-- Debug sequence mode uses the configured public endpoints only as part of local development QA; the shipped fixtures are hand-sanitized.
+- Release builds synchronize the documented public endpoints for both sources at startup and on the configured refresh schedule.
+- Debug fixture modes use hand-sanitized local payloads. The explicit `online` QA mode runs both production public adapters against an isolated data root.
 - Normalized history, raw samples, preferences, and exports remain on the Mac unless the user moves or shares them.
 - Raw samples and exported archives may contain source-provided content. Review them before sharing and keep raw export disabled when it is unnecessary.
 - The app uses macOS Service Management only when the user enables **Launch at Login**.
@@ -86,10 +98,22 @@ Settings provides separate actions for clearing normalized history and raw diagn
 ## Compatibility And Limitations
 
 - Requires macOS 26 or later; there is no Windows, Linux, iOS, or web build.
-- Version `0.1.0` is a local QA preview, not a notarized public release.
-- Public online collection is blocked because no affirmative upstream permission for caching, historical retention, redistribution, or re-display has been documented.
-- Release builds intentionally exclude fixture JSON and Debug QA resources. A fresh Release build is therefore an empty local workspace until an authorized data path exists.
+- Version `0.2.0` is a local QA preview, not a notarized public release.
+- Public responses can change or become unavailable; the app retains and labels the most recent valid source-scoped data instead of replacing it with a failed refresh.
+- Release builds intentionally exclude fixture JSON and Debug QA resources. Codex integration uses only its public summary and community endpoints; it does not call the protected full API.
 - Community ratings and quota estimates are source-reported context; they do not alter benchmark quality, derived metrics, or Pareto calculations.
+
+## Project Layout
+
+```text
+Assets/                 App icon source and packaged icon
+Config/                 macOS bundle metadata
+Scripts/                Debug and Release app assembly
+Sources/ClaudeRadar/    App, source adapters, persistence, sync, and UI
+Tests/ClaudeRadarTests/ Swift Testing suites
+docs/                   Source contracts and release evidence
+script/                 Local run, debug, log, and verification entrypoint
+```
 
 ## Develop
 
@@ -117,7 +141,7 @@ Claude Radar validates source payloads before persistence, stores diagnostics un
 
 ## Third-Party Data
 
-Claude Radar is not affiliated with or endorsed by Claude Code Radar. See [`docs/third-party-notices.md`](docs/third-party-notices.md) for the attribution and current reuse boundary.
+Claude Radar is not affiliated with or endorsed by Claude Code Radar or Codex Radar. See [`docs/third-party-notices.md`](docs/third-party-notices.md) for attribution and the current reuse boundaries.
 
 ## License Status
 
