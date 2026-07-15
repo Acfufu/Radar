@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "updated_at": "2026-07-14T15:39:54.672Z",
+  "window": "rolling_24h",
+  "window_hours": 24,
+  "models": [
+    {
+      "id": "model-a",
+      "label": "Model A",
+      "group": "sanitized",
+      "average": 7.6,
+      "count": 9
+    },
+    {
+      "id": "model-b",
+      "label": "Model B",
+      "group": "sanitized",
+      "average": null,
+      "count": 0
+    }
+  ],
+  "history": [],
+  "my_scores": {}
+}

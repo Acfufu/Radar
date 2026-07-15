@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "updated_at": "2026-07-12T16:35:30+08:00",
+  "labels": ["7.12pm"],
+  "iq": {
+    "updated_at": null,
+    "latest_policy": null,
+    "models": [
+      {
+        "key": "m8",
+        "name": "Opus 4.8 xhigh",
+        "score": null,
+        "iq": [null],
+        "pass": [null],
+        "valid": [null],
+        "invalid": [null],
+        "cost": [null],
+        "time": [null],
+        "cache": [null],
+        "latest_at": null,
+        "latest_label": "7.12pm",
+        "run_ids": []
+      }
+    ]
+  },
+  "quota": {
+    "updated_at": null,
+    "base_h5": null,
+    "base_d7": null,
+    "metrics": [],
+    "usage": [
+      {"key": "h5", "used_pct": null, "reset_text_en": null},
+      {"key": "d7", "used_pct": null, "reset_text_en": null}
+    ]
+  }
+}
