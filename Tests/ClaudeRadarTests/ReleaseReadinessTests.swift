@@ -22,6 +22,8 @@ struct ReleaseReadinessTests {
     @Test("Release online source is compile-time disabled")
     func releaseOnlineSourceContract() throws {
         let environment = try text("Sources/ClaudeRadar/App/AppEnvironment.swift")
+        #expect(environment.contains("case online"))
+        #expect(environment.contains("mode == .sequence || mode == .online"))
         #expect(environment.contains("#else\n        let onlineSourceEnabled = false"))
         #expect(environment.contains("#else\n        .disabled"))
         #expect(!environment.contains("PUBLIC_ONLINE"))

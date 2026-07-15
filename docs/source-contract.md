@@ -9,6 +9,7 @@
 - Permission: no affirmative license or terms were found that grant caching, local history retention, redistribution, or re-display. Fixture-backed development may proceed, but public online access remains disabled until that permission is documented.
 - Access controls: the app must not bypass authentication, challenges, rate limits, or other access controls and must not persist cookies or sensitive request headers.
 - Phase 7 Release enforcement: `AppEnvironment.current()` compiles online access to `false` outside Debug, the Release bundle excludes every development fixture, and Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
+- Manual real-site acceptance is explicit and Debug-only: launch a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. This mode uses the production HTTP/source/parser/repository path without fixture transport. It is not compiled as a Release enablement path, and it does not change the permission gate above.
 
 ## Observation receipt
 
@@ -43,7 +44,7 @@ Top-level paths are `ok`, `updated_at`, `labels`, `iq`, and `quota`.
 | `iq.models[].time[]` | Benchmark elapsed time in hours, confirmed by the source table's `h` formatting | Non-negative number or null; domain conversion to seconds is Phase 1 work |
 | `iq.models[].cache[]` | Cache hit percentage | Decimal or null in 0...100 |
 | `iq.models[].latest_at` | Latest model-run timestamp | ISO-8601 string or null |
-| `iq.models[].latest_label` | Pointer into the aligned `labels[]` series | Optional string; when present it must exactly match one label or benchmark projection fails. When absent, Phase 1 deliberately selects the final aligned point because the source arrays are ordered measurement histories; this fallback is covered by a dedicated parser test. |
+| `iq.models[].latest_label` | Human-readable latest-run label; originally matched `labels[]`, but the 2026-07-15 live response localized it independently | Optional string. Prefer an exact `labels[]` match. If the label is localized, derive the source-series label from `latest_at` while preserving its ISO-8601 offset and require that derived label to match `labels[]`; otherwise benchmark projection fails. When absent, deliberately select the final aligned point because the source arrays are ordered measurement histories. Each path is covered by a parser test. |
 | `iq.models[].run_ids[]` | Upstream run identifiers | String array; diagnostic only and not a cross-source identity |
 | `quota.metrics[].key` | Quota metric stable-ID input such as `h5` or `d7` | Non-empty string |
 | `quota.metrics[].value` | Source account's projected quota value | Non-negative decimal or null; not personal user usage |

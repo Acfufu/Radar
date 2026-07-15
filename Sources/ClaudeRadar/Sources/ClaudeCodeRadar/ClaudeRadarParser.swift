@@ -109,7 +109,10 @@ struct ClaudeRadarParser: Sendable {
         let descriptor = ModelDescriptor(id: id, upstreamName: dto.name, displayName: name)
         let index: Int?
         if let latestLabel = dto.latestLabel {
-            guard let matchedIndex = labels.firstIndex(of: latestLabel) else {
+            guard let matchedIndex = labels.firstIndex(of: latestLabel)
+                ?? seriesLabel(for: dto.latestAt).flatMap({ label in
+                    labels.firstIndex { $0.caseInsensitiveCompare(label) == .orderedSame }
+                }) else {
                 throw ClaudeRadarValidator.validation("Benchmark latest label does not identify a source series point")
             }
             index = matchedIndex
@@ -136,6 +139,30 @@ struct ClaudeRadarParser: Sendable {
         )
         try ClaudeRadarValidator.validateBenchmark(model)
         return model
+    }
+
+    private func seriesLabel(for timestamp: String?) -> String? {
+        guard let timestamp, let date = parseDate(timestamp) else { return nil }
+        let timeZone: TimeZone
+        if timestamp.hasSuffix("Z") {
+            timeZone = TimeZone(secondsFromGMT: 0)!
+        } else {
+            let offset = timestamp.suffix(6)
+            guard offset.count == 6,
+                  let sign = offset.first,
+                  sign == "+" || sign == "-",
+                  let hours = Int(offset.dropFirst().prefix(2)),
+                  let minutes = Int(offset.suffix(2)),
+                  let zone = TimeZone(secondsFromGMT: (sign == "-" ? -1 : 1) * (hours * 3_600 + minutes * 60)) else {
+                return nil
+            }
+            timeZone = zone
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.month, .day, .hour], from: date)
+        guard let month = components.month, let day = components.day, let hour = components.hour else { return nil }
+        return "\(month).\(day)\(hour < 12 ? "am" : "pm")"
     }
 
     private func statusProjection(

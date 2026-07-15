@@ -179,6 +179,18 @@ struct ClaudeRadarParserTests {
         #expect(projection.sourceStatus.value != nil)
     }
 
+    @Test("localized latest label resolves through latest timestamp to the aligned series point")
+    func localizedLatestLabel() throws {
+        let json = #"{"ok":true,"labels":["7.11am","7.12pm"],"iq":{"models":[{"key":"m1","name":"Model","score":60,"pass":[4,null],"valid":[7,null],"invalid":[3,null],"cost":[43.5,null],"time":[5.5,null],"cache":[97.3,null],"latest_at":"2026-07-11T01:22:49+08:00","latest_label":"7月11日 01:23"}]},"quota":{"metrics":[],"usage":[]}}"#
+
+        let projection = try ClaudeRadarParser().parseBenchmarkEnvelope(Data(json.utf8), fetchedAt: fetchedAt)
+
+        let model = try #require(projection.benchmark.value?.models.first)
+        #expect(model.passedTasks == 4)
+        #expect(model.validTasks == 7)
+        #expect(model.benchmarkCostUSD == Decimal(string: "43.5"))
+    }
+
     @Test("absent latest label explicitly selects the final aligned source point")
     func absentLatestLabel() throws {
         // Given
