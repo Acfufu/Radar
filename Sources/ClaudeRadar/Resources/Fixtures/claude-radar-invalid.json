@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "updated_at": "not-a-date",
+  "labels": ["invalid"],
+  "iq": {
+    "updated_at": "not-a-date",
+    "models": [
+      {
+        "key": "",
+        "name": "",
+        "score": -1,
+        "iq": [-1],
+        "pass": [8],
+        "valid": [2],
+        "invalid": [-4],
+        "cost": [-10.5],
+        "time": [-3],
+        "cache": [140]
+      }
+    ]
+  },
+  "quota": {
+    "updated_at": "not-a-date",
+    "base_h5": -1,
+    "base_d7": -1,
+    "metrics": [{"key": "h5", "value": -1}],
+    "usage": [{"key": "h5", "used_pct": 140, "reset_text_en": null}]
+  }
+}

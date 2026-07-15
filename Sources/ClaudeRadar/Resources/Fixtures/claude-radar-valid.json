@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "updated_at": "2026-07-12T16:35:30+08:00",
+  "labels": ["7.11am", "7.12pm"],
+  "iq": {
+    "updated_at": "2026-07-12T16:35:30+08:00",
+    "latest_policy": "latest valid run",
+    "models": [
+      {
+        "key": "m8",
+        "name": "Opus 4.8 xhigh",
+        "score": 60,
+        "iq": [60, 75],
+        "pass": [4, 5],
+        "valid": [7, 9],
+        "invalid": [3, 1],
+        "cost": [43.590364, 49.7887795],
+        "time": [5.9217997919, 4.0931120522],
+        "cache": [97.3292933693, 97.7093590798],
+        "latest_at": "2026-07-11T01:22:49+08:00",
+        "latest_label": "7.11am",
+        "run_ids": ["sanitized-run-001"]
+      }
+    ]
+  },
+  "quota": {
+    "updated_at": "2026-07-12T16:35:30+08:00",
+    "base_h5": 231.13,
+    "base_d7": 1617.91,
+    "metrics": [
+      {"key": "h5", "label_en": "5h quota", "value": 231.13},
+      {"key": "d7", "label_en": "7d quota", "value": 1617.91}
+    ],
+    "usage": [
+      {"key": "h5", "used_pct": 14, "reset_text_en": "Resets at 20:50"},
+      {"key": "d7", "used_pct": 15, "reset_text_en": "Resets Jul 17, 02:00"}
+    ]
+  }
+}
