@@ -7,12 +7,16 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack { Image(systemName: "scope").font(.title2); VStack(alignment: .leading) { Text("Claude Radar").font(.headline); Text(freshness).font(.caption).foregroundStyle(.secondary) }; Spacer() }
+            HStack { Image(systemName: "scope").font(.title2); VStack(alignment: .leading) { Text(model.source.displayName).font(.headline); Text(freshness).font(.caption).foregroundStyle(.secondary) }; Spacer() }
+            Picker("工作区", selection: sourceBinding) {
+                ForEach(model.sources) { source in Text(source.displayName).tag(source.id) }
+            }
+            Text(model.source.attributionText).font(.caption2).foregroundStyle(.secondary)
             if let supportState = Self.presentation(for: model.projection).supportState {
-                StateBanner(state: supportState, error: nil)
+                StateBanner(state: supportState, error: nil, sourceName: model.source.displayName)
             }
             if let healthState = Self.presentation(for: model.projection).healthState {
-                StateBanner(state: healthState, error: Self.presentation(for: model.projection).error)
+                StateBanner(state: healthState, error: Self.presentation(for: model.projection).error, sourceName: model.source.displayName)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("质量摘要").font(.caption).foregroundStyle(.secondary)
@@ -20,7 +24,7 @@ struct MenuBarView: View {
                 if topThree.isEmpty { Text("暂无模型数据").foregroundStyle(.secondary) }
             }
             Divider()
-            HStack { Text(WorkspaceCopy.quotaTitle).font(.caption).foregroundStyle(.secondary); Spacer(); Text(quota).font(.caption).monospacedDigit() }
+            HStack { Text(WorkspaceCopy.quotaTitle(for: model.source)).font(.caption).foregroundStyle(.secondary); Spacer(); Text(quota).font(.caption).monospacedDigit() }
             if let error = model.projection.latestError { Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange).lineLimit(2) }
             Divider()
             HStack {
@@ -33,13 +37,19 @@ struct MenuBarView: View {
             }
         }
         .padding(16).frame(width: 400)
-        .task { await model.runtime.start() }
     }
     static func presentation(for projection: WorkspaceProjection) -> BenchmarkPresentation {
         projection.benchmarkPresentation
     }
     private var topThree: [WorkspaceModelRow] { Array(model.projection.filteredModels(query: "", sort: .quality, ascending: false).prefix(3)) }
     private var freshness: String { "更新于 \(RadarFormat.date(model.projection.updatedAt))" }
-    private var quota: String { guard let q = model.projection.sync?.sourceStatus.value?.quotaEstimates.first else { return "—" }; return "\(q.windowLabel) \(RadarFormat.decimal(q.usedPercent, suffix: "%"))" }
+    private var quota: String {
+        guard let quota = model.projection.sync?.sourceStatus.value?.quotaEstimates.first else { return "—" }
+        if let usedPercent = quota.usedPercent { return "\(quota.windowLabel) \(RadarFormat.decimal(usedPercent, suffix: "%"))" }
+        return quota.estimatedValueUSD.map { "\(quota.windowLabel) $\(RadarFormat.decimal($0))" } ?? quota.windowLabel
+    }
     private func short(_ text: String) -> String { text.count <= 30 ? text : String(text.prefix(27)) + "…" }
+    private var sourceBinding: Binding<RadarSourceID> {
+        Binding(get: { model.selectedSourceID }, set: { model.selectSource($0) })
+    }
 }

@@ -14,6 +14,7 @@ enum RadarAppLifecycleState: Sendable, Equatable {
 @Observable
 final class RadarAppRuntime {
     let environment: AppEnvironment
+    let sourceID: RadarSourceID
     private(set) var projection: RadarSyncProjection?
     private(set) var lifecycleState: RadarAppLifecycleState = .idle
     private(set) var failureMessage: String?
@@ -28,6 +29,7 @@ final class RadarAppRuntime {
     private let startCheckpoint: (@Sendable () async -> Void)?
     private let startupLoadCheckpoint: (@Sendable (RadarSyncCoordinator) async throws -> Void)?
     private let exportArchiver: any RadarExportArchiver
+    private let metadataStore: SyncMetadataStore
     private var lifecycleGeneration = 0
     private var startOperation: Task<Void, Never>?
     private var stopOperation: Task<Void, Never>?
@@ -35,12 +37,16 @@ final class RadarAppRuntime {
 
     init(
         environment: AppEnvironment,
+        sourceID: RadarSourceID = .claudeCodeRadar,
+        metadataStore: SyncMetadataStore? = nil,
         startCheckpoint: (@Sendable () async -> Void)? = nil,
         startupLoadCheckpoint: (@Sendable (RadarSyncCoordinator) async throws -> Void)? = nil,
         exportArchiver: any RadarExportArchiver = SystemZipArchiver(),
         refreshIntervalMinutes: Int = 30
     ) {
         self.environment = environment
+        self.sourceID = sourceID
+        self.metadataStore = metadataStore ?? SyncMetadataStore(root: environment.dataRoot)
         self.startCheckpoint = startCheckpoint
         self.startupLoadCheckpoint = startupLoadCheckpoint
         self.exportArchiver = exportArchiver
@@ -97,38 +103,59 @@ final class RadarAppRuntime {
             let container = try environment.makeModelContainer()
             let repository = RadarRepository(
                 container: container,
-                metadataStore: SyncMetadataStore(root: environment.dataRoot)
+                metadataStore: metadataStore
             )
             self.repository = repository
             #if DEBUG
-            if environment.fixtureMode == .ui {
+            if sourceID == .claudeCodeRadar, environment.fixtureMode == .ui {
                 try await DebugUISeed.populate(repository: repository, state: ProcessInfo.processInfo.environment["RADAR_UI_STATE"] ?? "fresh")
             }
             #endif
             #if DEBUG
-            let source: ClaudeCodeRadarSource
-            if environment.fixtureMode == .sequence {
+            let source: RadarHTTPSource
+            if sourceID == .codexRadar, environment.fixtureMode == .codex {
+                source = RadarHTTPSource(
+                    configuration: CodexRadarConfiguration(
+                        summaryURL: CodexFixtureTransport.summaryURL,
+                        communityURL: CodexFixtureTransport.communityURL
+                    ),
+                    transport: try CodexFixtureTransport(),
+                    rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
+                )
+            } else if sourceID == .claudeCodeRadar, environment.fixtureMode == .sequence {
                 let configuration = ClaudeRadarConfiguration(
                     benchmarkURL: FixtureSequenceTransport.benchmarkURL,
                     communityURL: FixtureSequenceTransport.communityURL,
                     sourceStatusURL: nil
                 )
-                source = ClaudeCodeRadarSource(
+                source = RadarHTTPSource(
                     configuration: configuration,
                     transport: try FixtureSequenceTransport(dataRoot: environment.dataRoot),
                     rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
                 )
             } else {
-                source = ClaudeCodeRadarSource(
+                source = sourceID == .codexRadar
+                    ? RadarHTTPSource(
+                        configuration: CodexRadarConfiguration.production,
+                        transport: URLSessionHTTPTransport(),
+                        rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
+                    )
+                    : RadarHTTPSource(
+                        transport: URLSessionHTTPTransport(),
+                        rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
+                    )
+            }
+            #else
+            let source = sourceID == .codexRadar
+                ? RadarHTTPSource(
+                    configuration: CodexRadarConfiguration.production,
                     transport: URLSessionHTTPTransport(),
                     rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
                 )
-            }
-            #else
-            let source = ClaudeCodeRadarSource(
-                transport: URLSessionHTTPTransport(),
-                rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
-            )
+                : RadarHTTPSource(
+                    transport: URLSessionHTTPTransport(),
+                    rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
+                )
             #endif
             let coordinator = RadarSyncCoordinator(
                 source: source,
@@ -146,7 +173,7 @@ final class RadarAppRuntime {
                 await coordinator.stop()
                 return
             }
-            if environment.onlineSourceEnabled {
+            if environment.synchronizationEnabled(for: sourceID) {
                 await coordinator.startLifecycleTriggers()
                 guard isStarting(generation) else { await coordinator.stop(); return }
                 await coordinator.startPeriodicRefresh()
@@ -170,7 +197,7 @@ final class RadarAppRuntime {
             }
             try await startupLoadCheckpoint?(coordinator)
             let initialProjection = try await coordinator.projection()
-            let initialHistory = try await repository.benchmarkHistory(sourceID: .claudeCodeRadar)
+            let initialHistory = try await repository.benchmarkHistory(sourceID: sourceID)
             projection = initialProjection
             benchmarkHistory = initialHistory
             guard isStarting(generation) else { await coordinator.stop(); return }
@@ -192,12 +219,12 @@ final class RadarAppRuntime {
     }
 
     func refresh() async {
-        guard environment.onlineSourceEnabled,
+        guard environment.synchronizationEnabled(for: sourceID),
               let coordinator,
               lifecycleState == .running else { return }
         await coordinator.refresh(trigger: .manual)
         let updatedProjection = try? await coordinator.projection()
-        let updatedHistory = try? await coordinator.repository.benchmarkHistory(sourceID: .claudeCodeRadar)
+        let updatedHistory = try? await coordinator.repository.benchmarkHistory(sourceID: sourceID)
         if let updatedProjection { projection = updatedProjection }
         if let updatedHistory { benchmarkHistory = updatedHistory }
     }
@@ -239,7 +266,8 @@ final class RadarAppRuntime {
         guard lifecycleState == .running, let repository else { throw ExportError.repositoryUnavailable }
         let source = RadarExportSource(
             repository: repository,
-            rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
+            rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot),
+            sourceID: sourceID
         )
         let service = RadarExportService(source: source, archiver: exportArchiver)
         let id = UUID()
@@ -258,7 +286,7 @@ final class RadarAppRuntime {
     }
 
     private func accept(_ projection: RadarSyncProjection, repository: RadarRepository, generation: Int) async {
-        let history = (try? await repository.benchmarkHistory(sourceID: .claudeCodeRadar)) ?? benchmarkHistory
+        let history = (try? await repository.benchmarkHistory(sourceID: sourceID)) ?? benchmarkHistory
         guard lifecycleGeneration == generation,
               lifecycleState == .starting || lifecycleState == .running else { return }
         self.projection = projection
@@ -267,16 +295,31 @@ final class RadarAppRuntime {
 
     var statusTitle: String {
         if lifecycleState == .failed { return "Synchronization unavailable" }
-        guard environment.onlineSourceEnabled else { return "Online source disabled" }
-        guard let projection else { return "Synchronizing Claude Radar" }
+        guard environment.synchronizationEnabled(for: sourceID) else { return "Online source disabled" }
+        guard let projection else { return "Synchronizing \(descriptor.displayName)" }
         if projection.benchmark.error != nil || projection.community.error != nil || projection.sourceStatus.error != nil {
             return "Last known good data retained"
         }
-        return "Claude Radar synchronized"
+        return "\(descriptor.displayName) synchronized"
+    }
+
+    var supportLevel: SupportLevel { environment.supportLevel(for: sourceID) }
+
+    var descriptor: RadarSourceDescriptor {
+        let source = sourceID == .codexRadar
+            ? CodexRadarConfiguration.descriptor
+            : ClaudeRadarConfiguration.descriptor
+        return RadarSourceDescriptor(
+            id: source.id,
+            displayName: source.displayName,
+            supportLevel: supportLevel,
+            homepageURL: source.homepageURL,
+            seriesRevision: source.seriesRevision
+        )
     }
 
     var statusDetail: String {
-        failureMessage ?? "Experimental development synchronization uses independent benchmark, community, and source-status state."
+        failureMessage ?? "Automatic synchronization keeps benchmark, community, and source-status state independent."
     }
 
     #if DEBUG

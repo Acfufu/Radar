@@ -11,20 +11,13 @@ struct AppEnvironment: Sendable {
         case online
         case sequence
         case ui
+        case codex
         #endif
     }
 
     let dataRoot: URL
     let fixtureMode: FixtureMode
     let onlineSourceEnabled: Bool
-
-    var onlineSupportLevel: SupportLevel {
-        #if DEBUG
-        onlineSourceEnabled ? .experimental : .disabled
-        #else
-        .disabled
-        #endif
-    }
 
     var rawSamplesRoot: URL {
         dataRoot.appending(path: "RawSamples", directoryHint: .isDirectory)
@@ -47,7 +40,7 @@ struct AppEnvironment: Sendable {
         case .valid: "claude-radar-valid"
         case .nullFields: "claude-radar-null-fields"
         case .invalid: "claude-radar-invalid"
-        case .disabled, .online, .sequence, .ui: nil
+        case .disabled, .online, .sequence, .ui, .codex: nil
         }
         return name.flatMap { Bundle.main.url(forResource: $0, withExtension: "json") }
         #else
@@ -74,14 +67,40 @@ struct AppEnvironment: Sendable {
         #endif
 
         #if DEBUG
-        let onlineSourceEnabled = mode == .sequence || mode == .online
+        let onlineSourceEnabled = mode == .sequence || mode == .online || mode == .codex
         #else
-        let onlineSourceEnabled = false
+        let onlineSourceEnabled = true
         #endif
         return AppEnvironment(
             dataRoot: dataRoot,
             fixtureMode: mode,
             onlineSourceEnabled: onlineSourceEnabled
         )
+    }
+
+    var initialSourceID: RadarSourceID {
+        #if DEBUG
+        fixtureMode == .codex ? .codexRadar : .claudeCodeRadar
+        #else
+        .claudeCodeRadar
+        #endif
+    }
+
+    func synchronizationEnabled(for sourceID: RadarSourceID) -> Bool {
+        #if DEBUG
+        guard onlineSourceEnabled else { return false }
+        return switch fixtureMode {
+        case .online: true
+        case .sequence: sourceID == .claudeCodeRadar
+        case .codex: sourceID == .codexRadar
+        case .disabled, .valid, .nullFields, .invalid, .ui: false
+        }
+        #else
+        onlineSourceEnabled
+        #endif
+    }
+
+    func supportLevel(for sourceID: RadarSourceID) -> SupportLevel {
+        synchronizationEnabled(for: sourceID) ? .authorized : .disabled
     }
 }

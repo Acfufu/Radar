@@ -5,11 +5,11 @@ extension RadarSyncCoordinator {
         let attemptedAt = clock.now()
         let persistedFailureCount = await allMetadata().compactMap(\.consecutiveFailures).max() ?? 0
         failureCount = max(failureCount, persistedFailureCount)
-        let benchmarkMetadata = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: .benchmark)
-        let communityMetadata = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: .community)
-        let benchmarkState = try? await repository.benchmarkState(sourceID: .claudeCodeRadar)
-        let statusState = try? await repository.sourceStatusState(sourceID: .claudeCodeRadar)
-        let communityState = try? await repository.communityState(sourceID: .claudeCodeRadar)
+        let benchmarkMetadata = try? await repository.metadata(sourceID: sourceID, datasetType: .benchmark)
+        let communityMetadata = try? await repository.metadata(sourceID: sourceID, datasetType: .community)
+        let benchmarkState = try? await repository.benchmarkState(sourceID: sourceID)
+        let statusState = try? await repository.sourceStatusState(sourceID: sourceID)
+        let communityState = try? await repository.communityState(sourceID: sourceID)
         let sharedCacheIsClean = benchmarkState?.value != nil && benchmarkState?.error == nil
             && statusState?.value != nil && statusState?.error == nil
         let communityCacheIsClean = communityState?.value != nil && communityState?.error == nil
@@ -30,7 +30,7 @@ extension RadarSyncCoordinator {
     }
 
     private func registerPersistence(
-        _ results: (Result<ClaudeRadarEnvelopeProjection, Error>?, Result<CommunityDataset?, Error>?),
+        _ results: (Result<RadarEnvelopeProjection, Error>?, Result<CommunityDataset?, Error>?),
         attemptedAt: Date,
         generation: Int
     ) -> Task<Void, Never>? {
@@ -46,7 +46,7 @@ extension RadarSyncCoordinator {
     }
 
     private func persist(
-        _ results: (Result<ClaudeRadarEnvelopeProjection, Error>?, Result<CommunityDataset?, Error>?),
+        _ results: (Result<RadarEnvelopeProjection, Error>?, Result<CommunityDataset?, Error>?),
         attemptedAt: Date,
         generation: Int
     ) async {
@@ -68,7 +68,7 @@ extension RadarSyncCoordinator {
         persistenceTasks[persistenceID] = nil
     }
 
-    private func captureEnvelope(if eligible: Bool) async -> Result<ClaudeRadarEnvelopeProjection, Error>? {
+    private func captureEnvelope(if eligible: Bool) async -> Result<RadarEnvelopeProjection, Error>? {
         guard eligible else { return nil }
         do { return .success(try await source.acquireBenchmarkEnvelope()) }
         catch { return .failure(error) }
@@ -84,12 +84,12 @@ extension RadarSyncCoordinator {
         var maximumFailureCount = 0
         var maximumDeadline: Date?
         for type in [RadarDatasetType.benchmark, .community, .sourceStatus] {
-            guard let metadata = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: type) else { continue }
+            guard let metadata = try? await repository.metadata(sourceID: sourceID, datasetType: type) else { continue }
             let count = metadata.lastError == nil ? 0 : max(metadata.consecutiveFailures ?? 0, 1)
             let deadline = count == 0 ? nil : attemptedAt.addingTimeInterval(policy.backoff(failureCount: count))
             if attemptedTypes.contains(type) {
                 try? await repository.recordBackoff(
-                    sourceID: .claudeCodeRadar,
+                    sourceID: sourceID,
                     datasetType: type,
                     until: deadline,
                     failureCount: count

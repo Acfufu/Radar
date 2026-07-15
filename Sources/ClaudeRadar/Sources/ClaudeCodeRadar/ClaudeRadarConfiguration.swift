@@ -5,7 +5,7 @@ struct ClaudeRadarConfiguration: Sendable {
     static let descriptor = RadarSourceDescriptor(
         id: .claudeCodeRadar,
         displayName: "Claude Code Radar",
-        supportLevel: .experimental,
+        supportLevel: .authorized,
         homepageURL: URL(string: "https://claudecoderadar.com/?lang=en"),
         seriesRevision: seriesRevision
     )

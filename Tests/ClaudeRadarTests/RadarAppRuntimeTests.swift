@@ -19,7 +19,7 @@ struct RadarAppRuntimeTests {
         await runtime.stop()
 
         // Then
-        #expect(projection.supportLevel == .experimental)
+        #expect(projection.supportLevel == .authorized)
         #expect(projection.benchmark.value != nil)
         #expect(projection.community.value != nil)
         #expect(projection.sourceStatus.value != nil)

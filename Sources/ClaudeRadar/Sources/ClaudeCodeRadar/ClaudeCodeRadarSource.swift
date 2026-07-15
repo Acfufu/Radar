@@ -1,12 +1,13 @@
 import Foundation
 
-actor ClaudeCodeRadarSource: RadarSource {
+actor RadarHTTPSource: RadarSource {
     nonisolated let descriptor: RadarSourceDescriptor
 
-    private let configuration: ClaudeRadarConfiguration
+    private let benchmarkURL: URL
+    private let communityURL: URL?
     private let transport: any HTTPTransport
     private let rawSampleStore: RawSampleStore?
-    private let parser = ClaudeRadarParser()
+    private let parser: any RadarPayloadParser
     private var validators = HTTPValidators.empty
     private var latestValidators = HTTPValidators.empty
     private var communityValidators = HTTPValidators.empty
@@ -23,20 +24,25 @@ actor ClaudeCodeRadarSource: RadarSource {
         transport: any HTTPTransport = URLSessionHTTPTransport(),
         rawSampleStore: RawSampleStore? = nil
     ) {
-        self.configuration = configuration
+        benchmarkURL = configuration.benchmarkURL
+        communityURL = configuration.communityURL
         self.transport = transport
         self.rawSampleStore = rawSampleStore
-        #if DEBUG
-        descriptor = ClaudeRadarConfiguration.descriptor
-        #else
-        descriptor = RadarSourceDescriptor(
-            id: .claudeCodeRadar,
-            displayName: "Claude Code Radar",
-            supportLevel: .disabled,
-            homepageURL: ClaudeRadarConfiguration.descriptor.homepageURL,
-            seriesRevision: ClaudeRadarConfiguration.seriesRevision
-        )
-        #endif
+        parser = ClaudeRadarParser()
+        descriptor = Self.runtimeDescriptor(ClaudeRadarConfiguration.descriptor)
+    }
+
+    init(
+        configuration: CodexRadarConfiguration,
+        transport: any HTTPTransport = URLSessionHTTPTransport(),
+        rawSampleStore: RawSampleStore? = nil
+    ) {
+        benchmarkURL = configuration.summaryURL
+        communityURL = configuration.communityURL
+        self.transport = transport
+        self.rawSampleStore = rawSampleStore
+        parser = CodexRadarParser()
+        descriptor = Self.runtimeDescriptor(CodexRadarConfiguration.descriptor)
     }
 
     func beginAcquisition(
@@ -51,7 +57,7 @@ actor ClaudeCodeRadarSource: RadarSource {
         resumeWaiters(.failure(CancellationError()))
     }
 
-    func acquireBenchmarkEnvelope() async throws -> ClaudeRadarEnvelopeProjection {
+    func acquireBenchmarkEnvelope() async throws -> RadarEnvelopeProjection {
         if let cachedAcquisition {
             return cachedAcquisition.projection
         }
@@ -60,7 +66,7 @@ actor ClaudeCodeRadarSource: RadarSource {
         }
         acquisitionIsRunning = true
         let generation = acquisitionGeneration
-        let request = Self.request(url: configuration.benchmarkURL, validators: validators)
+        let request = Self.request(url: benchmarkURL, validators: validators)
         do {
             let payload: HTTPTransportResponse
             do {
@@ -82,7 +88,7 @@ actor ClaudeCodeRadarSource: RadarSource {
                 await saveRaw(payload.data, outcome: .httpFailed, at: fetchedAt, generation: generation)
                 throw error
             }
-            let projection: ClaudeRadarEnvelopeProjection
+            let projection: RadarEnvelopeProjection
             do {
                 projection = try parser.parseBenchmarkEnvelope(payload.data, fetchedAt: fetchedAt)
             } catch {
@@ -132,7 +138,7 @@ actor ClaudeCodeRadarSource: RadarSource {
     }
 
     func fetchCommunity() async throws -> CommunityDataset? {
-        guard let url = configuration.communityURL else { return nil }
+        guard let url = communityURL else { return nil }
         let generation = acquisitionGeneration
         let payload: HTTPTransportResponse
         do {
@@ -178,7 +184,7 @@ actor ClaudeCodeRadarSource: RadarSource {
     }
 
     func hasCommunityEndpoint() -> Bool {
-        configuration.communityURL != nil
+        communityURL != nil
     }
 
     func cancelAll() async {
@@ -208,7 +214,7 @@ actor ClaudeCodeRadarSource: RadarSource {
         nextRawPersistenceID += 1
         let persistenceID = nextRawPersistenceID
         let task = Task {
-            _ = try? await rawSampleStore.save(data, sourceID: .claudeCodeRadar, outcome: outcome, at: date)
+            _ = try? await rawSampleStore.save(data, sourceID: descriptor.id, outcome: outcome, at: date)
         }
         rawPersistenceTasks[persistenceID] = task
         await task.value
@@ -219,12 +225,28 @@ actor ClaudeCodeRadarSource: RadarSource {
         guard generation == acquisitionGeneration, !Task.isCancelled else { throw CancellationError() }
     }
 
+    private static func runtimeDescriptor(_ descriptor: RadarSourceDescriptor) -> RadarSourceDescriptor {
+        #if DEBUG
+        descriptor
+        #else
+        RadarSourceDescriptor(
+            id: descriptor.id,
+            displayName: descriptor.displayName,
+            supportLevel: .disabled,
+            homepageURL: descriptor.homepageURL,
+            seriesRevision: descriptor.seriesRevision
+        )
+        #endif
+    }
+
 }
 
 private struct BenchmarkAcquisition: Sendable {
-    let projection: ClaudeRadarEnvelopeProjection
+    let projection: RadarEnvelopeProjection
     let validators: HTTPValidators
 }
+
+typealias ClaudeCodeRadarSource = RadarHTTPSource
 
 private enum AcquisitionOutcome: @unchecked Sendable {
     case success(BenchmarkAcquisition)

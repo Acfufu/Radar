@@ -4,16 +4,18 @@ import SwiftUI
 
 struct SettingsView: View {
     let settings: AppSettings
-    let runtime: RadarAppRuntime
+    let model: RadarWorkspaceModel
     @State private var launchAtLogin = false
     @State private var dataActionMessage: String?
+    private var runtime: RadarAppRuntime { model.runtime }
 
     var body: some View {
         TabView {
             Form {
                 Picker("刷新间隔", selection: interval) { ForEach([15, 30, 60, 120], id: \.self) { Text("\($0) 分钟").tag($0) } }
                 Toggle("登录时启动", isOn: $launchAtLogin).onChange(of: launchAtLogin) { _, value in updateLoginItem(value) }
-                LabeledContent("在线来源", value: runtime.environment.onlineSupportLevel == .disabled ? "当前构建未启用" : "仅开发实验")
+                LabeledContent("当前工作区", value: model.source.displayName)
+                LabeledContent("在线来源", value: runtime.supportLevel == .disabled ? "当前构建未启用" : "已启用自动同步")
             }.formStyle(.grouped).tabItem { Label("通用", systemImage: "gear") }
             Form {
                 Button("清除规范化历史", role: .destructive) {
@@ -27,9 +29,10 @@ struct SettingsView: View {
                 if let dataActionMessage { Text(dataActionMessage).font(.caption).foregroundStyle(.secondary) }
             }.formStyle(.grouped).tabItem { Label("数据", systemImage: "externaldrive") }
             Form {
-                LabeledContent("Claude Radar", value: "0.1.0")
+                LabeledContent("Radar", value: appVersion)
                 Link("Claude Code Radar 来源主页", destination: URL(string: "https://claudecoderadar.com/?lang=en")!)
-                Text("数据来源：Claude Code Radar。其网站可公开访问，但未发现允许缓存、历史留存或再展示的明确复用许可；公开 Release 构建的在线来源保持禁用。")
+                Link("Codex Radar 来源主页", destination: URL(string: "https://codexradar.com/")!)
+                Text("项目已允许两个公开来源自动同步、缓存规范化历史与再展示。Codex 仅使用公开摘要和社区评分，不访问受保护的完整 API。")
                     .fixedSize(horizontal: false, vertical: true)
             }.formStyle(.grouped).tabItem { Label("关于", systemImage: "info.circle") }
         }
@@ -40,6 +43,9 @@ struct SettingsView: View {
         settings.refreshIntervalMinutes = value
         Task { await runtime.updateRefreshInterval(minutes: value) }
     }) }
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0"
+    }
     private func updateLoginItem(_ enabled: Bool) {
         do { enabled ? try SMAppService.mainApp.register() : try SMAppService.mainApp.unregister(); settings.launchAtLogin = enabled }
         catch { launchAtLogin = SMAppService.mainApp.status == .enabled }

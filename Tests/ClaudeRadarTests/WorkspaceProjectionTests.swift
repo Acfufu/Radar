@@ -5,7 +5,7 @@ import Testing
 
 @Suite("WorkspaceProjectionTests")
 struct WorkspaceProjectionTests {
-    @Test("navigation is a fixed Claude-only workspace")
+    @Test("navigation remains a fixed destination set within each source workspace")
     func navigationContract() {
         #expect(WorkspaceDestination.allCases == [.overview, .models, .trends, .sourceStatus, .export])
         #expect(WorkspaceCopy.exportPlaceholder == "Phase 6 将提供分页 JSON 导出")

@@ -2,7 +2,7 @@ import Foundation
 
 extension RadarSyncCoordinator {
     func applyEnvelope(
-        _ result: Result<ClaudeRadarEnvelopeProjection, Error>,
+        _ result: Result<RadarEnvelopeProjection, Error>,
         attemptedAt: Date
     ) async -> Bool {
         switch result {
@@ -35,19 +35,19 @@ extension RadarSyncCoordinator {
             do {
                 _ = try await repository.insertCommunity(dataset)
                 let validators = await source.responseValidators().community
-                try await repository.recordValidators(sourceID: .claudeCodeRadar, datasetType: .community, validators: validators)
+                try await repository.recordValidators(sourceID: sourceID, datasetType: .community, validators: validators)
                 return true
             } catch {
-                try? await repository.recordFailure(sourceID: .claudeCodeRadar, datasetType: .community, attemptedAt: attemptedAt, error: segmentError(error))
+                try? await repository.recordFailure(sourceID: sourceID, datasetType: .community, attemptedAt: attemptedAt, error: segmentError(error))
                 return false
             }
         case .failure(let error):
             if let http = error as? RadarHTTPError, http.kind == .notModified {
-                let state = try? await repository.communityState(sourceID: .claudeCodeRadar)
+                let state = try? await repository.communityState(sourceID: sourceID)
                 guard state?.value != nil, state?.error == nil else {
-                    try? await repository.recordValidators(sourceID: .claudeCodeRadar, datasetType: .community, validators: .empty)
+                    try? await repository.recordValidators(sourceID: sourceID, datasetType: .community, validators: .empty)
                     try? await repository.recordFailure(
-                        sourceID: .claudeCodeRadar,
+                        sourceID: sourceID,
                         datasetType: .community,
                         attemptedAt: attemptedAt,
                         error: SegmentError(kind: .decoding, message: "304 received without local community data")
@@ -58,7 +58,7 @@ extension RadarSyncCoordinator {
                 return true
             }
             try? await repository.recordFailure(
-                sourceID: .claudeCodeRadar,
+                sourceID: sourceID,
                 datasetType: .community,
                 attemptedAt: attemptedAt,
                 error: segmentError(error),
@@ -75,15 +75,15 @@ extension RadarSyncCoordinator {
     ) async -> Bool {
         guard let dataset = projection.value else {
             let error = projection.error ?? SegmentError(kind: .decoding, message: "Benchmark is unavailable")
-            try? await repository.recordFailure(sourceID: .claudeCodeRadar, datasetType: .benchmark, attemptedAt: attemptedAt, error: error)
+            try? await repository.recordFailure(sourceID: sourceID, datasetType: .benchmark, attemptedAt: attemptedAt, error: error)
             return false
         }
         do {
             _ = try await repository.insertBenchmark(dataset)
-            try await repository.recordValidators(sourceID: .claudeCodeRadar, datasetType: .benchmark, validators: validators)
+            try await repository.recordValidators(sourceID: sourceID, datasetType: .benchmark, validators: validators)
             return true
         } catch {
-            try? await repository.recordFailure(sourceID: .claudeCodeRadar, datasetType: .benchmark, attemptedAt: attemptedAt, error: segmentError(error))
+            try? await repository.recordFailure(sourceID: sourceID, datasetType: .benchmark, attemptedAt: attemptedAt, error: segmentError(error))
             return false
         }
     }
@@ -95,15 +95,15 @@ extension RadarSyncCoordinator {
     ) async -> Bool {
         guard let dataset = projection.value else {
             let error = projection.error ?? SegmentError(kind: .decoding, message: "Source status is unavailable")
-            try? await repository.recordFailure(sourceID: .claudeCodeRadar, datasetType: .sourceStatus, attemptedAt: attemptedAt, error: error)
+            try? await repository.recordFailure(sourceID: sourceID, datasetType: .sourceStatus, attemptedAt: attemptedAt, error: error)
             return false
         }
         do {
             _ = try await repository.insertSourceStatus(dataset)
-            try await repository.recordValidators(sourceID: .claudeCodeRadar, datasetType: .sourceStatus, validators: validators)
+            try await repository.recordValidators(sourceID: sourceID, datasetType: .sourceStatus, validators: validators)
             return true
         } catch {
-            try? await repository.recordFailure(sourceID: .claudeCodeRadar, datasetType: .sourceStatus, attemptedAt: attemptedAt, error: segmentError(error))
+            try? await repository.recordFailure(sourceID: sourceID, datasetType: .sourceStatus, attemptedAt: attemptedAt, error: segmentError(error))
             return false
         }
     }
@@ -114,7 +114,7 @@ extension RadarSyncCoordinator {
         validators: HTTPValidators
     ) async {
         for type in types {
-            try? await repository.recordNotModified(sourceID: .claudeCodeRadar, datasetType: type, attemptedAt: attemptedAt, etag: validators.etag, lastModified: validators.lastModified)
+            try? await repository.recordNotModified(sourceID: sourceID, datasetType: type, attemptedAt: attemptedAt, etag: validators.etag, lastModified: validators.lastModified)
         }
     }
 
@@ -122,8 +122,8 @@ extension RadarSyncCoordinator {
         attemptedAt: Date,
         validators: HTTPValidators
     ) async -> Bool {
-        let benchmark = try? await repository.benchmarkState(sourceID: .claudeCodeRadar)
-        let status = try? await repository.sourceStatusState(sourceID: .claudeCodeRadar)
+        let benchmark = try? await repository.benchmarkState(sourceID: sourceID)
+        let status = try? await repository.sourceStatusState(sourceID: sourceID)
         var success = false
         if benchmark?.value != nil, benchmark?.error == nil {
             await recordNotModified([.benchmark], attemptedAt: attemptedAt, validators: validators)
@@ -141,9 +141,9 @@ extension RadarSyncCoordinator {
     }
 
     private func rejectOrphanNotModified(_ type: RadarDatasetType, attemptedAt: Date) async {
-        try? await repository.recordValidators(sourceID: .claudeCodeRadar, datasetType: type, validators: .empty)
+        try? await repository.recordValidators(sourceID: sourceID, datasetType: type, validators: .empty)
         try? await repository.recordFailure(
-            sourceID: .claudeCodeRadar,
+            sourceID: sourceID,
             datasetType: type,
             attemptedAt: attemptedAt,
             error: SegmentError(kind: .decoding, message: "304 received without local last-known-good data")
@@ -157,16 +157,16 @@ extension RadarSyncCoordinator {
         retryAfter: Date?
     ) async {
         for type in types {
-            try? await repository.recordFailure(sourceID: .claudeCodeRadar, datasetType: type, attemptedAt: attemptedAt, error: error, retryAfter: retryAfter)
+            try? await repository.recordFailure(sourceID: sourceID, datasetType: type, attemptedAt: attemptedAt, error: error, retryAfter: retryAfter)
         }
     }
 
     private func segmentError(_ error: Error) -> SegmentError {
         if let error = error as? SegmentError { return error }
         if let error = error as? RadarHTTPError {
-            return SegmentError(kind: error.kind == .network ? .network : .http, message: "Claude Radar HTTP acquisition failed")
+            return SegmentError(kind: error.kind == .network ? .network : .http, message: "\(source.descriptor.displayName) HTTP acquisition failed")
         }
-        return SegmentError(kind: .decoding, message: "Claude Radar synchronization failed")
+        return SegmentError(kind: .decoding, message: "\(source.descriptor.displayName) synchronization failed")
     }
 
     private func retryDeadline(_ error: Error, now: Date) -> Date? {

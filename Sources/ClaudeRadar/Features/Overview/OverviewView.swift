@@ -6,12 +6,12 @@ struct OverviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                ViewHeader(title: "概览", subtitle: "Claude Code Radar · 更新于 \(RadarFormat.date(projection.updatedAt))")
+                ViewHeader(title: "概览", subtitle: "\(projection.source.displayName) · 更新于 \(RadarFormat.date(projection.updatedAt))")
                 if let supportState = Self.presentation(for: projection).supportState {
-                    StateBanner(state: supportState, error: nil)
+                    StateBanner(state: supportState, error: nil, sourceName: projection.source.displayName)
                 }
                 if let healthState = Self.presentation(for: projection).healthState {
-                    StateBanner(state: healthState, error: Self.presentation(for: projection).error)
+                    StateBanner(state: healthState, error: Self.presentation(for: projection).error, sourceName: projection.source.displayName)
                 }
                 if let community = Self.communityPresentation(for: projection) {
                     Label(community.message, systemImage: "person.2.badge.exclamationmark")
@@ -33,7 +33,7 @@ struct OverviewView: View {
                             detail: costEfficiencyDetail
                         )
                         SummaryCard(title: "当前口径", value: projection.sync?.benchmark.value?.seriesRevision ?? "—", detail: projection.sync?.benchmark.value?.benchmarkName ?? "未提供名称")
-                        SummaryCard(title: WorkspaceCopy.quotaTitle, value: quotaSummary, detail: "来源公开估算")
+                        SummaryCard(title: WorkspaceCopy.quotaTitle(for: projection.source), value: quotaSummary, detail: "来源公开估算")
                         SummaryCard(title: "质量 ↑ / 成本 ↓", value: "前沿 \(frontierCount)", detail: "仅当前同来源、同 revision")
                     }
                     AnalysisExplanation()
@@ -70,7 +70,10 @@ struct OverviewView: View {
     }
     private var quotaSummary: String {
         guard let quota = projection.sync?.sourceStatus.value?.quotaEstimates.first else { return "—" }
-        return "\(quota.windowLabel) · \(RadarFormat.decimal(quota.usedPercent, suffix: "%"))"
+        if let usedPercent = quota.usedPercent {
+            return "\(quota.windowLabel) · \(RadarFormat.decimal(usedPercent, suffix: "%"))"
+        }
+        return quota.estimatedValueUSD.map { "\(quota.windowLabel) · $\(RadarFormat.decimal($0))" } ?? quota.windowLabel
     }
     private var frontierCount: Int { projection.pareto(.qualityCost).count { $0.classification == .frontier } }
 }
@@ -104,10 +107,18 @@ struct ViewHeader: View {
 struct StateBanner: View {
     let state: WorkspaceState
     let error: String?
-    var body: some View {
-        Label(Self.message(for: state, error: error), systemImage: icon).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(.quaternary, in: .rect(cornerRadius: 10))
+    let sourceName: String
+
+    init(state: WorkspaceState, error: String?, sourceName: String = "Claude Code Radar") {
+        self.state = state
+        self.error = error
+        self.sourceName = sourceName
     }
-    static func message(for state: WorkspaceState, error: String?) -> String { switch state { case .loading: "正在载入 Claude Code Radar 数据"; case .empty: "当前没有可显示的数据"; case .fresh: "刚刚同步成功"; case .stale: "正在使用最后良好数据；数据可能已过期"; case .usingLastKnownGood: error.map { "正在使用最近一次良好数据\n\($0)" } ?? "正在使用最近一次良好数据"; case .validationFailed(let hasLastKnownGood): error ?? (hasLastKnownGood ? "新数据未通过校验，已保留旧值" : "新数据未通过校验，暂无可用旧值"); case .unavailable(let text), .disabled(let text), .error(let text): text } }
+
+    var body: some View {
+        Label(Self.message(for: state, error: error, sourceName: sourceName), systemImage: icon).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(.quaternary, in: .rect(cornerRadius: 10))
+    }
+    static func message(for state: WorkspaceState, error: String?, sourceName: String = "Claude Code Radar") -> String { switch state { case .loading: "正在载入 \(sourceName) 数据"; case .empty: "当前没有可显示的数据"; case .fresh: "刚刚同步成功"; case .stale: "正在使用最后良好数据；数据可能已过期"; case .usingLastKnownGood: error.map { "正在使用最近一次良好数据\n\($0)" } ?? "正在使用最近一次良好数据"; case .validationFailed(let hasLastKnownGood): error ?? (hasLastKnownGood ? "新数据未通过校验，已保留旧值" : "新数据未通过校验，暂无可用旧值"); case .unavailable(let text), .disabled(let text), .error(let text): text } }
     private var icon: String { switch state { case .fresh: "checkmark.circle"; case .loading: "arrow.triangle.2.circlepath"; case .empty: "tray"; case .stale: "clock.badge.exclamationmark"; case .usingLastKnownGood, .validationFailed, .error: "exclamationmark.triangle"; case .unavailable: "questionmark.circle"; case .disabled: "lock.shield" } }
 }
 
