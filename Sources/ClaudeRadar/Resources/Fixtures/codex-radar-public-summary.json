@@ -1,0 +1,82 @@
+{
+  "schema_version": "2.0",
+  "service": "codex-reset-radar",
+  "monitored_at": "2026-07-15T16:00:00+08:00",
+  "api_access": {
+    "status": "public_summary",
+    "full_api_status": "authorization_required",
+    "requirements": {
+      "attribution_required": true,
+      "attribution_text": "数据来自 Codex 雷达 codexradar.com",
+      "site": "https://codexradar.com"
+    }
+  },
+  "model_iq": {
+    "latest": {
+      "date": "2026-07-15-pm",
+      "score": 120.0,
+      "status": "green",
+      "passed": 8,
+      "tasks": 10,
+      "invalid": 0,
+      "total_tokens": 1100,
+      "input_tokens": 1000,
+      "cached_input_tokens": 800,
+      "output_tokens": 100,
+      "wall_seconds": 3600,
+      "wall_time_human": "1小时",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "max",
+      "valid_tasks": 10,
+      "cost_usd": 12.5
+    },
+    "comparisons": {
+      "gpt_56_sol_high": {
+        "label": "GPT-5.6 Sol high",
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "latest": {
+          "date": "2026-07-15-pm",
+          "score": 90.0,
+          "status": "yellow",
+          "passed": 6,
+          "tasks": 10,
+          "invalid": 0,
+          "total_tokens": 550,
+          "input_tokens": 500,
+          "cached_input_tokens": 250,
+          "output_tokens": 50,
+          "wall_seconds": 1800,
+          "wall_time_human": "30分钟",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "high",
+          "valid_tasks": 10,
+          "cost_usd": 6.25
+        },
+        "recent_days": []
+      }
+    },
+    "recent_days": [],
+    "quota_radar": {
+      "date": "2026-07-15-pm",
+      "source": "fixture-deepswe-10-v1",
+      "updated_at": "2026-07-15T08:00:00Z",
+      "basis_window": "secondary_7d",
+      "basis_window_label": "7d",
+      "rows": [
+        {
+          "tier": "20x Pro",
+          "basis": "measured 7d",
+          "five_h": 300.0,
+          "seven_d": 1800.0
+        },
+        {
+          "tier": "5x Pro",
+          "basis": "model /4",
+          "five_h": 75.0,
+          "seven_d": 450.0
+        }
+      ]
+    }
+  }
+}

@@ -1,12 +1,7 @@
 import Foundation
 
-struct ClaudeRadarEnvelopeProjection: Sendable {
-    let benchmark: SegmentProjection<BenchmarkDataset>
-    let sourceStatus: SegmentProjection<SourceStatusDataset>
-}
-
-struct ClaudeRadarParser: Sendable {
-    func parseBenchmarkEnvelope(_ data: Data, fetchedAt: Date) throws -> ClaudeRadarEnvelopeProjection {
+struct ClaudeRadarParser: RadarPayloadParser, Sendable {
+    func parseBenchmarkEnvelope(_ data: Data, fetchedAt: Date) throws -> RadarEnvelopeProjection {
         let dto: ClaudeRadarDTO
         do {
             dto = try JSONDecoder().decode(ClaudeRadarDTO.self, from: data)
@@ -18,22 +13,22 @@ struct ClaudeRadarParser: Sendable {
             let failure = SegmentProjection<BenchmarkDataset>.failure(
                 ClaudeRadarValidator.validation("Claude Radar response was not successful")
             )
-            return ClaudeRadarEnvelopeProjection(
+            return RadarEnvelopeProjection(
                 benchmark: failure,
                 sourceStatus: .failure(ClaudeRadarValidator.validation("Claude Radar response was not successful"))
             )
         }
 
-        return ClaudeRadarEnvelopeProjection(
+        return RadarEnvelopeProjection(
             benchmark: benchmarkProjection(dto, fetchedAt: fetchedAt),
             sourceStatus: statusProjection(dto.quota, decoded: dto.statusDecoded, fetchedAt: fetchedAt)
         )
     }
 
     func parseCommunityEnvelope(_ data: Data, fetchedAt: Date) throws -> SegmentProjection<CommunityDataset> {
-        let dto: ClaudeCommunityDTO
+        let dto: RadarCommunityDTO
         do {
-            dto = try JSONDecoder().decode(ClaudeCommunityDTO.self, from: data)
+            dto = try JSONDecoder().decode(RadarCommunityDTO.self, from: data)
         } catch {
             throw SegmentError(kind: .decoding, message: "Claude Radar community response could not be decoded")
         }

@@ -339,7 +339,7 @@ struct DomainModelTests {
         // Then
         #expect(descriptor.id == .claudeCodeRadar)
         #expect(descriptor.seriesRevision == "claude-radar-v1")
-        #expect(descriptor.supportLevel == .experimental)
+        #expect(descriptor.supportLevel == .authorized)
         #expect(descriptor.homepageURL?.absoluteString == "https://claudecoderadar.com/?lang=en")
     }
 

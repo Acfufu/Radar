@@ -1,22 +1,5 @@
 import Foundation
 
-struct ClaudeDecimal: Decodable, Sendable {
-    let value: Decimal
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let decimal = try? container.decode(Decimal.self) {
-            value = decimal
-            return
-        }
-        let text = try container.decode(String.self)
-        guard let decimal = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Expected a decimal number or decimal string")
-        }
-        value = decimal
-    }
-}
-
 struct ClaudeRadarDTO: Decodable, Sendable {
     let ok: Bool
     let updatedAt: String?
@@ -73,14 +56,14 @@ struct ClaudeRadarDTO: Decodable, Sendable {
     struct Model: Decodable, Sendable {
         let key: String?
         let name: String
-        let score: ClaudeDecimal?
-        let iq: [ClaudeDecimal?]?
+        let score: RadarDecimal?
+        let iq: [RadarDecimal?]?
         let passed: [Int?]?
         let valid: [Int?]?
         let invalid: [Int?]?
-        let cost: [ClaudeDecimal?]?
-        let time: [ClaudeDecimal?]?
-        let cache: [ClaudeDecimal?]?
+        let cost: [RadarDecimal?]?
+        let time: [RadarDecimal?]?
+        let cache: [RadarDecimal?]?
         let latestAt: String?
         let latestLabel: String?
 
@@ -113,7 +96,7 @@ struct ClaudeRadarDTO: Decodable, Sendable {
     struct Metric: Decodable, Sendable {
         let key: String
         let label: String?
-        let value: ClaudeDecimal?
+        let value: RadarDecimal?
 
         enum CodingKeys: String, CodingKey {
             case key, value
@@ -123,7 +106,7 @@ struct ClaudeRadarDTO: Decodable, Sendable {
 
     struct Usage: Decodable, Sendable {
         let key: String
-        let usedPercent: ClaudeDecimal?
+        let usedPercent: RadarDecimal?
         let resetDescription: String?
 
         enum CodingKeys: String, CodingKey {
@@ -131,23 +114,5 @@ struct ClaudeRadarDTO: Decodable, Sendable {
             case usedPercent = "used_pct"
             case resetDescription = "reset_text_en"
         }
-    }
-}
-
-struct ClaudeCommunityDTO: Decodable, Sendable {
-    let ok: Bool
-    let updatedAt: String?
-    let models: [Model]
-
-    enum CodingKeys: String, CodingKey {
-        case ok, models
-        case updatedAt = "updated_at"
-    }
-
-    struct Model: Decodable, Sendable {
-        let id: String
-        let label: String
-        let average: ClaudeDecimal?
-        let count: Int?
     }
 }

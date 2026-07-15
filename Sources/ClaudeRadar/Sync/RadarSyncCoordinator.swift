@@ -28,8 +28,9 @@ struct SyncEndpointEligibility: Sendable {
 }
 
 actor RadarSyncCoordinator {
-    let source: ClaudeCodeRadarSource
+    let source: RadarHTTPSource
     let repository: RadarRepository
+    var sourceID: RadarSourceID { source.descriptor.id }
     var policy: SyncPolicy
     let clock: any RadarClock
     private let networkMonitor: (any NetworkMonitoring)?
@@ -54,7 +55,7 @@ actor RadarSyncCoordinator {
     private var stopOperation: Task<Void, Never>?
 
     init(
-        source: ClaudeCodeRadarSource,
+        source: RadarHTTPSource,
         repository: RadarRepository,
         policy: SyncPolicy = SyncPolicy(),
         clock: any RadarClock = SystemRadarClock(),
@@ -199,9 +200,9 @@ actor RadarSyncCoordinator {
 
     func projection() async throws -> RadarSyncProjection {
         let now = clock.now()
-        let benchmark = try await repository.benchmarkState(sourceID: .claudeCodeRadar)
-        let community = try await repository.communityState(sourceID: .claudeCodeRadar)
-        let status = try await repository.sourceStatusState(sourceID: .claudeCodeRadar)
+        let benchmark = try await repository.benchmarkState(sourceID: sourceID)
+        let community = try await repository.communityState(sourceID: sourceID)
+        let status = try await repository.sourceStatusState(sourceID: sourceID)
         return RadarSyncProjection(
             supportLevel: source.descriptor.supportLevel,
             benchmark: stale(benchmark, now: now),
@@ -212,9 +213,9 @@ actor RadarSyncCoordinator {
 
     private func eligibleEndpoints(for trigger: SyncTrigger) async -> SyncEndpointEligibility {
         let now = clock.now()
-        let benchmark = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: .benchmark)
-        let status = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: .sourceStatus)
-        let community = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: .community)
+        let benchmark = try? await repository.metadata(sourceID: sourceID, datasetType: .benchmark)
+        let status = try? await repository.metadata(sourceID: sourceID, datasetType: .sourceStatus)
+        let community = try? await repository.metadata(sourceID: sourceID, datasetType: .community)
         var sharedEligible = endpointPermitted(metadata: [benchmark, status].compactMap { $0 }, trigger: trigger, now: now)
         var communityEligible = await source.hasCommunityEndpoint()
             && endpointPermitted(metadata: [community].compactMap { $0 }, trigger: trigger, now: now)
@@ -276,7 +277,7 @@ actor RadarSyncCoordinator {
     func allMetadata() async -> [SyncMetadata] {
         var values: [SyncMetadata] = []
         for type in [RadarDatasetType.benchmark, .community, .sourceStatus] {
-            if let metadata = try? await repository.metadata(sourceID: .claudeCodeRadar, datasetType: type) {
+            if let metadata = try? await repository.metadata(sourceID: sourceID, datasetType: type) {
                 values.append(metadata)
             }
         }

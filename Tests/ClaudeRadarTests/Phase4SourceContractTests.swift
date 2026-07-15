@@ -8,15 +8,23 @@ struct Phase4SourceContractTests {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    @Test("workspace is singleton and source homepage is exact")
+    @Test("workspace is singleton and source homepages are exact")
     func sceneAndHomepage() throws {
         let app = try text("Sources/ClaudeRadar/ClaudeRadarApp.swift")
         let commands = try text("Sources/ClaudeRadar/App/AppCommands.swift")
         #expect(app.contains("Window(\"Claude Radar\", id: \"workspace\")"))
         #expect(!app.contains("WindowGroup(\"Claude Radar\""))
         #expect(commands.contains("Button(\"关闭工作区\")"))
+        let claude = try text("Sources/ClaudeRadar/Sources/ClaudeCodeRadar/ClaudeRadarConfiguration.swift")
+        let codex = try text("Sources/ClaudeRadar/Sources/CodexRadar/CodexRadarConfiguration.swift")
+        let descriptor = try text("Sources/ClaudeRadar/Domain/RadarSourceDescriptor.swift")
         let status = try text("Sources/ClaudeRadar/Features/SourceStatus/SourceStatusView.swift")
-        #expect(status.contains("https://claudecoderadar.com/?lang=en"))
+        let workspace = try text("Sources/ClaudeRadar/Features/Workspace/RadarWorkspaceView.swift")
+        #expect(claude.contains("https://claudecoderadar.com/?lang=en"))
+        #expect(codex.contains("https://codexradar.com/"))
+        #expect(descriptor.contains("数据来自 Codex 雷达 codexradar.com"))
+        #expect(status.contains("projection.source.homepageURL"))
+        #expect(workspace.contains("model.source.attributionText"))
     }
 
     @Test("fixture sequence and UI seed implementations are debug-only")

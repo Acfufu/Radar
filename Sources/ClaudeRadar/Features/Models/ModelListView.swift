@@ -16,7 +16,7 @@ struct ModelListView: View {
         let variables = ProcessInfo.processInfo.environment
         _query = State(initialValue: variables["RADAR_UI_MODEL_QUERY"] ?? "")
         if let key = variables["RADAR_UI_MODEL_KEY"] {
-            _selection = State(initialValue: ModelID(sourceID: .claudeCodeRadar, upstreamKey: key))
+            _selection = State(initialValue: ModelID(sourceID: projection.source.id, upstreamKey: key))
         }
         #endif
     }
@@ -60,7 +60,7 @@ struct ModelListView: View {
             .overlay { if rows.isEmpty { ContentUnavailableView.search(text: query) } }
         }
         .searchable(text: $query, prompt: "筛选模型")
-        .inspector(isPresented: .constant(selected != nil)) { if let selected { ModelDetailView(row: selected, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 340, ideal: 420, max: 520) } }
+        .inspector(isPresented: .constant(selected != nil)) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 340, ideal: 420, max: 520) } }
         .navigationTitle("模型")
     }
 

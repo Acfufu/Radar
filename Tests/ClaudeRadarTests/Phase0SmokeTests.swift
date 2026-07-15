@@ -54,7 +54,7 @@ struct Phase0SmokeTests {
         let contract = try text("docs/source-contract.md")
         #expect(contract.contains("https://claudecoderadar.com/data/claude-code-radar.json"))
         #expect(contract.contains("https://claudecoderadar.com/api/model-ratings?history=10"))
-        #expect(contract.contains("public online default: disabled"))
+        #expect(contract.contains("public online default: enabled"))
     }
 
     private func exists(_ relativePath: String) -> Bool {

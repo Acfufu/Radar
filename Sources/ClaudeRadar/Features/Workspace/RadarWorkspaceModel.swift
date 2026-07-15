@@ -15,6 +15,14 @@ enum WorkspaceCopy {
     static let sourceStatusTitle = "Claude Code Radar 来源状态"
     static let quotaTitle = "Claude Code Radar 来源额度估算"
     static let exportPlaceholder = "Phase 6 将提供分页 JSON 导出"
+
+    static func sourceStatusTitle(for source: RadarSourceDescriptor) -> String {
+        "\(source.displayName) 来源状态"
+    }
+
+    static func quotaTitle(for source: RadarSourceDescriptor) -> String {
+        "\(source.displayName) 来源额度估算"
+    }
 }
 
 enum WorkspaceState: Equatable, Sendable {
@@ -94,6 +102,19 @@ struct WorkspaceProjection: Sendable {
     let sync: RadarSyncProjection?
     let lifecycle: RadarAppLifecycleState
     let supportLevel: SupportLevel
+    let source: RadarSourceDescriptor
+
+    init(
+        sync: RadarSyncProjection?,
+        lifecycle: RadarAppLifecycleState,
+        supportLevel: SupportLevel,
+        source: RadarSourceDescriptor = ClaudeRadarConfiguration.descriptor
+    ) {
+        self.sync = sync
+        self.lifecycle = lifecycle
+        self.supportLevel = supportLevel
+        self.source = source
+    }
 
     var benchmarkState: WorkspaceState { state(sync?.benchmark, lifecycle: lifecycle) }
     var benchmarkPresentation: BenchmarkPresentation {
@@ -332,9 +353,42 @@ enum RefreshActionAvailability {
 
 @MainActor @Observable
 final class RadarWorkspaceModel {
-    let runtime: RadarAppRuntime
-    init(runtime: RadarAppRuntime) { self.runtime = runtime }
-    var projection: WorkspaceProjection { .init(sync: runtime.projection, lifecycle: runtime.lifecycleState, supportLevel: runtime.environment.onlineSupportLevel) }
+    private let runtimes: [RadarSourceID: RadarAppRuntime]
+    private(set) var selectedSourceID: RadarSourceID
+
+    init(runtimes: [RadarSourceID: RadarAppRuntime], selectedSourceID: RadarSourceID) {
+        precondition(runtimes[selectedSourceID] != nil)
+        self.runtimes = runtimes
+        self.selectedSourceID = selectedSourceID
+    }
+
+    var runtime: RadarAppRuntime { runtimes[selectedSourceID]! }
+    var source: RadarSourceDescriptor { runtime.descriptor }
+    var sources: [RadarSourceDescriptor] {
+        [RadarSourceID.claudeCodeRadar, .codexRadar].compactMap { runtimes[$0]?.descriptor }
+    }
+    var projection: WorkspaceProjection {
+        .init(
+            sync: runtime.projection,
+            lifecycle: runtime.lifecycleState,
+            supportLevel: runtime.supportLevel,
+            source: runtime.descriptor
+        )
+    }
     var history: [BenchmarkDataset] { runtime.benchmarkHistory }
+    func selectSource(_ sourceID: RadarSourceID) {
+        guard runtimes[sourceID] != nil else { return }
+        selectedSourceID = sourceID
+    }
+    func start() async {
+        await withTaskGroup(of: Void.self) { group in
+            for runtime in runtimes.values {
+                group.addTask { await runtime.start() }
+            }
+        }
+    }
+    func stop() async {
+        for runtime in runtimes.values { await runtime.stop() }
+    }
     func refresh() async { await runtime.refresh() }
 }

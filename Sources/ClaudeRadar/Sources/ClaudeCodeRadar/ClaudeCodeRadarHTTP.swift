@@ -1,6 +1,6 @@
 import Foundation
 
-extension ClaudeCodeRadarSource {
+extension RadarHTTPSource {
     static func request(url: URL, validators: HTTPValidators) -> URLRequest {
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.httpMethod = "GET"

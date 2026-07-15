@@ -1,15 +1,76 @@
-# Claude Code Radar Source Contract
+# Radar Source Contracts
+
+The existing contract sections through “Canonical sanitized fixtures” describe Claude Code Radar. The final section records the independent Codex Radar public-summary adapter; the two sources never share identities, history, exports, trends, or analysis.
 
 ## Release boundary
 
 - Homepage: `https://claudecoderadar.com/?lang=en`
-- Development support: `experimental`
-- public online default: disabled
+- Support: `authorized`
+- public online default: enabled
 - Access: the inspected GET endpoints are public and require no authentication.
-- Permission: no affirmative license or terms were found that grant caching, local history retention, redistribution, or re-display. Fixture-backed development may proceed, but public online access remains disabled until that permission is documented.
+- Project authorization: on 2026-07-16, the project owner authorized automatic synchronization, local history retention, and in-app re-display of the public GET responses.
 - Access controls: the app must not bypass authentication, challenges, rate limits, or other access controls and must not persist cookies or sensitive request headers.
-- Phase 7 Release enforcement: `AppEnvironment.current()` compiles online access to `false` outside Debug, the Release bundle excludes every development fixture, and Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
-- Manual real-site acceptance is explicit and Debug-only: launch a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. This mode uses the production HTTP/source/parser/repository path without fixture transport. It is not compiled as a Release enablement path, and it does not change the permission gate above.
+- Release enforcement: `AppEnvironment.current()` enables both public source runtimes outside Debug, while the Release bundle excludes every development fixture and includes only the app icon under Resources. Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
+- Manual real-site acceptance uses a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. That mode starts both production HTTP/source/parser/repository paths without fixture transport.
+
+## Scenario: dual-source automatic synchronization and cache restoration
+
+### 1. Scope / Trigger
+
+Release startup, Debug `online` QA, and every future source addition share one local data root. This contract applies whenever two or more `RadarAppRuntime` instances can update normalized history or synchronization metadata concurrently.
+
+### 2. Signatures
+
+- App startup: `RadarWorkspaceModel.start() async` starts every runtime in its source-keyed runtime map.
+- Runtime construction: `RadarAppRuntime(environment:sourceID:metadataStore:...)`; the app root passes the same `SyncMetadataStore` actor to both production runtimes.
+- Metadata storage: `SyncMetadataStore(root:)` writes `<dataRoot>/SyncMetadata.json` with keys `<sourceID>|<datasetType>`.
+- Normalized storage: the three SwiftData snapshot tables keep `sourceID`, `seriesRevision`, source/fetch timestamps, fingerprint, and encoded dataset.
+
+### 3. Contracts
+
+- Release requires no environment key and enables both sources. Debug `RADAR_FIXTURE_MODE=online` also enables both; `sequence` enables only Claude, `codex` enables only the local Codex fixture, and all other fixture modes perform no HTTP synchronization.
+- Selecting a workspace changes presentation only. Startup, periodic, network-recovery, and wake synchronization remain active for every enabled runtime.
+- All runtimes that share a data root must share one `SyncMetadataStore` actor. Atomic file replacement alone does not make independent read-modify-write actor instances safe.
+- Benchmark, community, source-status, raw samples, metadata, LKG lookup, history, trends, and export remain scoped by `RadarSourceID`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Both public sources succeed | Six metadata keys remain present and each source persists its own three normalized segments. |
+| One segment refresh fails with an existing snapshot | Preserve and label that segment's LKG; do not replace it with the failed response. |
+| Metadata is corrupt | Report metadata decoding failure while independently readable normalized history remains available. |
+| Synchronization is disabled for QA restart | Make no request and load both source-scoped cached projections. |
+| Two runtimes update metadata concurrently | Serialize through the shared actor; no last-writer loss is allowed. |
+| Protected Codex full API is unavailable or requires credentials | Do not request, emulate, retry, or bypass it. |
+
+### 5. Good / Base / Bad Cases
+
+- Good: an isolated `online` launch stores Claude and Codex snapshots, raw samples, and six metadata records; a disabled relaunch displays both cached workspaces.
+- Base: a source has no prior snapshot, so its workspace remains explicitly empty until a valid public response arrives.
+- Bad: constructing one metadata actor per runtime against the same root lets concurrent read-modify-write cycles overwrite sibling-source records even though each individual file replacement is atomic.
+
+### 6. Tests Required
+
+- `ReleaseReadinessTests`: Release/online enables both authorized sources, app startup is unconditional, and both runtimes receive the shared metadata actor.
+- `MultiSourceWorkspaceTests`: one workspace start activates both runtimes; Codex history remains Codex-scoped and survives a disabled reopen.
+- Packaged manual QA: inspect six metadata keys after a fresh dual-source online run, then relaunch without synchronization and switch between both cached workspaces.
+
+### 7. Wrong vs Correct
+
+Wrong: each runtime creates an actor for the same file, so actor isolation does not extend across instances.
+
+```swift
+RadarRepository(container: container, metadataStore: SyncMetadataStore(root: environment.dataRoot))
+```
+
+Correct: the app composition root creates one actor and injects it into every runtime sharing that data root.
+
+```swift
+let metadataStore = SyncMetadataStore(root: environment.dataRoot)
+let claude = RadarAppRuntime(environment: environment, sourceID: .claudeCodeRadar, metadataStore: metadataStore)
+let codex = RadarAppRuntime(environment: environment, sourceID: .codexRadar, metadataStore: metadataStore)
+```
 
 ## Observation receipt
 
@@ -99,3 +160,39 @@ The three Phase 0 fixtures and the Phase 1 community fixture are small hand-sani
 | `claude-radar-community-valid.json` | Sanitized rolling-24h community ratings with a 7.6 average and explicit null unrated model | 423 | `c66ff8b5c15112c5dd7616f225b8615c830c493174a3e991fad7d83bca24aa99` |
 
 Fixtures are the canonical Phase 0 data source. They are not a license to redistribute the full upstream payload.
+
+## Codex Radar public-summary contract
+
+### Release and authorization boundary
+
+- Homepage: `https://codexradar.com/`
+- Public summary: `https://codexradar.com/current.json`
+- Community ratings: `https://codexradar.com/api/model-ratings?history=14`
+- Source ID: `codex-radar`; series revision: `codex-radar-public-v2`; support: `authorized`.
+- The public summary declares `full_api_status = authorization_required`, says full JSON API and derivative integrations require authorization, and requires the attribution `数据来自 Codex 雷达 codexradar.com`.
+- A direct request to `/api/v1/current` returned HTTP 401 during the 2026-07-15 inspection. The adapter does not call, emulate, or bypass that protected API.
+- On 2026-07-16, the project owner authorized automatic synchronization, local history retention, and in-app re-display for `current.json` and the public community endpoint. Release and Debug `online` QA enable this public adapter; the protected full API remains excluded.
+
+### Public-summary projection
+
+Observed on 2026-07-15 in Asia/Shanghai. The payload identifies schema `2.0`; fields and availability may drift, so every segment is validated before persistence.
+
+| JSON path | Domain mapping and validation |
+| --- | --- |
+| `schema_version` | Benchmark version; the adapter series remains the explicit `codex-radar-public-v2` contract revision. |
+| `model_iq.latest` and `model_iq.comparisons.*.latest` | One benchmark model per unique `model + reasoning_effort`; a duplicate top-level latest configuration is discarded. |
+| `score`, `passed`, `valid_tasks`/`tasks`, `invalid` | Quality and task counts; non-negative values and `passed <= valid` are required. |
+| `cost_usd`, `input_tokens`, `cached_input_tokens`, `output_tokens`, `total_tokens`, `wall_seconds` | Cost, Token, cache, and duration metrics. Cached input must not exceed input; cache percentage is derived only when input is positive. Missing values stay `nil`. |
+| `model_iq.quota_radar.basis_window_label` | Selects the currently active `five_h` or `seven_d` estimate for each tier. These are source quota estimates in USD, never personal user usage percentages. |
+| `model_iq.quota_radar.rows[]` | One source-status estimate per tier and active window; `basis` is retained as the source explanation. |
+
+Benchmark and embedded quota status share one `current.json` acquisition but project independently. Community ratings use the shared 1...10 rating contract while every model ID remains scoped to `codex-radar`. No Codex value is joined to, ranked against, or exported with Claude values.
+
+### Canonical sanitized fixtures
+
+| Fixture | Purpose | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| `codex-radar-public-summary.json` | Minimal schema-2 benchmark and active-window quota summary | 2,111 | `00b32c6cbad957cdb2fce12f0a227ec89f7bc6d0c66a9d18c7de57a49269852a` |
+| `codex-radar-community-valid.json` | Source-scoped 1...10 community values with an explicit null rating | 313 | `d4dd5e2214aea8e04c4fcc514d99551c0b910e2c09de2bb955da6dcd1ebe8406` |
+
+These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.

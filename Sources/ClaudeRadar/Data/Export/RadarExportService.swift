@@ -6,10 +6,12 @@ protocol RadarExportDataSource: Sendable {
     func endExportSnapshot(_ snapshot: ExportSnapshotToken) async
     func exportRecordCount(dataset: ExportDataset, range: ExportDateRange, snapshot: ExportSnapshotToken) async throws -> Int
     func exportRecords(dataset: ExportDataset, range: ExportDateRange, offset: Int, limit: Int, snapshot: ExportSnapshotToken) async throws -> [ExportRecord]
+    func exportSourceIDs() async -> [RadarSourceID]
 }
 
 extension RadarExportDataSource {
     func beginExportSnapshot(includesRawSamples: Bool) async throws -> ExportSnapshotToken { .init(id: UUID(), cutoff: Date()) }
+    func exportSourceIDs() async -> [RadarSourceID] { [.claudeCodeRadar] }
 }
 
 struct ExportSnapshotToken: Hashable, Sendable {
@@ -175,7 +177,7 @@ actor RadarExportService {
             appVersion: appVersion,
             pageSize: request.pageSize,
             includesRawSamples: request.includesRawSamples,
-            sources: [RadarSourceID.claudeCodeRadar.rawValue],
+            sources: await source.exportSourceIDs().map(\.rawValue),
             dateRange: request.range,
             datasets: entries
         )

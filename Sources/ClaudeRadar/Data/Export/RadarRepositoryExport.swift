@@ -7,42 +7,62 @@ extension RadarRepository: RadarExportDataSource {
     }
 
     func exportRecordCount(dataset: ExportDataset, range: ExportDateRange, snapshot: ExportSnapshotToken) async throws -> Int {
+        try exportRecordCount(dataset: dataset, range: range, sourceID: nil, snapshot: snapshot)
+    }
+
+    func exportRecordCount(
+        dataset: ExportDataset,
+        range: ExportDateRange,
+        sourceID: RadarSourceID?,
+        snapshot: ExportSnapshotToken
+    ) throws -> Int {
         let context = try exportContext(for: snapshot)
         let range = range.limited(to: snapshot.cutoff)
         switch dataset {
         case .models, .benchmarkRuns:
-            return try context.fetchCount(benchmarkDescriptor(range: range))
+            return try context.fetchCount(benchmarkDescriptor(range: range, sourceID: sourceID))
         case .communityRatings:
-            return try context.fetchCount(communityDescriptor(range: range))
+            return try context.fetchCount(communityDescriptor(range: range, sourceID: sourceID))
         case .sourceStatus:
-            return try context.fetchCount(sourceStatusDescriptor(range: range))
+            return try context.fetchCount(sourceStatusDescriptor(range: range, sourceID: sourceID))
         case .rawSamples:
             return 0
         }
     }
 
     func exportRecords(dataset: ExportDataset, range: ExportDateRange, offset: Int, limit: Int, snapshot: ExportSnapshotToken) async throws -> [ExportRecord] {
+        try exportRecords(dataset: dataset, range: range, offset: offset, limit: limit, sourceID: nil, snapshot: snapshot)
+    }
+
+    func exportRecords(
+        dataset: ExportDataset,
+        range: ExportDateRange,
+        offset: Int,
+        limit: Int,
+        sourceID: RadarSourceID?,
+        snapshot: ExportSnapshotToken
+    ) throws -> [ExportRecord] {
         guard offset >= 0, limit > 0 else { return [] }
         let context = try exportContext(for: snapshot)
         let range = range.limited(to: snapshot.cutoff)
         switch dataset {
         case .models:
-            var descriptor = benchmarkDescriptor(range: range)
+            var descriptor = benchmarkDescriptor(range: range, sourceID: sourceID)
             descriptor.fetchOffset = offset
             descriptor.fetchLimit = limit
             return try context.fetch(descriptor).map(modelRecord)
         case .benchmarkRuns:
-            var descriptor = benchmarkDescriptor(range: range)
+            var descriptor = benchmarkDescriptor(range: range, sourceID: sourceID)
             descriptor.fetchOffset = offset
             descriptor.fetchLimit = limit
             return try context.fetch(descriptor).map(benchmarkRecord)
         case .communityRatings:
-            var descriptor = communityDescriptor(range: range)
+            var descriptor = communityDescriptor(range: range, sourceID: sourceID)
             descriptor.fetchOffset = offset
             descriptor.fetchLimit = limit
             return try context.fetch(descriptor).map(communityRecord)
         case .sourceStatus:
-            var descriptor = sourceStatusDescriptor(range: range)
+            var descriptor = sourceStatusDescriptor(range: range, sourceID: sourceID)
             descriptor.fetchOffset = offset
             descriptor.fetchLimit = limit
             return try context.fetch(descriptor).map(sourceStatusRecord)
@@ -51,10 +71,17 @@ extension RadarRepository: RadarExportDataSource {
         }
     }
 
-    private func benchmarkDescriptor(range: ExportDateRange) -> FetchDescriptor<BenchmarkSnapshotEntity> {
-        let predicate: Predicate<BenchmarkSnapshotEntity>? = datePredicate(range)
+    private func benchmarkDescriptor(range: ExportDateRange, sourceID: RadarSourceID?) -> FetchDescriptor<BenchmarkSnapshotEntity> {
+        let lower = range.start ?? .distantPast
+        let upper = range.end ?? .distantFuture
+        let includesAllSources = sourceID == nil
+        let source = sourceID?.rawValue ?? ""
         return FetchDescriptor(
-            predicate: predicate,
+            predicate: #Predicate { entity in
+                (includesAllSources || entity.sourceID == source)
+                    && entity.fetchedAt >= lower
+                    && entity.fetchedAt <= upper
+            },
             sortBy: [
                 SortDescriptor(\BenchmarkSnapshotEntity.chronologyAt, order: .forward),
                 SortDescriptor(\BenchmarkSnapshotEntity.contentFingerprint, order: .forward),
@@ -62,10 +89,17 @@ extension RadarRepository: RadarExportDataSource {
         )
     }
 
-    private func communityDescriptor(range: ExportDateRange) -> FetchDescriptor<CommunitySnapshotEntity> {
-        let predicate: Predicate<CommunitySnapshotEntity>? = datePredicate(range)
+    private func communityDescriptor(range: ExportDateRange, sourceID: RadarSourceID?) -> FetchDescriptor<CommunitySnapshotEntity> {
+        let lower = range.start ?? .distantPast
+        let upper = range.end ?? .distantFuture
+        let includesAllSources = sourceID == nil
+        let source = sourceID?.rawValue ?? ""
         return FetchDescriptor(
-            predicate: predicate,
+            predicate: #Predicate { entity in
+                (includesAllSources || entity.sourceID == source)
+                    && entity.fetchedAt >= lower
+                    && entity.fetchedAt <= upper
+            },
             sortBy: [
                 SortDescriptor(\CommunitySnapshotEntity.chronologyAt, order: .forward),
                 SortDescriptor(\CommunitySnapshotEntity.contentFingerprint, order: .forward),
@@ -73,42 +107,22 @@ extension RadarRepository: RadarExportDataSource {
         )
     }
 
-    private func sourceStatusDescriptor(range: ExportDateRange) -> FetchDescriptor<SourceStatusSnapshotEntity> {
-        let predicate: Predicate<SourceStatusSnapshotEntity>? = datePredicate(range)
+    private func sourceStatusDescriptor(range: ExportDateRange, sourceID: RadarSourceID?) -> FetchDescriptor<SourceStatusSnapshotEntity> {
+        let lower = range.start ?? .distantPast
+        let upper = range.end ?? .distantFuture
+        let includesAllSources = sourceID == nil
+        let source = sourceID?.rawValue ?? ""
         return FetchDescriptor(
-            predicate: predicate,
+            predicate: #Predicate { entity in
+                (includesAllSources || entity.sourceID == source)
+                    && entity.fetchedAt >= lower
+                    && entity.fetchedAt <= upper
+            },
             sortBy: [
                 SortDescriptor(\SourceStatusSnapshotEntity.chronologyAt, order: .forward),
                 SortDescriptor(\SourceStatusSnapshotEntity.contentFingerprint, order: .forward),
             ]
         )
-    }
-
-    private func datePredicate(_ range: ExportDateRange) -> Predicate<BenchmarkSnapshotEntity>? {
-        switch (range.start, range.end) {
-        case let (start?, end?): return #Predicate { $0.fetchedAt >= start && $0.fetchedAt <= end }
-        case let (start?, nil): return #Predicate { $0.fetchedAt >= start }
-        case let (nil, end?): return #Predicate { $0.fetchedAt <= end }
-        case (nil, nil): return nil
-        }
-    }
-
-    private func datePredicate(_ range: ExportDateRange) -> Predicate<CommunitySnapshotEntity>? {
-        switch (range.start, range.end) {
-        case let (start?, end?): return #Predicate { $0.fetchedAt >= start && $0.fetchedAt <= end }
-        case let (start?, nil): return #Predicate { $0.fetchedAt >= start }
-        case let (nil, end?): return #Predicate { $0.fetchedAt <= end }
-        case (nil, nil): return nil
-        }
-    }
-
-    private func datePredicate(_ range: ExportDateRange) -> Predicate<SourceStatusSnapshotEntity>? {
-        switch (range.start, range.end) {
-        case let (start?, end?): return #Predicate { $0.fetchedAt >= start && $0.fetchedAt <= end }
-        case let (start?, nil): return #Predicate { $0.fetchedAt >= start }
-        case let (nil, end?): return #Predicate { $0.fetchedAt <= end }
-        case (nil, nil): return nil
-        }
     }
 
     private func modelRecord(_ entity: BenchmarkSnapshotEntity) throws -> ExportRecord {
@@ -246,14 +260,28 @@ actor RadarExportSource: RadarExportDataSource {
     }
 
     func exportRecordCount(dataset: ExportDataset, range: ExportDateRange, snapshot: ExportSnapshotToken) async throws -> Int {
-        if dataset != .rawSamples { return try await repository.exportRecordCount(dataset: dataset, range: range, snapshot: snapshot) }
+        if dataset != .rawSamples {
+            return try await repository.exportRecordCount(
+                dataset: dataset,
+                range: range,
+                sourceID: sourceID,
+                snapshot: snapshot
+            )
+        }
         guard let payloads = rawSnapshots[snapshot.id] else { throw ExportError.repositoryUnavailable }
         return payloads.count { range.limited(to: snapshot.cutoff).contains($0.capturedAt) }
     }
 
     func exportRecords(dataset: ExportDataset, range: ExportDateRange, offset: Int, limit: Int, snapshot: ExportSnapshotToken) async throws -> [ExportRecord] {
         if dataset != .rawSamples {
-            return try await repository.exportRecords(dataset: dataset, range: range, offset: offset, limit: limit, snapshot: snapshot)
+            return try await repository.exportRecords(
+                dataset: dataset,
+                range: range,
+                offset: offset,
+                limit: limit,
+                sourceID: sourceID,
+                snapshot: snapshot
+            )
         }
         guard let payloads = rawSnapshots[snapshot.id] else { throw ExportError.repositoryUnavailable }
         return payloads
@@ -274,6 +302,8 @@ actor RadarExportSource: RadarExportDataSource {
                 ])
             }
     }
+
+    func exportSourceIDs() async -> [RadarSourceID] { [sourceID] }
 }
 
 private extension ExportDateRange {

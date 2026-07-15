@@ -9,25 +9,44 @@ struct ReleaseReadinessTests {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    @Test("Release assembly excludes fixture and Debug resources")
+    @Test("Release assembly includes only the app icon and excludes fixture and Debug resources")
     func releaseAssemblyContract() throws {
         let script = try text("Scripts/build-app.sh")
+        let plist = try text("Config/ClaudeRadar-Info.plist")
         #expect(script.contains("if [[ -z \"${DEVELOPER_DIR:-}\" && -d \"/Applications/Xcode.app/Contents/Developer\" ]]"))
         #expect(script.contains("export DEVELOPER_DIR=\"/Applications/Xcode.app/Contents/Developer\""))
         #expect(script.contains("if [[ \"$CONFIGURATION\" == \"debug\" ]]"))
+        #expect(script.contains("Assets/ClaudeRadar.icns"))
+        #expect(script.contains("! -name \"$APP_NAME.icns\""))
         #expect(script.contains("Release bundle must not contain fixture or Debug resources"))
         #expect(script.contains("find \"$RESOURCES_DIR\""))
+        #expect(plist.contains("CFBundleIconFile"))
+        #expect(plist.contains("ClaudeRadar.icns"))
+        #expect(FileManager.default.fileExists(atPath: root.appending(path: "Assets/ClaudeRadar.png").path))
+        #expect(FileManager.default.fileExists(atPath: root.appending(path: "Assets/ClaudeRadar.icns").path))
     }
 
-    @Test("Release online source is compile-time disabled")
+    @Test("Release and online QA enable both approved sources")
     func releaseOnlineSourceContract() throws {
         let environment = try text("Sources/ClaudeRadar/App/AppEnvironment.swift")
+        let app = try text("Sources/ClaudeRadar/ClaudeRadarApp.swift")
         #expect(environment.contains("case online"))
-        #expect(environment.contains("mode == .sequence || mode == .online"))
-        #expect(environment.contains("#else\n        let onlineSourceEnabled = false"))
-        #expect(environment.contains("#else\n        .disabled"))
+        #expect(environment.contains("#else\n        let onlineSourceEnabled = true"))
+        #expect(app.contains("Task { await model.start() }"))
+        #expect(app.contains("let metadataStore = SyncMetadataStore(root: environment.dataRoot)"))
+        #expect(app.components(separatedBy: "metadataStore: metadataStore").count == 3)
         #expect(!environment.contains("PUBLIC_ONLINE"))
         #expect(!environment.contains("RADAR_ONLINE"))
+
+        let onlineQA = AppEnvironment(
+            dataRoot: FileManager.default.temporaryDirectory,
+            fixtureMode: .online,
+            onlineSourceEnabled: true
+        )
+        #expect(onlineQA.synchronizationEnabled(for: .claudeCodeRadar))
+        #expect(onlineQA.synchronizationEnabled(for: .codexRadar))
+        #expect(onlineQA.supportLevel(for: .claudeCodeRadar) == .authorized)
+        #expect(onlineQA.supportLevel(for: .codexRadar) == .authorized)
     }
 
     @MainActor
@@ -56,11 +75,18 @@ struct ReleaseReadinessTests {
         let checklist = try text("docs/release-checklist.md")
         #expect(checklist.contains("/Applications/ClaudeRadar.app"))
         #expect(checklist.contains("~/Library/Application Support/ClaudeRadar"))
+        #expect(checklist.contains("Claude Code Radar online source: **ENABLED**"))
+        #expect(checklist.contains("Codex Radar online source: **ENABLED**"))
+        #expect(checklist.contains("protected full API remains out of scope"))
         #expect(checklist.contains("BLOCKED"))
         let notices = try text("docs/third-party-notices.md")
         #expect(notices.contains("https://claudecoderadar.com/?lang=en"))
-        #expect(notices.contains("no affirmative"))
-        #expect(notices.contains("disabled"))
+        #expect(notices.contains("2026-07-16"))
+        #expect(notices.contains("automatic synchronization, local history caching, and re-display"))
+        #expect(notices.contains("does not call or bypass the protected full API"))
+        let settings = try text("Sources/ClaudeRadar/Features/Settings/SettingsView.swift")
+        #expect(settings.contains("已启用自动同步"))
+        #expect(settings.contains("受保护的完整 API"))
     }
 
     @MainActor

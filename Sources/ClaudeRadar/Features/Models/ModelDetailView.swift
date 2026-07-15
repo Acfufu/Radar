@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ModelDetailView: View {
     let row: WorkspaceModelRow
+    let sourceName: String
     let revision: String
     let paretoPreset: ParetoPreset
     let paretoClassification: ParetoClassification
@@ -12,7 +13,7 @@ struct ModelDetailView: View {
         Form {
             Section("模型") {
                 LabeledContent("名称", value: row.name)
-                LabeledContent("来源", value: "Claude Code Radar")
+                LabeledContent("来源", value: sourceName)
                 LabeledContent("seriesRevision", value: revision)
             }
             Section("单模型历史") {

@@ -20,6 +20,7 @@ APP_BUNDLE="$ROOT_DIR/.build/app/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
 MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES_DIR="$CONTENTS/Resources"
+ICON_FILE="$ROOT_DIR/Assets/ClaudeRadar.icns"
 
 cd "$ROOT_DIR"
 swift build --configuration "$CONFIGURATION" --product "$APP_NAME"
@@ -29,6 +30,11 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$BIN_DIR/$APP_NAME" "$MACOS_DIR/$APP_NAME"
 cp "$ROOT_DIR/Config/ClaudeRadar-Info.plist" "$CONTENTS/Info.plist"
+if [[ ! -f "$ICON_FILE" ]]; then
+  echo "missing app icon: $ICON_FILE" >&2
+  exit 1
+fi
+cp "$ICON_FILE" "$RESOURCES_DIR/$APP_NAME.icns"
 
 RESOURCE_BUNDLE="$BIN_DIR/ClaudeRadar_ClaudeRadar.bundle"
 if [[ "$CONFIGURATION" == "debug" ]]; then
@@ -38,7 +44,7 @@ if [[ "$CONFIGURATION" == "debug" ]]; then
   fi
   cp -R "$RESOURCE_BUNDLE/." "$RESOURCES_DIR/"
 else
-  if find "$RESOURCES_DIR" -type f -print -quit | grep -q .; then
+  if find "$RESOURCES_DIR" -type f ! -name "$APP_NAME.icns" -print -quit | grep -q .; then
     echo "Release bundle must not contain fixture or Debug resources" >&2
     exit 1
   fi

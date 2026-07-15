@@ -4,23 +4,40 @@ import SwiftUI
 @main
 struct ClaudeRadarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let runtime: RadarAppRuntime
     private let workspaceModel: RadarWorkspaceModel
     private let settings: AppSettings
 
     init() {
         let settings = AppSettings()
         self.settings = settings
-        let runtime = RadarAppRuntime(environment: .current(), refreshIntervalMinutes: settings.refreshIntervalMinutes)
-        self.runtime = runtime
-        workspaceModel = RadarWorkspaceModel(runtime: runtime)
+        let environment = AppEnvironment.current()
+        let metadataStore = SyncMetadataStore(root: environment.dataRoot)
+        let runtimes = [
+            RadarSourceID.claudeCodeRadar: RadarAppRuntime(
+                environment: environment,
+                sourceID: .claudeCodeRadar,
+                metadataStore: metadataStore,
+                refreshIntervalMinutes: settings.refreshIntervalMinutes
+            ),
+            RadarSourceID.codexRadar: RadarAppRuntime(
+                environment: environment,
+                sourceID: .codexRadar,
+                metadataStore: metadataStore,
+                refreshIntervalMinutes: settings.refreshIntervalMinutes
+            ),
+        ]
+        let model = RadarWorkspaceModel(
+            runtimes: runtimes,
+            selectedSourceID: environment.initialSourceID
+        )
+        workspaceModel = model
+        appDelegate.model = model
     }
 
     var body: some Scene {
         Window("Claude Radar", id: "workspace") {
-            RadarWorkspaceView(sourceID: .claudeCodeRadar, model: workspaceModel)
+            RadarWorkspaceView(model: workspaceModel)
                 .frame(minWidth: 820, minHeight: 560)
-                .task { appDelegate.runtime = runtime }
         }
         .defaultSize(width: 1080, height: 720)
         .commands { AppCommands(model: workspaceModel) }
@@ -28,21 +45,26 @@ struct ClaudeRadarApp: App {
         MenuBarExtra("Claude Radar", systemImage: "scope") { MenuBarView(model: workspaceModel) }
             .menuBarExtraStyle(.window)
 
-        Settings { SettingsView(settings: settings, runtime: runtime) }
+        Settings { SettingsView(settings: settings, model: workspaceModel) }
     }
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    weak var runtime: RadarAppRuntime?
+    weak var model: RadarWorkspaceModel?
     private var terminationIsPending = false
-    func applicationDidFinishLaunching(_ notification: Notification) { NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true) }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        guard let model else { return }
+        Task { await model.start() }
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let runtime else { return .terminateNow }
+        guard let model else { return .terminateNow }
         guard !terminationIsPending else { return .terminateLater }
         terminationIsPending = true
-        Task { @MainActor in await runtime.stop(); sender.reply(toApplicationShouldTerminate: true) }
+        Task { @MainActor in await model.stop(); sender.reply(toApplicationShouldTerminate: true) }
         return .terminateLater
     }
 }
