@@ -17,7 +17,7 @@
 
 A native macOS workspace for inspecting model benchmark snapshots, trends, source health, and reproducible exports.
 
-Claude Radar turns Claude Code Radar-compatible snapshot data into a menu bar summary and a detailed SwiftUI workspace. The current repository is a **fixture-backed local QA preview**: public Release builds intentionally keep online collection disabled until upstream reuse permission is documented.
+Claude Radar turns Claude Code Radar-compatible snapshot data into a menu bar summary and a detailed SwiftUI workspace. Release builds automatically synchronize the public Claude Code Radar source and retain normalized history locally under the approved project boundary.
 
 </div>
 
@@ -48,7 +48,7 @@ The generated app is ad-hoc signed for local use. It is not notarized for extern
 
 ## Use
 
-The Release build opens the full workspace, but its online source is disabled and a fresh install therefore contains no benchmark data. To exercise the implemented product surface with sanitized development fixtures:
+The Release build automatically synchronizes on startup and while the menu bar process remains running. To exercise the product surface with deterministic sanitized development fixtures instead:
 
 ```bash
 ./Scripts/build-app.sh debug
@@ -77,8 +77,9 @@ Settings provides separate actions for clearing normalized history and raw diagn
 
 ## Privacy And Permissions
 
-- Release builds do not contact the Claude Code Radar endpoints.
-- Debug sequence mode uses the configured public endpoints only as part of local development QA; the shipped fixtures are hand-sanitized.
+- Release builds automatically contact the public Claude Code Radar endpoints for startup, periodic, network-recovery, wake-recovery, and user-requested synchronization.
+- The project owner approved automatic synchronization, reasonable caching, local historical retention, and in-app re-display on 2026-07-15. This project boundary is not a claim of affiliation, endorsement, or a third-party license grant.
+- Debug fixture modes remain available for deterministic local development QA; the shipped fixtures are hand-sanitized.
 - Normalized history, raw samples, preferences, and exports remain on the Mac unless the user moves or shares them.
 - Raw samples and exported archives may contain source-provided content. Review them before sharing and keep raw export disabled when it is unnecessary.
 - The app uses macOS Service Management only when the user enables **Launch at Login**.
@@ -87,8 +88,8 @@ Settings provides separate actions for clearing normalized history and raw diagn
 
 - Requires macOS 26 or later; there is no Windows, Linux, iOS, or web build.
 - Version `0.1.0` is a local QA preview, not a notarized public release.
-- Public online collection is blocked because no affirmative upstream permission for caching, historical retention, redistribution, or re-display has been documented.
-- Release builds intentionally exclude fixture JSON and Debug QA resources. A fresh Release build is therefore an empty local workspace until an authorized data path exists.
+- The online source remains marked experimental because its public response shape can drift; runtime validation and Last-Known-Good retention contain invalid updates.
+- Release builds intentionally exclude fixture JSON and Debug QA resources and use only the production HTTP source path.
 - Community ratings and quota estimates are source-reported context; they do not alter benchmark quality, derived metrics, or Pareto calculations.
 
 ## Develop

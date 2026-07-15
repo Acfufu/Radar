@@ -17,7 +17,7 @@
 
 用于查看模型 Benchmark 快照、趋势、来源健康状态与可复现导出的原生 macOS 工作台。
 
-Claude Radar 将兼容 Claude Code Radar 的快照数据整理为菜单栏摘要和完整 SwiftUI 工作区。当前仓库是一个**基于脱敏 fixture 的本地 QA 预览版**：在获得并记录上游数据复用许可之前，公开 Release 构建会强制关闭在线采集。
+Claude Radar 将兼容 Claude Code Radar 的快照数据整理为菜单栏摘要和完整 SwiftUI 工作区。Release 构建会自动同步公开的 Claude Code Radar 来源，并按已批准的项目边界在本地保留规范化历史。
 
 </div>
 
@@ -48,7 +48,7 @@ open .build/app/ClaudeRadar.app
 
 ## 使用说明
 
-Release 构建会打开完整工作区，但在线来源处于禁用状态，因此全新安装时不会包含 Benchmark 数据。若要使用脱敏开发 fixture 体验已实现界面：
+Release 构建会在启动时自动同步，并在菜单栏进程运行期间持续按策略同步。若要改用确定性的脱敏开发 fixture 体验界面：
 
 ```bash
 ./Scripts/build-app.sh debug
@@ -77,8 +77,9 @@ Claude Radar 默认将本地数据保存在：
 
 ## 隐私与权限
 
-- Release 构建不会访问 Claude Code Radar 接口。
-- Debug sequence 模式仅在本地开发 QA 中使用配置的公开接口；仓库内 fixture 已经过人工脱敏。
+- Release 构建会在启动、定时、网络恢复、睡眠唤醒和用户手动刷新时访问公开的 Claude Code Radar 接口。
+- 项目所有者已于 2026-07-15 批准自动同步、合理缓存、本地历史留存和应用内再展示。该项目边界不构成对关联、背书或第三方许可授予的声明。
+- Debug fixture 模式仍用于确定性的本地开发 QA；仓库内 fixture 已经过人工脱敏。
 - 规范化历史、原始样本、偏好设置和导出文件会留在本机，除非用户自行移动或分享。
 - 原始样本和导出包可能包含来源返回的内容。分享前请检查；不需要时应保持原始样本导出关闭。
 - 只有用户开启“登录时启动”后，应用才会使用 macOS Service Management 注册登录项。
@@ -87,8 +88,8 @@ Claude Radar 默认将本地数据保存在：
 
 - 仅支持 macOS 26 或更高版本；没有 Windows、Linux、iOS 或 Web 版本。
 - `0.1.0` 是本地 QA 预览版，并非已公证的公开发行版本。
-- 尚未发现上游对缓存、历史留存、再分发或重新展示的明确授权，因此公开在线采集保持阻塞。
-- Release 构建会主动排除 fixture JSON 和 Debug QA 资源；在出现获得授权的数据入口之前，全新 Release 构建只会得到一个空的本地工作区。
+- 在线来源仍标记为实验性，因为公开响应结构可能漂移；运行时校验和 Last-Known-Good 会隔离无效更新。
+- Release 构建会主动排除 fixture JSON 和 Debug QA 资源，只使用生产 HTTP 来源路径。
 - 社区评分与配额估算只是来源上下文，不会参与 Benchmark 质量、派生指标或 Pareto 计算。
 
 ## 开发说明
