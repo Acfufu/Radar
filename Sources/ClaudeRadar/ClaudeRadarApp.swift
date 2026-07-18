@@ -5,11 +5,11 @@ import SwiftUI
 struct ClaudeRadarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let workspaceModel: RadarWorkspaceModel
-    private let settings: AppSettings
+    @State private var settings: AppSettings
 
     init() {
         let settings = AppSettings()
-        self.settings = settings
+        _settings = State(initialValue: settings)
         let environment = AppEnvironment.current()
         let metadataStore = SyncMetadataStore(root: environment.dataRoot)
         let runtimes = [
@@ -38,14 +38,21 @@ struct ClaudeRadarApp: App {
         Window("Claude Radar", id: "workspace") {
             RadarWorkspaceView(model: workspaceModel)
                 .frame(minWidth: 820, minHeight: 560)
+                .preferredColorScheme(settings.appearance.colorScheme)
         }
         .defaultSize(width: 1080, height: 720)
         .commands { AppCommands(model: workspaceModel) }
 
-        MenuBarExtra("Claude Radar", systemImage: "scope") { MenuBarView(model: workspaceModel) }
+        MenuBarExtra("Claude Radar", systemImage: "scope") {
+            MenuBarView(model: workspaceModel)
+                .preferredColorScheme(settings.appearance.colorScheme)
+        }
             .menuBarExtraStyle(.window)
 
-        Settings { SettingsView(settings: settings, model: workspaceModel) }
+        Settings {
+            SettingsView(settings: settings, model: workspaceModel)
+                .preferredColorScheme(settings.appearance.colorScheme)
+        }
     }
 }
 

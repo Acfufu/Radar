@@ -196,6 +196,41 @@ struct WorkspaceProjectionTests {
         #expect(leader?.formula == .costPerPassedTask)
     }
 
+    @Test("decision lens changes recommendation with the selected goal")
+    func decisionLensRecommendation() {
+        let quality = model("quality", "Quality", quality: 100, cost: 20, passed: 10, valid: 10, elapsed: 100)
+        let value = model("value", "Value", quality: 80, cost: 2, passed: 10, valid: 10, elapsed: 80)
+        let fast = model("fast", "Fast", quality: 60, cost: 5, passed: 10, valid: 10, elapsed: 10)
+        let rows = [quality, value, fast].map { WorkspaceModelRow(benchmark: $0, community: nil) }
+
+        #expect(RadarDecisionLens.recommendation(in: rows, for: .quality)?.id == quality.id)
+        #expect(RadarDecisionLens.recommendation(in: rows, for: .value)?.id == value.id)
+        #expect(RadarDecisionLens.recommendation(in: rows, for: .quota)?.id == value.id)
+        #expect(RadarDecisionLens.recommendation(in: rows, for: .speed)?.id == fast.id)
+    }
+
+    @Test("recent performance ranks current models and compares the previous compatible snapshot")
+    func recentPerformance() {
+        let prior = model("alpha", "Alpha", quality: 60, cost: 10, passed: 5, valid: 5, elapsed: 50)
+        let alpha = model("alpha", "Alpha", quality: 65, cost: 10, passed: 5, valid: 5, elapsed: 50)
+        let beta = model("beta", "Beta", quality: 70, cost: 8, passed: 4, valid: 4, elapsed: 20)
+        let rows = [alpha, beta].map { WorkspaceModelRow(benchmark: $0, community: nil) }
+
+        let performance = RadarRecentPerformance.rows(
+            current: rows,
+            history: [
+                benchmark(at: 1, models: [prior]),
+                benchmark(at: 2, models: [alpha, beta]),
+            ]
+        )
+
+        #expect(performance.map(\.id.upstreamKey) == ["beta", "alpha"])
+        #expect(performance.first { $0.id == alpha.id }?.delta == 5)
+        #expect(performance.first { $0.id == beta.id }?.delta == nil)
+        #expect(performance.first?.costPerTask == 2)
+        #expect(performance.first?.secondsPerTask == 5)
+    }
+
     @Test("overview surfaces an independent community refresh failure beside fresh benchmark data")
     @MainActor
     func overviewCommunityFailureIsIndependent() {

@@ -67,7 +67,7 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
             }
             return .success(BenchmarkDataset(
                 sourceID: .codexRadar,
-                sourceUpdatedAt: parseDate(dto.modelIQ.quotaRadar?.updatedAt ?? dto.monitoredAt),
+                sourceUpdatedAt: parseDate(dto.monitoredAt ?? dto.modelIQ.quotaRadar?.updatedAt),
                 fetchedAt: fetchedAt,
                 benchmarkName: "Codex Radar IQ",
                 benchmarkVersion: dto.schemaVersion,
