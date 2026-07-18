@@ -67,7 +67,12 @@ struct RadarWorkspaceView: View {
 
     @ViewBuilder private var destinationView: some View {
         switch destination {
-        case .overview: OverviewView(projection: model.projection)
+        case .overview:
+            OverviewView(
+                projection: model.projection,
+                history: model.history,
+                refreshIntervalMinutes: model.refreshIntervalMinutes
+            )
         case .models: ModelListView(projection: model.projection, history: model.history)
         case .trends: MetricTrendChart(projection: model.projection, history: model.history)
         case .sourceStatus: SourceStatusView(projection: model.projection)

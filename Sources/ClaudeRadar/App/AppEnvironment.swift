@@ -80,9 +80,9 @@ struct AppEnvironment: Sendable {
 
     var initialSourceID: RadarSourceID {
         #if DEBUG
-        fixtureMode == .codex ? .codexRadar : .claudeCodeRadar
+        fixtureMode == .codex || fixtureMode == .online ? .codexRadar : .claudeCodeRadar
         #else
-        .claudeCodeRadar
+        .codexRadar
         #endif
     }
 

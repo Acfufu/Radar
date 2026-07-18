@@ -13,6 +13,9 @@ struct SettingsView: View {
         TabView {
             Form {
                 Picker("刷新间隔", selection: interval) { ForEach([15, 30, 60, 120], id: \.self) { Text("\($0) 分钟").tag($0) } }
+                Picker("外观", selection: appearance) {
+                    ForEach(AppAppearance.allCases) { mode in Text(mode.rawValue).tag(mode) }
+                }
                 Toggle("登录时启动", isOn: $launchAtLogin).onChange(of: launchAtLogin) { _, value in updateLoginItem(value) }
                 LabeledContent("当前工作区", value: model.source.displayName)
                 LabeledContent("在线来源", value: runtime.supportLevel == .disabled ? "当前构建未启用" : "已启用自动同步")
@@ -43,6 +46,9 @@ struct SettingsView: View {
         settings.refreshIntervalMinutes = value
         Task { await runtime.updateRefreshInterval(minutes: value) }
     }) }
+    private var appearance: Binding<AppAppearance> {
+        Binding(get: { settings.appearance }, set: { settings.appearance = $0 })
+    }
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0"
     }

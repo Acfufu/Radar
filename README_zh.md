@@ -17,9 +17,9 @@
 
 简体中文 | [English](README.md)
 
-用于查看模型 Benchmark 快照、趋势、来源健康状态与可复现导出的原生 macOS 工作台。
+将公开模型 Benchmark 快照转化为可执行对比、推荐、监控与可复现导出的原生 macOS 工作台。
 
-Claude Radar 将兼容 Claude Code Radar 与 Codex Radar 的快照数据整理为菜单栏摘要和两个相互独立的 SwiftUI 工作区。当前仓库是一个**接入公开来源的本地 QA 预览版**：Release 构建会自动同步两个公开 Adapter，并保留按来源隔离的历史供后续展示。
+Claude Radar 将兼容 Claude Code Radar 与 Codex Radar 的快照数据整理为菜单栏摘要和两个相互独立的 SwiftUI 工作区。主概览在同一界面呈现当前信号、模型家族健康、推理层级热力图、推荐透镜、近期表现与同步状态。当前仓库是一个**接入公开来源的本地 QA 预览版**：Release 构建会自动同步两个公开 Adapter，并保留按来源隔离的历史供后续展示。
 
 </div>
 
@@ -40,14 +40,17 @@ open .build/app/ClaudeRadar.app
 
 ## 亮点功能
 
-- 汇总模型数量、质量、成本效率、来源 revision、配额估算与质量/成本 Pareto 前沿。
+- 以当前峰值 IQ 为主信号，同时呈现按来源隔离的 24 小时趋势、模型家族健康、推理层级热力图与公开订阅上下文。
+- 可按最高质量、性价比、最低额度成本或最快完成生成推荐，并通过 IQ/耗时对比图及实测指标解释结果。
+- 对比当前最强的五个模型与上一个兼容快照，同时展示每题成本和平均耗时。
+- 实时显示数据源健康、最近同步时间、刷新间隔、历史快照数量与下一次自动检查。
 - 支持模型指标搜索、排序、动态列展示和单模型详情查看。
 - 展示质量、成本、Token 与耗时的历史趋势，并避免连接来源 revision 不一致的数据。
 - 独立维护 Benchmark、社区评分和来源状态；单个分段失败不会抹除其他可用数据。
 - Claude Code Radar 与 Codex Radar 使用独立的工作区、历史和导出范围，不合并模型或分数。
 - 在本地保留规范化历史与受限的原始诊断样本，并提供明确的数据清理入口。
 - 将选定数据集导出为带 manifest 的分页 JSON ZIP，支持日期范围和可选原始样本。
-- 主工作区关闭后仍可驻留菜单栏，并可由用户设置为登录时启动。
+- 主工作区关闭后仍可驻留菜单栏，可由用户设置为登录时启动，并支持跟随系统、亮色或暗色外观。
 
 ## 使用说明
 
@@ -60,7 +63,9 @@ RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
 ```
 
-通过侧边栏进入“概览”“模型”“趋势”“来源状态”和“导出”。菜单栏中的瞄准镜图标会显示精简质量摘要，也可用于重新打开工作区。
+“概览”会针对当前来源集中展示主信号、热力图、决策透镜、近期表现和实时同步监控。通过目标控件可在质量、性价比、额度成本与速度之间切换推荐。侧边栏还提供“模型”“趋势”“来源状态”和“导出”。菜单栏中的瞄准镜图标会显示精简质量摘要，也可用于重新打开工作区。
+
+在“设置 → 通用 → 外观”中可选择“跟随系统”“亮色”或“暗色”；该偏好会统一应用于主工作区、菜单栏面板和设置窗口。
 
 如需运行时 QA 使用的确定性同步序列，请将 `RADAR_FIXTURE_MODE="ui"` 改为 `RADAR_FIXTURE_MODE="sequence"`，并指定一个全新的 `RADAR_DATA_ROOT`。
 
@@ -133,7 +138,7 @@ DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" swift test
 ./script/build_and_run.sh --logs
 ```
 
-Swift package 不含第三方包依赖。架构与发布证据见 [`docs/implementation-status.md`](docs/implementation-status.md)、[`docs/source-contract.md`](docs/source-contract.md) 和 [`docs/release-checklist.md`](docs/release-checklist.md)。
+Swift package 不含第三方包依赖。架构与发布证据见 [`docs/implementation-status.md`](docs/implementation-status.md)、[`docs/source-contract.md`](docs/source-contract.md)、[`docs/release-checklist.md`](docs/release-checklist.md) 和当前的 [`概览设计 QA`](docs/design-qa.md)。
 
 ## 安全
 

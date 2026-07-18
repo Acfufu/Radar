@@ -15,6 +15,11 @@ struct Phase4RuntimeSettingsTests {
         settings.refreshIntervalMinutes = 17
         #expect(settings.refreshIntervalMinutes == 30)
         #expect(settings.launchAtLogin == false)
+        #expect(settings.appearance == .system)
+        settings.appearance = .dark
+        #expect(AppSettings(defaults: defaults).appearance == .dark)
+        settings.appearance = .light
+        #expect(AppSettings(defaults: defaults).appearance == .light)
 
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         let runtime = RadarAppRuntime(environment: .init(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false), refreshIntervalMinutes: 30)

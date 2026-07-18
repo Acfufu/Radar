@@ -376,6 +376,7 @@ final class RadarWorkspaceModel {
         )
     }
     var history: [BenchmarkDataset] { runtime.benchmarkHistory }
+    var refreshIntervalMinutes: Int { runtime.refreshIntervalMinutes }
     func selectSource(_ sourceID: RadarSourceID) {
         guard runtimes[sourceID] != nil else { return }
         selectedSourceID = sourceID

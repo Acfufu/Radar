@@ -17,9 +17,9 @@
 
 [简体中文](README_zh.md) | English
 
-A native macOS workspace for inspecting model benchmark snapshots, trends, source health, and reproducible exports.
+A native macOS workspace for turning public model benchmark snapshots into decision-ready comparisons, recommendations, monitoring, and reproducible exports.
 
-Claude Radar turns Claude Code Radar- and Codex Radar-compatible snapshots into a menu bar summary and two independent SwiftUI workspaces. The current repository is a **source-backed local QA preview**: Release builds synchronize both public adapters automatically and preserve source-scoped history for later display.
+Claude Radar turns Claude Code Radar- and Codex Radar-compatible snapshots into a menu bar summary and two independent SwiftUI workspaces. Its overview keeps the current signal, model-family health, reasoning-tier heatmap, recommendation lens, recent performance, and synchronization status on one surface. The current repository is a **source-backed local QA preview**: Release builds synchronize both public adapters automatically and preserve source-scoped history for later display.
 
 </div>
 
@@ -40,14 +40,17 @@ The generated app is ad-hoc signed for local use. It is not notarized for extern
 
 ## Highlights
 
-- Summarizes model count, quality, cost efficiency, source revision, quota estimates, and quality/cost Pareto frontiers.
+- Leads with the current peak IQ, a source-scoped 24-hour signal, model-family health, reasoning-tier heatmap, and public subscription context.
+- Recommends a measured model for highest quality, value, lowest quota cost, or fastest completion, with an IQ-versus-duration comparison and the metrics behind the result.
+- Compares the five strongest current models with the previous compatible snapshot, per-task cost, and average duration.
+- Monitors source health, last synchronization age, configured refresh interval, retained snapshots, and the next automatic check.
 - Browses model metrics with search, sorting, dynamic columns, and per-model detail.
 - Charts historical quality, cost, token, and duration trends without joining incompatible source revisions.
 - Keeps benchmark, community-rating, and source-status segments independent so one failed segment does not erase the others.
 - Keeps Claude Code Radar and Codex Radar in separate source-scoped workspaces, histories, and exports; it never merges their models or scores.
 - Preserves normalized history and bounded raw diagnostic samples locally with explicit deletion controls.
 - Exports selected datasets to a paginated JSON ZIP with a manifest, optional date limits, and opt-in raw samples.
-- Stays available from the menu bar after the main workspace closes and can register itself as a login item.
+- Stays available from the menu bar after the main workspace closes, can register itself as a login item, and supports light, dark, or system appearance.
 
 ## Use
 
@@ -60,7 +63,9 @@ RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
 ```
 
-Use the sidebar to open Overview, Models, Trends, Source Status, and Export. The menu bar scope icon provides a compact quality summary and can reopen the workspace.
+Overview opens on the selected source and combines the primary signal, heatmap, decision lens, recent performance, and live synchronization monitor. Use its goal controls to switch the recommendation between quality, value, quota cost, and speed. The sidebar also provides Models, Trends, Source Status, and Export. The menu bar scope icon provides a compact quality summary and can reopen the workspace.
+
+In **Settings → General → Appearance**, choose System, Light, or Dark. The preference applies to the workspace, menu bar panel, and Settings window.
 
 For the deterministic synchronization sequence used by runtime QA, replace `RADAR_FIXTURE_MODE="ui"` with `RADAR_FIXTURE_MODE="sequence"` and use a fresh `RADAR_DATA_ROOT`.
 
@@ -133,7 +138,7 @@ Useful commands:
 ./script/build_and_run.sh --logs
 ```
 
-The Swift package has no third-party package dependencies. Architecture and release evidence are documented in [`docs/implementation-status.md`](docs/implementation-status.md), [`docs/source-contract.md`](docs/source-contract.md), and [`docs/release-checklist.md`](docs/release-checklist.md).
+The Swift package has no third-party package dependencies. Architecture and release evidence are documented in [`docs/implementation-status.md`](docs/implementation-status.md), [`docs/source-contract.md`](docs/source-contract.md), [`docs/release-checklist.md`](docs/release-checklist.md), and the current [`overview design QA`](docs/design-qa.md).
 
 ## Security
 
