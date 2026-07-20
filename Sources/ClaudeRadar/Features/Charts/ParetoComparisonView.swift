@@ -20,7 +20,10 @@ struct ParetoComparisonView: View {
             Chart(plottable) { point in
                 PointMark(
                     x: .value(preset.horizontalLabel, point.consumption),
-                    y: .value("质量（越高越好）", point.quality)
+                    y: .value(
+                        projection.source.id == .sweBenchVerified ? "% Resolved" : "质量（越高越好）",
+                        point.quality
+                    )
                 )
                 .foregroundStyle(by: .value("状态", point.classification.label))
                 .symbol(by: .value("状态", point.classification.label))

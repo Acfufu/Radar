@@ -19,7 +19,9 @@
 
 A native macOS workspace for turning public model benchmark snapshots into decision-ready comparisons, recommendations, monitoring, and reproducible exports.
 
-Claude Radar turns Claude Code Radar- and Codex Radar-compatible snapshots into a menu bar summary and two independent SwiftUI workspaces. Its overview keeps the current signal, model-family health, reasoning-tier heatmap, recommendation lens, recent performance, and synchronization status on one surface. The current repository is a **source-backed local QA preview**: Release builds synchronize both public adapters automatically and preserve source-scoped history for later display.
+Claude Radar turns Claude Code Radar, Codex Radar, and SWE-bench Verified snapshots into a menu bar summary, a global information overview, and three independent source rooms. Each room keeps the source's native vocabulary and analysis instead of forcing unlike metrics into one score. The current repository is a **source-backed local QA preview**: Release builds synchronize all three public adapters automatically and preserve source-scoped history for later display.
+
+> Product boundary: Claude Radar only reads, organizes, caches, analyzes, and exports third-party information that has already been published. It does not run or submit benchmarks, generate source data, or write back to upstream systems.
 
 </div>
 
@@ -47,14 +49,16 @@ The generated app is ad-hoc signed for local use. It is not notarized for extern
 - Browses model metrics with search, sorting, dynamic columns, and per-model detail.
 - Charts historical quality, cost, token, and duration trends without joining incompatible source revisions.
 - Keeps benchmark, community-rating, and source-status segments independent so one failed segment does not erase the others.
-- Keeps Claude Code Radar and Codex Radar in separate source-scoped workspaces, histories, and exports; it never merges their models or scores.
+- Provides a global operational overview without a shared score, combined ranking, or cross-source recommendation.
+- Keeps Claude Code Radar, Codex Radar, and SWE-bench Verified in separate source-scoped rooms, histories, analyses, and exports.
+- Adds a read-only SWE-bench Verified mini-SWE-agent v2 leaderboard with `% Resolved`, exact resolved-task counts, cost efficiency, source-local Pareto analysis, and provenance.
 - Preserves normalized history and bounded raw diagnostic samples locally with explicit deletion controls.
 - Exports selected datasets to a paginated JSON ZIP with a manifest, optional date limits, and opt-in raw samples.
 - Stays available from the menu bar after the main workspace closes, can register itself as a login item, and supports light, dark, or system appearance.
 
 ## Use
 
-The Release build starts both public source runtimes automatically. Switching sources changes the displayed workspace only; it does not stop background synchronization. To exercise the product surface with sanitized development fixtures instead:
+The Release build starts all three public source runtimes automatically. Switching rooms changes presentation only; it does not stop background synchronization. To exercise the product surface with sanitized development fixtures instead:
 
 ```bash
 ./Scripts/build-app.sh debug
@@ -63,7 +67,7 @@ RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
 ```
 
-Overview opens on the selected source and combines the primary signal, heatmap, decision lens, recent performance, and live synchronization monitor. Use its goal controls to switch the recommendation between quality, value, quota cost, and speed. The sidebar also provides Models, Trends, Source Status, and Export. The menu bar scope icon provides a compact quality summary and can reopen the workspace.
+The sidebar opens on **Information Overview**, then exposes one room for each source. Claude and Codex retain their source-native Overview, Models, Trends, and Source Status views. SWE-bench exposes Leaderboard, compatible Trends when history exists, and Source & Methodology. Export remains source-scoped. The menu bar scope icon provides a compact quality summary and can reopen the workspace.
 
 In **Settings → General → Appearance**, choose System, Light, or Dark. The preference applies to the workspace, menu bar panel, and Settings window.
 
@@ -94,8 +98,8 @@ Settings provides separate actions for clearing normalized history and raw diagn
 
 ## Privacy And Permissions
 
-- Release builds synchronize the documented public endpoints for both sources at startup and on the configured refresh schedule.
-- Debug fixture modes use hand-sanitized local payloads. The explicit `online` QA mode runs both production public adapters against an isolated data root.
+- Release builds synchronize the documented public endpoints for all three sources at startup and on the configured refresh schedule.
+- Debug fixture modes use hand-sanitized local payloads. The explicit `online` QA mode runs all three production public adapters against an isolated data root.
 - Normalized history, raw samples, preferences, and exports remain on the Mac unless the user moves or shares them.
 - Raw samples and exported archives may contain source-provided content. Review them before sharing and keep raw export disabled when it is unnecessary.
 - The app uses macOS Service Management only when the user enables **Launch at Login**.
@@ -146,7 +150,7 @@ Claude Radar validates source payloads before persistence, stores diagnostics un
 
 ## Third-Party Data
 
-Claude Radar is not affiliated with or endorsed by Claude Code Radar or Codex Radar. See [`docs/third-party-notices.md`](docs/third-party-notices.md) for attribution and the current reuse boundaries.
+Claude Radar is not affiliated with or endorsed by Claude Code Radar, Codex Radar, or SWE-bench. See [`docs/third-party-notices.md`](docs/third-party-notices.md) for attribution and the current reuse boundaries.
 
 ## License Status
 

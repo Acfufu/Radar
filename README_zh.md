@@ -19,7 +19,9 @@
 
 将公开模型 Benchmark 快照转化为可执行对比、推荐、监控与可复现导出的原生 macOS 工作台。
 
-Claude Radar 将兼容 Claude Code Radar 与 Codex Radar 的快照数据整理为菜单栏摘要和两个相互独立的 SwiftUI 工作区。主概览在同一界面呈现当前信号、模型家族健康、推理层级热力图、推荐透镜、近期表现与同步状态。当前仓库是一个**接入公开来源的本地 QA 预览版**：Release 构建会自动同步两个公开 Adapter，并保留按来源隔离的历史供后续展示。
+Claude Radar 将 Claude Code Radar、Codex Radar 与 SWE-bench Verified 的快照整理为菜单栏摘要、全局信息总览和三个彼此独立的来源空间。每个空间保留来源自身的指标名与分析方式，不把不同口径强行压成一个分数。当前仓库是一个**接入公开来源的本地 QA 预览版**：Release 构建会自动同步三个公开 Adapter，并保留按来源隔离的历史供后续展示。
+
+> 产品边界：Claude Radar 只读取、整理、缓存、分析和导出第三方已发布信息；不运行或提交 Benchmark，不生成源数据，也不回写上游系统。
 
 </div>
 
@@ -47,14 +49,16 @@ open .build/app/ClaudeRadar.app
 - 支持模型指标搜索、排序、动态列展示和单模型详情查看。
 - 展示质量、成本、Token 与耗时的历史趋势，并避免连接来源 revision 不一致的数据。
 - 独立维护 Benchmark、社区评分和来源状态；单个分段失败不会抹除其他可用数据。
-- Claude Code Radar 与 Codex Radar 使用独立的工作区、历史和导出范围，不合并模型或分数。
+- 提供全局运行信息总览，但不生成统一分数、综合排名或跨来源推荐。
+- Claude Code Radar、Codex Radar 与 SWE-bench Verified 使用独立的来源空间、历史、分析和导出范围。
+- 新增只读的 SWE-bench Verified mini-SWE-agent v2 榜单，展示 `% Resolved`、精确解决任务数、成本效率、来源内 Pareto 与口径出处。
 - 在本地保留规范化历史与受限的原始诊断样本，并提供明确的数据清理入口。
 - 将选定数据集导出为带 manifest 的分页 JSON ZIP，支持日期范围和可选原始样本。
 - 主工作区关闭后仍可驻留菜单栏，可由用户设置为登录时启动，并支持跟随系统、亮色或暗色外观。
 
 ## 使用说明
 
-Release 构建会自动启动两个公开来源的运行时。切换来源只改变当前展示的工作区，不会停止后台同步。若要改用脱敏开发 fixture 体验界面：
+Release 构建会自动启动三个公开来源的运行时。切换来源空间只改变展示，不会停止后台同步。若要改用脱敏开发 fixture 体验界面：
 
 ```bash
 ./Scripts/build-app.sh debug
@@ -63,7 +67,7 @@ RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
 ```
 
-“概览”会针对当前来源集中展示主信号、热力图、决策透镜、近期表现和实时同步监控。通过目标控件可在质量、性价比、额度成本与速度之间切换推荐。侧边栏还提供“模型”“趋势”“来源状态”和“导出”。菜单栏中的瞄准镜图标会显示精简质量摘要，也可用于重新打开工作区。
+侧边栏默认进入“信息总览”，并列出三个独立来源空间。Claude 与 Codex 保留各自的“概览”“模型”“趋势”和“来源状态”；SWE-bench 提供“榜单”、存在兼容历史时才出现的“趋势”，以及“来源与口径”。导出仍按来源隔离。菜单栏中的瞄准镜图标会显示精简质量摘要，也可用于重新打开工作区。
 
 在“设置 → 通用 → 外观”中可选择“跟随系统”“亮色”或“暗色”；该偏好会统一应用于主工作区、菜单栏面板和设置窗口。
 
@@ -94,8 +98,8 @@ Claude Radar 默认将本地数据保存在：
 
 ## 隐私与权限
 
-- Release 构建会在启动时及设定的刷新周期内同步两个来源的已记录公开接口。
-- Debug fixture 模式只使用人工脱敏的本地数据；显式 `online` QA 模式会在隔离数据目录中运行两个生产公开 Adapter。
+- Release 构建会在启动时及设定的刷新周期内同步三个来源的已记录公开接口。
+- Debug fixture 模式只使用人工脱敏的本地数据；显式 `online` QA 模式会在隔离数据目录中运行三个生产公开 Adapter。
 - 规范化历史、原始样本、偏好设置和导出文件会留在本机，除非用户自行移动或分享。
 - 原始样本和导出包可能包含来源返回的内容。分享前请检查；不需要时应保持原始样本导出关闭。
 - 只有用户开启“登录时启动”后，应用才会使用 macOS Service Management 注册登录项。
@@ -146,7 +150,7 @@ Claude Radar 会在持久化前验证来源数据，将诊断样本限制在应�
 
 ## 第三方数据
 
-Claude Radar 与 Claude Code Radar、Codex Radar 均不存在隶属或背书关系。归属信息与当前数据复用边界见 [`docs/third-party-notices.md`](docs/third-party-notices.md)。
+Claude Radar 与 Claude Code Radar、Codex Radar、SWE-bench 均不存在隶属或背书关系。归属信息与当前数据复用边界见 [`docs/third-party-notices.md`](docs/third-party-notices.md)。
 
 ## 许可证状态
 

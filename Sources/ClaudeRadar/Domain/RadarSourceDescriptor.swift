@@ -8,9 +8,11 @@ struct RadarSourceDescriptor: Identifiable, Sendable, Hashable {
     let seriesRevision: String
 
     var attributionText: String {
-        id == .codexRadar
-            ? "数据来自 Codex 雷达 codexradar.com"
-            : "数据来源：Claude Code Radar"
+        switch id {
+        case .codexRadar: "数据来自 Codex 雷达 codexradar.com"
+        case .sweBenchVerified: "数据来自 SWE-bench 官方已发布榜单"
+        default: "数据来源：Claude Code Radar"
+        }
     }
 }
 

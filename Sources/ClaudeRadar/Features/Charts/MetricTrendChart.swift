@@ -11,9 +11,14 @@ struct MetricTrendChart: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                ViewHeader(title: "趋势", subtitle: "每条线限定同一模型与同一 seriesRevision，revision 变化必定断线")
+                ViewHeader(
+                    title: "趋势",
+                    subtitle: "\(projection.source.displayName) · 每条线限定同一配置与同一 seriesRevision"
+                )
                 HStack {
-                    Picker("指标", selection: $metric) { ForEach(TrendMetric.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                    Picker("指标", selection: $metric) {
+                        ForEach(TrendMetric.allCases, id: \.self) { Text(metricTitle($0)).tag($0) }
+                    }
                         .frame(width: 180)
                     Picker("时间范围", selection: $timeRange) { ForEach(TrendTimeRange.allCases) { Text($0.rawValue).tag($0) } }
                         .frame(width: 190)
@@ -43,7 +48,7 @@ struct MetricTrendChart: View {
     private var trendChart: some View {
         Chart(series) { group in
             ForEach(group.points) { point in
-                LineMark(x: .value("时间", point.date), y: .value(metric.rawValue, point.value), series: .value("系列", group.id))
+                LineMark(x: .value("时间", point.date), y: .value(metricTitle(metric), point.value), series: .value("系列", group.id))
                     .foregroundStyle(by: .value("模型", group.modelName))
                     .symbol(by: .value("Revision", group.seriesRevision))
             }
@@ -69,6 +74,9 @@ struct MetricTrendChart: View {
             if enabled { selected.insert(id) } else { selected.remove(id) }
             selectionState = TrendSelection.userChanged(selectionState, selected: selected)
         })
+    }
+    private func metricTitle(_ metric: TrendMetric) -> String {
+        metric == .quality && projection.source.id == .sweBenchVerified ? "% Resolved" : metric.rawValue
     }
 }
 

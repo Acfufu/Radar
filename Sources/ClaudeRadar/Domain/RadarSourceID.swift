@@ -7,4 +7,5 @@ struct RadarSourceID: RawRepresentable, Hashable, Codable, Sendable {
 extension RadarSourceID {
     static let claudeCodeRadar = Self(rawValue: "claude-code-radar")
     static let codexRadar = Self(rawValue: "codex-radar")
+    static let sweBenchVerified = Self(rawValue: "swe-bench-verified")
 }

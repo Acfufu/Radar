@@ -16,6 +16,14 @@ On 2026-07-16, the project owner authorized this app's automatic synchronization
 
 This notice is attribution and a release-boundary disclosure. It is not a claim of affiliation, endorsement, or permission from Codex Radar.
 
+## SWE-bench
+
+Claude Radar identifies [SWE-bench](https://www.swebench.com/) as one of its independent read-only data sources. The app reads the official website repository's published [`data/leaderboards.json`](https://github.com/SWE-bench/swe-bench.github.io/blob/master/data/leaderboards.json) and displays only the SWE-bench Verified mini-SWE-agent v2 cohort.
+
+Radar does not run the SWE-bench evaluation harness, submit results, download task instances, or write to any SWE-bench system. Upstream source code, data, names, and logos remain governed by their respective upstream terms; this repository does not grant additional reuse rights.
+
+This notice is attribution and a release-boundary disclosure. It is not a claim of affiliation, endorsement, or permission from SWE-bench or Princeton University.
+
 ## Apple frameworks
 
 The app uses macOS system frameworks supplied by Apple. No separately bundled third-party executable, framework, helper, or service is included in the Release app.

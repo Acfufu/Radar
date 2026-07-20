@@ -9,14 +9,16 @@ extension RadarSyncCoordinator {
         case .success(let envelope):
             let validators = await source.responseValidators().benchmark
             let benchmarkSaved = await saveBenchmark(envelope.benchmark, validators: validators, attemptedAt: attemptedAt)
-            let statusSaved = await saveStatus(envelope.sourceStatus, validators: validators, attemptedAt: attemptedAt)
+            let statusSaved = source.supportsSourceStatusSegment
+                ? await saveStatus(envelope.sourceStatus, validators: validators, attemptedAt: attemptedAt)
+                : false
             return benchmarkSaved || statusSaved
         case .failure(let error):
             if let http = error as? RadarHTTPError, http.kind == .notModified {
                 return await applyEnvelopeNotModified(attemptedAt: attemptedAt, validators: http.validators)
             }
             await recordFailure(
-                [.benchmark, .sourceStatus],
+                source.supportsSourceStatusSegment ? [.benchmark, .sourceStatus] : [.benchmark],
                 attemptedAt: attemptedAt,
                 error: segmentError(error),
                 retryAfter: retryDeadline(error, now: attemptedAt)
@@ -130,6 +132,9 @@ extension RadarSyncCoordinator {
             success = true
         } else {
             await rejectOrphanNotModified(.benchmark, attemptedAt: attemptedAt)
+        }
+        if !source.supportsSourceStatusSegment {
+            return success
         }
         if status?.value != nil, status?.error == nil {
             await recordNotModified([.sourceStatus], attemptedAt: attemptedAt, validators: validators)

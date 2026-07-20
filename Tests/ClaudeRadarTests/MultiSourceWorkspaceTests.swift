@@ -33,15 +33,20 @@ struct MultiSourceWorkspaceTests {
     }
 
     @MainActor
-    @Test("workspace selection swaps between two independent runtimes")
+    @Test("workspace selection swaps between three independent runtimes")
     func sourceSelection() {
         // Given
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
         let claude = RadarAppRuntime(environment: environment, sourceID: .claudeCodeRadar)
         let codex = RadarAppRuntime(environment: environment, sourceID: .codexRadar)
+        let sweBench = RadarAppRuntime(environment: environment, sourceID: .sweBenchVerified)
         let model = RadarWorkspaceModel(
-            runtimes: [.claudeCodeRadar: claude, .codexRadar: codex],
+            runtimes: [
+                .claudeCodeRadar: claude,
+                .codexRadar: codex,
+                .sweBenchVerified: sweBench,
+            ],
             selectedSourceID: .claudeCodeRadar
         )
 
@@ -51,7 +56,7 @@ struct MultiSourceWorkspaceTests {
         // Then
         #expect(model.selectedSourceID == .codexRadar)
         #expect(model.runtime === codex)
-        #expect(model.sources.map(\.id) == [.claudeCodeRadar, .codexRadar])
+        #expect(model.sources.map(\.id) == [.claudeCodeRadar, .codexRadar, .sweBenchVerified])
     }
 
     @MainActor

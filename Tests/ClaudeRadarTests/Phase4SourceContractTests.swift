@@ -17,14 +17,17 @@ struct Phase4SourceContractTests {
         #expect(commands.contains("Button(\"关闭工作区\")"))
         let claude = try text("Sources/ClaudeRadar/Sources/ClaudeCodeRadar/ClaudeRadarConfiguration.swift")
         let codex = try text("Sources/ClaudeRadar/Sources/CodexRadar/CodexRadarConfiguration.swift")
+        let sweBench = try text("Sources/ClaudeRadar/Sources/SWEBench/SWEBenchConfiguration.swift")
         let descriptor = try text("Sources/ClaudeRadar/Domain/RadarSourceDescriptor.swift")
         let status = try text("Sources/ClaudeRadar/Features/SourceStatus/SourceStatusView.swift")
         let workspace = try text("Sources/ClaudeRadar/Features/Workspace/RadarWorkspaceView.swift")
         #expect(claude.contains("https://claudecoderadar.com/?lang=en"))
         #expect(codex.contains("https://codexradar.com/"))
+        #expect(sweBench.contains("https://www.swebench.com/"))
         #expect(descriptor.contains("数据来自 Codex 雷达 codexradar.com"))
+        #expect(descriptor.contains("数据来自 SWE-bench 官方已发布榜单"))
         #expect(status.contains("projection.source.homepageURL"))
-        #expect(workspace.contains("model.source.attributionText"))
+        #expect(workspace.contains("source.attributionText"))
     }
 
     @Test("fixture sequence and UI seed implementations are debug-only")

@@ -2,12 +2,16 @@ import Foundation
 
 actor RadarHTTPSource: RadarSource {
     nonisolated let descriptor: RadarSourceDescriptor
+    nonisolated let supportsSourceStatusSegment: Bool
 
     private let benchmarkURL: URL
     private let communityURL: URL?
     private let transport: any HTTPTransport
     private let rawSampleStore: RawSampleStore?
     private let parser: any RadarPayloadParser
+    let acceptHeader: String
+    let maximumResponseBytes: Int
+    let allowedMIMETypes: Set<String>
     private var validators = HTTPValidators.empty
     private var latestValidators = HTTPValidators.empty
     private var communityValidators = HTTPValidators.empty
@@ -30,6 +34,10 @@ actor RadarHTTPSource: RadarSource {
         self.rawSampleStore = rawSampleStore
         parser = ClaudeRadarParser()
         descriptor = Self.runtimeDescriptor(ClaudeRadarConfiguration.descriptor)
+        supportsSourceStatusSegment = true
+        acceptHeader = "application/json"
+        maximumResponseBytes = 5 * 1_024 * 1_024
+        allowedMIMETypes = ["application/json"]
     }
 
     init(
@@ -43,6 +51,29 @@ actor RadarHTTPSource: RadarSource {
         self.rawSampleStore = rawSampleStore
         parser = CodexRadarParser()
         descriptor = Self.runtimeDescriptor(CodexRadarConfiguration.descriptor)
+        supportsSourceStatusSegment = true
+        acceptHeader = "application/json"
+        maximumResponseBytes = 5 * 1_024 * 1_024
+        allowedMIMETypes = ["application/json"]
+    }
+
+    init(
+        configuration: SWEBenchConfiguration,
+        transport: any HTTPTransport = URLSessionHTTPTransport(
+            maxBodyBytes: SWEBenchConfiguration.maximumResponseBytes
+        ),
+        rawSampleStore: RawSampleStore? = nil
+    ) {
+        benchmarkURL = configuration.leaderboardURL
+        communityURL = nil
+        self.transport = transport
+        self.rawSampleStore = rawSampleStore
+        parser = SWEBenchParser()
+        descriptor = Self.runtimeDescriptor(SWEBenchConfiguration.descriptor)
+        supportsSourceStatusSegment = false
+        acceptHeader = "application/json, text/plain"
+        maximumResponseBytes = SWEBenchConfiguration.maximumResponseBytes
+        allowedMIMETypes = ["application/json", "text/plain"]
     }
 
     func beginAcquisition(
@@ -66,7 +97,7 @@ actor RadarHTTPSource: RadarSource {
         }
         acquisitionIsRunning = true
         let generation = acquisitionGeneration
-        let request = Self.request(url: benchmarkURL, validators: validators)
+        let request = request(url: benchmarkURL, validators: validators)
         do {
             let payload: HTTPTransportResponse
             do {
@@ -80,7 +111,7 @@ actor RadarHTTPSource: RadarSource {
             let fetchedAt = Date()
             let validators: HTTPValidators
             do {
-                validators = try Self.validate(payload)
+                validators = try validate(payload)
             } catch let error as RadarHTTPError where error.kind == .notModified {
                 throw error
             } catch {
@@ -96,7 +127,10 @@ actor RadarHTTPSource: RadarSource {
                 await saveRaw(payload.data, outcome: .decodingFailed, at: fetchedAt, generation: generation)
                 throw error
             }
-            let errors = [projection.benchmark.error, projection.sourceStatus.error].compactMap { $0 }
+            let errors = [
+                projection.benchmark.error,
+                supportsSourceStatusSegment ? projection.sourceStatus.error : nil,
+            ].compactMap { $0 }
             let outcome: RawSampleOutcome = if errors.isEmpty {
                 .success
             } else if errors.contains(where: { $0.kind == .validation }) {
@@ -132,6 +166,7 @@ actor RadarHTTPSource: RadarSource {
     }
 
     func fetchSourceStatus() async throws -> SourceStatusDataset? {
+        guard supportsSourceStatusSegment else { return nil }
         let projection = try await acquireBenchmarkEnvelope().sourceStatus
         if let value = projection.value { return value }
         throw projection.error ?? SegmentError(kind: .decoding, message: "Source status is unavailable")
@@ -142,7 +177,7 @@ actor RadarHTTPSource: RadarSource {
         let generation = acquisitionGeneration
         let payload: HTTPTransportResponse
         do {
-            payload = try await transport.data(for: Self.request(url: url, validators: communityValidators))
+            payload = try await transport.data(for: request(url: url, validators: communityValidators))
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -151,7 +186,7 @@ actor RadarHTTPSource: RadarSource {
         try ensureCurrent(generation)
         let fetchedAt = Date()
         do {
-            latestCommunityValidators = try Self.validate(payload)
+            latestCommunityValidators = try validate(payload)
         } catch let error as RadarHTTPError where error.kind == .notModified {
             throw error
         } catch {

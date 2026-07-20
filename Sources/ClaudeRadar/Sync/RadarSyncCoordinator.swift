@@ -214,7 +214,9 @@ actor RadarSyncCoordinator {
     private func eligibleEndpoints(for trigger: SyncTrigger) async -> SyncEndpointEligibility {
         let now = clock.now()
         let benchmark = try? await repository.metadata(sourceID: sourceID, datasetType: .benchmark)
-        let status = try? await repository.metadata(sourceID: sourceID, datasetType: .sourceStatus)
+        let status = source.supportsSourceStatusSegment
+            ? try? await repository.metadata(sourceID: sourceID, datasetType: .sourceStatus)
+            : nil
         let community = try? await repository.metadata(sourceID: sourceID, datasetType: .community)
         var sharedEligible = endpointPermitted(metadata: [benchmark, status].compactMap { $0 }, trigger: trigger, now: now)
         var communityEligible = await source.hasCommunityEndpoint()
@@ -223,7 +225,10 @@ actor RadarSyncCoordinator {
             if let state = try? await projection() {
                 let benchmarkNeedsRecovery = state.benchmark.isStale || state.benchmark.error != nil
                 let statusNeedsRecovery = state.sourceStatus.isStale || state.sourceStatus.error != nil
-                sharedEligible = sharedEligible && (benchmarkNeedsRecovery || statusNeedsRecovery)
+                sharedEligible = sharedEligible && (
+                    benchmarkNeedsRecovery
+                        || (source.supportsSourceStatusSegment && statusNeedsRecovery)
+                )
                 communityEligible = communityEligible && (state.community.isStale || state.community.error != nil)
             }
         }
