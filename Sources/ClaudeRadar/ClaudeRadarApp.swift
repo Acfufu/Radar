@@ -25,6 +25,12 @@ struct ClaudeRadarApp: App {
                 metadataStore: metadataStore,
                 refreshIntervalMinutes: settings.refreshIntervalMinutes
             ),
+            RadarSourceID.sweBenchVerified: RadarAppRuntime(
+                environment: environment,
+                sourceID: .sweBenchVerified,
+                metadataStore: metadataStore,
+                refreshIntervalMinutes: settings.refreshIntervalMinutes
+            ),
         ]
         let model = RadarWorkspaceModel(
             runtimes: runtimes,

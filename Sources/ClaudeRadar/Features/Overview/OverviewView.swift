@@ -6,7 +6,6 @@ struct OverviewView: View {
     let history: [BenchmarkDataset]
     let refreshIntervalMinutes: Int
 
-    @State private var goal = RadarDecisionGoal.quality
     @State private var subscription = "20x Pro"
 
     var body: some View {
@@ -29,11 +28,6 @@ struct OverviewView: View {
                         tierHeatmap
                         quotaContext
                     }
-                    DecisionLensView(
-                        rows: projection.rows,
-                        familyRows: familySummaries.map(\.row),
-                        goal: $goal
-                    )
                     monitoringAndRecentPerformance
                 }
             }
@@ -231,14 +225,6 @@ struct OverviewView: View {
                     Text(quotaValue)
                         .monospacedDigit()
                 }
-                LabeledContent("当前推荐成本") {
-                    Text(recommendedCost)
-                        .monospacedDigit()
-                }
-                LabeledContent("当前推荐耗时") {
-                    Text(recommendedDuration)
-                        .monospacedDigit()
-                }
                 Text(selectedQuota?.resetDescription ?? "该订阅方案暂无公开额度估算")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -411,18 +397,6 @@ struct OverviewView: View {
         return selectedQuota.estimatedValueUSD.map { "$\(RadarFormat.decimal($0))" } ?? "—"
     }
 
-    private var recommendation: WorkspaceModelRow? {
-        RadarDecisionLens.recommendation(in: projection.rows, for: goal)
-    }
-
-    private var recommendedCost: String {
-        RadarVisuals.costPerTask(recommendation).map { "$\(RadarFormat.decimal($0)) / 题" } ?? "—"
-    }
-
-    private var recommendedDuration: String {
-        RadarVisuals.duration(RadarVisuals.secondsPerTask(recommendation))
-    }
-
     private var sourceHealth: String {
         switch projection.benchmarkState {
         case .fresh: "数据源正常"
@@ -436,6 +410,31 @@ struct OverviewView: View {
 
     private var sourceHealthIcon: String {
         projection.benchmarkState == .fresh ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    }
+}
+
+struct DecisionLensPageView: View {
+    let projection: WorkspaceProjection
+    @State private var goal = RadarDecisionGoal.quality
+
+    var body: some View {
+        ScrollView {
+            if projection.rows.isEmpty {
+                ContentUnavailableView(
+                    "暂无 Benchmark 数据",
+                    systemImage: "scope",
+                    description: Text("刷新后仍无数据时，请查看来源状态。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 360)
+            } else {
+                DecisionLensView(
+                    rows: projection.rows,
+                    familyRows: RadarIdentity.familySummaries(projection.rows).map(\.row),
+                    goal: $goal
+                )
+                .padding(18)
+            }
+        }
     }
 }
 
@@ -662,11 +661,18 @@ private enum RadarIdentity {
         if key.contains("-terra-") { return "Terra" }
         if key.contains("-luna-") { return "Luna" }
         if key.hasPrefix("gpt-5.5") { return "GPT-5.5" }
-        return row.name
+        guard tier(in: key, separator: "-") == nil,
+              let displayTier = tier(in: row.name, separator: " ")
+        else { return row.name }
+        return row.name.dropLast(displayTier.count).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func tier(for row: WorkspaceModelRow) -> String? {
-        tiers.first { row.id.upstreamKey.lowercased().hasSuffix("-\($0)") }
+        tier(in: row.id.upstreamKey, separator: "-") ?? tier(in: row.name, separator: " ")
+    }
+
+    private static func tier(in value: String, separator: String) -> String? {
+        tiers.first { value.lowercased().hasSuffix("\(separator)\($0)") }
     }
 
     static func familySummaries(_ rows: [WorkspaceModelRow]) -> [RadarFamilySummary] {

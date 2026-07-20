@@ -3,12 +3,93 @@ import Observation
 
 enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
     case overview = "概览"
+    case decisionLens = "决策透镜"
     case models = "模型"
     case trends = "趋势"
     case sourceStatus = "来源状态"
     case export = "导出"
     var id: Self { self }
-    var icon: String { switch self { case .overview: "rectangle.grid.2x2"; case .models: "list.bullet.rectangle"; case .trends: "chart.xyaxis.line"; case .sourceStatus: "antenna.radiowaves.left.and.right"; case .export: "square.and.arrow.up" } }
+    var icon: String { switch self { case .overview: "rectangle.grid.2x2"; case .decisionLens: "scope"; case .models: "list.bullet.rectangle"; case .trends: "chart.xyaxis.line"; case .sourceStatus: "antenna.radiowaves.left.and.right"; case .export: "square.and.arrow.up" } }
+
+    func title(for sourceID: RadarSourceID) -> String {
+        guard sourceID == .sweBenchVerified else { return rawValue }
+        return switch self {
+        case .models: "榜单"
+        case .sourceStatus: "来源与口径"
+        default: rawValue
+        }
+    }
+
+    fileprivate var storageKey: String {
+        switch self {
+        case .overview: "overview"
+        case .decisionLens: "decision-lens"
+        case .models: "models"
+        case .trends: "trends"
+        case .sourceStatus: "source-status"
+        case .export: "export"
+        }
+    }
+
+    fileprivate init?(storageKey: String) {
+        switch storageKey {
+        case "overview": self = .overview
+        case "decision-lens": self = .decisionLens
+        case "models": self = .models
+        case "trends": self = .trends
+        case "source-status": self = .sourceStatus
+        case "export": self = .export
+        default: return nil
+        }
+    }
+}
+
+enum WorkspaceRoute: Hashable, Sendable {
+    case informationOverview
+    case source(RadarSourceID)
+    case sourcePage(RadarSourceID, WorkspaceDestination)
+    case export
+
+    static let initial = Self.informationOverview
+
+    var sourceID: RadarSourceID? {
+        switch self {
+        case .source(let sourceID), .sourcePage(let sourceID, _): sourceID
+        case .informationOverview, .export: nil
+        }
+    }
+
+    var storageKey: String {
+        switch self {
+        case .informationOverview: "information-overview"
+        case .source(let sourceID): "source:\(sourceID.rawValue)"
+        case .sourcePage(let sourceID, let destination):
+            "source:\(sourceID.rawValue):\(destination.storageKey)"
+        case .export: "export"
+        }
+    }
+
+    init(storageKey: String) {
+        if storageKey == "information-overview" {
+            self = .informationOverview
+            return
+        }
+        if storageKey == "export" {
+            self = .export
+            return
+        }
+        let parts = storageKey.split(separator: ":", maxSplits: 2).map(String.init)
+        guard parts.count >= 2, parts[0] == "source" else {
+            self = .initial
+            return
+        }
+        let sourceID = RadarSourceID(rawValue: parts[1])
+        if parts.count == 3, let destination = WorkspaceDestination(storageKey: parts[2]) {
+            self = .sourcePage(sourceID, destination)
+        } else {
+            self = .source(sourceID)
+        }
+    }
 }
 
 enum WorkspaceCopy {
@@ -365,7 +446,7 @@ final class RadarWorkspaceModel {
     var runtime: RadarAppRuntime { runtimes[selectedSourceID]! }
     var source: RadarSourceDescriptor { runtime.descriptor }
     var sources: [RadarSourceDescriptor] {
-        [RadarSourceID.claudeCodeRadar, .codexRadar].compactMap { runtimes[$0]?.descriptor }
+        [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified].compactMap { runtimes[$0]?.descriptor }
     }
     var projection: WorkspaceProjection {
         .init(
@@ -377,6 +458,41 @@ final class RadarWorkspaceModel {
     }
     var history: [BenchmarkDataset] { runtime.benchmarkHistory }
     var refreshIntervalMinutes: Int { runtime.refreshIntervalMinutes }
+
+    func projection(for sourceID: RadarSourceID) -> WorkspaceProjection? {
+        guard let runtime = runtimes[sourceID] else { return nil }
+        return .init(
+            sync: runtime.projection,
+            lifecycle: runtime.lifecycleState,
+            supportLevel: runtime.supportLevel,
+            source: runtime.descriptor
+        )
+    }
+
+    func history(for sourceID: RadarSourceID) -> [BenchmarkDataset] {
+        runtimes[sourceID]?.benchmarkHistory ?? []
+    }
+
+    func defaultDestination(for sourceID: RadarSourceID) -> WorkspaceDestination {
+        sourceID == .sweBenchVerified ? .models : .overview
+    }
+
+    func destinations(for sourceID: RadarSourceID) -> [WorkspaceDestination] {
+        if sourceID == .sweBenchVerified {
+            var destinations: [WorkspaceDestination] = [.models]
+            if hasComparableHistory(for: sourceID) { destinations.append(.trends) }
+            destinations.append(.sourceStatus)
+            return destinations
+        }
+        return [.overview, .decisionLens, .models, .trends, .sourceStatus]
+    }
+
+    func hasComparableHistory(for sourceID: RadarSourceID) -> Bool {
+        Dictionary(grouping: history(for: sourceID), by: \.seriesRevision)
+            .values
+            .contains { $0.count >= 2 }
+    }
+
     func selectSource(_ sourceID: RadarSourceID) {
         guard runtimes[sourceID] != nil else { return }
         selectedSourceID = sourceID
@@ -392,4 +508,11 @@ final class RadarWorkspaceModel {
         for runtime in runtimes.values { await runtime.stop() }
     }
     func refresh() async { await runtime.refresh() }
+    func refreshAll() async {
+        await withTaskGroup(of: Void.self) { group in
+            for runtime in runtimes.values {
+                group.addTask { await runtime.refresh() }
+            }
+        }
+    }
 }

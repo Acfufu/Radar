@@ -1,9 +1,14 @@
 # Implementation Status
 
 ## Current Phase
-Dual-source Release synchronization, source-scoped cache restoration, and app-icon packaging are implemented. Both public adapters are authorized for this project; Developer ID distribution remains external work.
+The two-stage information-architecture and SWE-bench integration are implemented. Radar now has a global information overview plus three independent read-only source rooms; Developer ID distribution remains external work.
 
 ## Completed
+- Preserved the permanent product boundary: Radar only reads, organizes, caches, analyzes, displays, and exports information already published by upstream sources. It does not run or submit benchmarks, generate source data, or write back upstream.
+- Replaced the hidden source-picker model with a global information overview, visible source rooms, source-native destination lists, and a persistent statement that independent source metrics do not form a unified ranking.
+- Added the explicit `swe-bench-verified` runtime and official leaderboard adapter for the SWE-bench Verified mini-SWE-agent v2 cohort without adding a provider/plugin or generic ETL framework.
+- Added fail-closed SWE-bench parsing, exact `% Resolved × 500` task mapping, deterministic compatible-duplicate collapse, conflicting-duplicate rejection, source-specific 16 MiB/text-plain HTTP policy, benchmark-only synchronization, LKG/history, and source-scoped export reuse.
+- Added the source-native SWE-bench leaderboard, cost-versus-resolution scatter, within-cohort Pareto analysis, filter/sort table, result inspector, provenance/methodology page, and trends only when two compatible snapshots exist.
 - Added the source-scoped `codex-radar` descriptor, schema-2 public-summary DTO/parser, community projection, active-window quota projection, and sanitized Debug fixtures without using the protected full API.
 - Generalized the HTTP source and sync path around a source descriptor/parser contract while preserving the Claude compatibility typealias and behavior.
 - Added two independent source runtimes with a native sidebar/menu source selector. Selection swaps workspace data instead of merging models, history, trends, Pareto results, or status.
@@ -92,9 +97,9 @@ Dual-source Release synchronization, source-scoped cache restoration, and app-ic
 - A 304 updates attempted/success timestamps and validators without inserting history. Any valid or 304 segment clears elapsed backoff; failed new payloads only update that segment's error metadata and never replace LKG.
 
 ## Tests
-- Current full explicit-Xcode Swift gate: 141 tests in 18 suites passed.
-- Current Release gate: executable SHA-256 `fe39d788a7555c571445a8f3dedfdaed65fabc0c6f40bdc56e4bb29030533582`; package and strict codesign checks pass, `ClaudeRadar.icns` is the only Resource, and the executable contains zero Debug/fixture markers. The artifact remains ad-hoc hardened local QA only.
-- Current real-site Debug gate: both sources persisted benchmark/community/source-status snapshots, four source-scoped raw samples, and all six metadata keys under an isolated root. A disabled relaunch re-displayed the Claude and Codex caches, and no `ClaudeRadar` process remained afterward.
+- Current full explicit-Xcode Swift gate: 147 tests in 19 suites passed.
+- Current SWE-bench Release gate: executable SHA-256 `fc01c99de4f586e690f6ec0a07963162d4a87424f4f7ef02fa06e1245aed043e`; package, plist, and strict codesign checks pass, and `ClaudeRadar.icns` is the only packaged Resource. The artifact remains ad-hoc local QA only.
+- Current real-site Debug gate: the official 7,323,841-byte leaderboard with SHA-256 `c3bf3a74d7d67ba7e2777e197f96894601917e8e186a078133897ed3e81566e5` projected 14 source rows into 13 unique mini-SWE-agent v2 configurations, with a top `% Resolved` of 76.8%, a fixed 500-task denominator, and a lowest displayed cost per resolved task of $0.08. The global overview, leaderboard, chart, full table, inspector, and provenance page passed packaged-app visual inspection under an isolated root.
 - Historical pre-remediation verdicts: [F1 plan compliance](../.omo/evidence/final/F1-plan-compliance.md), [F2 code quality](../.omo/evidence/final/F2-code-quality.md), [F3 packaged-app QA](../.omo/evidence/final/F3-real-app-qa.md), and [F4 scope fidelity](../.omo/evidence/final/F4-scope-fidelity.md) all ended `APPROVE` for the prior executable.
 - Post-final `xcodebuild` refresh is not upgraded to Pass: two bounded attempts stalled at `CreateBuildDescription`. Explicit-Xcode Swift tests and canonical packaging pass. The earlier post-Phase-4 Xcode Debug 125/125 and Release build receipts remain historical checkpoint evidence only.
 - Historical Phase 4 checkpoint: `.omo/evidence/phase-4/final-gate-remediation.md` passed 21 focused tests and 125 full/Xcode Debug tests in 16 suites, plus Xcode Release/package/visual checks before the final endpoint changes.
@@ -161,7 +166,7 @@ Dual-source Release synchronization, source-scoped cache restoration, and app-ic
 - Trends edge-label red baseline: focused compilation failed because `TrendChartDomain` did not exist. The green focused case passed, and the full explicit-Xcode Swift suite passed 86 tests in 12 suites. Receipts `.omo/evidence/phase-4/red-trend-axis-fix.txt` and `.omo/evidence/phase-4/swift-test-trend-axis-fix.txt`.
 
 ## Manual Review Needed
-- Current 2026-07-16 dual-source/cache/icon acceptance is complete and awaits only the user's explicit acceptance. Developer ID distribution remains an external blocker, not a product-core failure or Pass.
+- Current 2026-07-19 three-source information architecture and SWE-bench acceptance are complete. Developer ID distribution remains an external blocker, not a product-core failure or Pass.
 - Final reports: [summary](../.omo/evidence/final/final-summary.md), [F1](../.omo/evidence/final/F1-plan-compliance.md), [F2](../.omo/evidence/final/F2-code-quality.md), [F3](../.omo/evidence/final/F3-real-app-qa.md), and [F4](../.omo/evidence/final/F4-scope-fidelity.md). F1-F4 `APPROVE`; [security](../.omo/evidence/final/security-review.md) and five review-work lanes pass.
 - Final real-app QA passed 17/17 scenarios: P0 7/7, P1 8/8, P2 2/2. It covers the final Release identity, offline truth, successful export/Finder evidence, close/reopen/Quit, independent clears, upgrade, app-only uninstall, every workspace destination, CJK/visual quality, and cleanup. See [F3](../.omo/evidence/final/F3-real-app-qa.md).
 - The [runtime debug audit](../.omo/evidence/final/runtime-debug-audit.md) ends `CONFIRMED` under the partial-runtime-evidence hierarchy. Exact same-PID packaged `cancel -> second export succeeds` was not deterministically observed and receives no direct packaged PASS credit; independent executable runtime evidence supports the bounded claim.

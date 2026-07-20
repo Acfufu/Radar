@@ -5,6 +5,7 @@
 - Source-backed core: local QA candidate.
 - Claude Code Radar online source: **ENABLED**. On 2026-07-16, the project owner authorized automatic synchronization of its public GET endpoints, local history caching, and in-app re-display.
 - Codex Radar online source: **ENABLED**. On 2026-07-16, the project owner authorized the public summary and community endpoints for automatic synchronization, local history caching, and in-app re-display; the protected full API remains out of scope.
+- SWE-bench Verified online source: **ENABLED**. Radar reads the official published leaderboard, projects only the mini-SWE-agent v2 cohort, and never runs or submits an evaluation.
 - External Developer ID distribution: **BLOCKED** unless the release evidence contains a Developer ID Application signature plus successful notarization, stapling, validation, and Gatekeeper receipts. An ad-hoc signature is local QA only.
 
 ## Final bundle
@@ -16,7 +17,7 @@
 - Raw diagnostics: `~/Library/Application Support/ClaudeRadar/RawSamples`
 - Preferences: `~/Library/Preferences/com.acfufu.ClaudeRadar.plist`
 
-Release assembly must contain only `ClaudeRadar.icns` under Resources and no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. Both public source runtimes start with the app; changing the selected workspace changes display only.
+Release assembly must contain only `ClaudeRadar.icns` under Resources and no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. All three public source runtimes start with the app; changing the selected source room changes display only.
 
 ## Upgrade
 
@@ -44,7 +45,8 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 
 - Full Swift tests, Debug and Release builds, explicit-Xcode Release build.
 - Plist lint and inventory showing the app icon as the only Release resource.
-- Isolated dual-source online launch, shared sync-metadata inspection, and an offline relaunch proving both cached workspaces remain available.
+- Isolated three-source online launch, shared sync-metadata inspection, and source-room checks proving that cached data remains isolated.
+- SWE-bench live acceptance proving the mini-SWE-agent v2 cohort count, `% Resolved` mapping, 500-task denominator, source-local Pareto analysis, inspector, and permanent read-only/provenance copy.
 - `codesign --verify --deep --strict`, signing details, entitlements, dependencies, and nested-code inventory.
 - Credential classification from `security find-identity -v -p codesigning` and `ClaudeRadarNotary` availability, with secrets excluded.
 - Isolated install, second-build replacement, data-preservation, independent-clear, quit, and app-only uninstall evidence.

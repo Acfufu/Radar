@@ -1,10 +1,10 @@
 import Foundation
 
 extension RadarHTTPSource {
-    static func request(url: URL, validators: HTTPValidators) -> URLRequest {
+    func request(url: URL, validators: HTTPValidators) -> URLRequest {
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(acceptHeader, forHTTPHeaderField: "Accept")
         request.setValue("ClaudeRadar/0.1 (macOS; +https://github.com/acfufu/ClaudeRadar)", forHTTPHeaderField: "User-Agent")
         if let etag = validators.etag {
             request.setValue(etag, forHTTPHeaderField: "If-None-Match")
@@ -15,7 +15,7 @@ extension RadarHTTPSource {
         return request
     }
 
-    static func validate(_ payload: HTTPTransportResponse) throws -> HTTPValidators {
+    func validate(_ payload: HTTPTransportResponse) throws -> HTTPValidators {
         let response = payload.response
         let validators = HTTPValidators(
             etag: response.value(forHTTPHeaderField: "ETag"),
@@ -28,20 +28,20 @@ extension RadarHTTPSource {
             throw RadarHTTPError(
                 kind: .retryableStatus,
                 validators: validators,
-                retryAfter: parseRetryAfter(response.value(forHTTPHeaderField: "Retry-After"))
+                retryAfter: Self.parseRetryAfter(response.value(forHTTPHeaderField: "Retry-After"))
             )
         }
         if response.statusCode == 401 || response.statusCode == 403 {
-            throw SegmentError(kind: .authorization, message: "Claude Radar access was denied")
+            throw SegmentError(kind: .authorization, message: "\(descriptor.displayName) access was denied")
         }
         guard (200..<300).contains(response.statusCode) else {
             throw RadarHTTPError(kind: .status(response.statusCode), validators: validators)
         }
-        guard !payload.bodyWasTruncated, payload.data.count <= 5 * 1_024 * 1_024 else {
+        guard !payload.bodyWasTruncated, payload.data.count <= maximumResponseBytes else {
             throw RadarHTTPError(kind: .oversized, validators: validators)
         }
         let mime = response.mimeType?.lowercased() ?? ""
-        guard mime == "application/json" || mime.hasSuffix("+json") else {
+        guard allowedMIMETypes.contains(mime) || mime.hasSuffix("+json") else {
             throw RadarHTTPError(kind: .mime, validators: validators)
         }
         return validators

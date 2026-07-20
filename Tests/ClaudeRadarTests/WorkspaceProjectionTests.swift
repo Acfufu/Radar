@@ -7,7 +7,13 @@ import Testing
 struct WorkspaceProjectionTests {
     @Test("navigation remains a fixed destination set within each source workspace")
     func navigationContract() {
-        #expect(WorkspaceDestination.allCases == [.overview, .models, .trends, .sourceStatus, .export])
+        #expect(WorkspaceDestination.allCases == [.overview, .decisionLens, .models, .trends, .sourceStatus, .export])
+        let decisionLensRoute = WorkspaceRoute.sourcePage(.claudeCodeRadar, .decisionLens)
+        #expect(WorkspaceRoute(storageKey: decisionLensRoute.storageKey) == decisionLensRoute)
+        #expect(WorkspaceDestination.models.title(for: .sweBenchVerified) == "榜单")
+        #expect(WorkspaceDestination.sourceStatus.title(for: .sweBenchVerified) == "来源与口径")
+        let route = WorkspaceRoute.sourcePage(.sweBenchVerified, .models)
+        #expect(WorkspaceRoute(storageKey: route.storageKey) == route)
         #expect(WorkspaceCopy.exportPlaceholder == "Phase 6 将提供分页 JSON 导出")
         #expect(WorkspaceCopy.sourceStatusTitle == "Claude Code Radar 来源状态")
         #expect(WorkspaceCopy.quotaTitle == "Claude Code Radar 来源额度估算")
@@ -229,6 +235,24 @@ struct WorkspaceProjectionTests {
         #expect(performance.first { $0.id == beta.id }?.delta == nil)
         #expect(performance.first?.costPerTask == 2)
         #expect(performance.first?.secondsPerTask == 5)
+    }
+
+    @Test("overview heatmap keeps stable keys while reading the current descriptor tier")
+    func heatmapIdentityUsesCurrentDescriptorTier() {
+        let opaque = model("m8", "Opus 4.8 xhigh", quality: 90)
+        let sol = model("gpt-5.6-sol-max", "GPT-5.6 Sol xhigh", quality: 80)
+        let unknown = model("mystery", "Mystery experimental", quality: 70)
+
+        let rows = RadarRecentPerformance.rows(
+            current: [opaque, sol, unknown].map { WorkspaceModelRow(benchmark: $0, community: nil) },
+            history: []
+        )
+
+        #expect(rows.first { $0.id == opaque.id }?.family == "Opus 4.8")
+        #expect(rows.first { $0.id == opaque.id }?.tier == "xhigh")
+        #expect(rows.first { $0.id == sol.id }?.family == "Sol")
+        #expect(rows.first { $0.id == sol.id }?.tier == "max")
+        #expect(rows.first { $0.id == unknown.id }?.tier == nil)
     }
 
     @Test("overview surfaces an independent community refresh failure beside fresh benchmark data")

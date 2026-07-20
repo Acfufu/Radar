@@ -26,7 +26,7 @@ struct ReleaseReadinessTests {
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "Assets/ClaudeRadar.icns").path))
     }
 
-    @Test("Release and online QA enable both approved sources")
+    @Test("Release and online QA enable all approved sources")
     func releaseOnlineSourceContract() throws {
         let environment = try text("Sources/ClaudeRadar/App/AppEnvironment.swift")
         let app = try text("Sources/ClaudeRadar/ClaudeRadarApp.swift")
@@ -34,7 +34,7 @@ struct ReleaseReadinessTests {
         #expect(environment.contains("#else\n        let onlineSourceEnabled = true"))
         #expect(app.contains("Task { await model.start() }"))
         #expect(app.contains("let metadataStore = SyncMetadataStore(root: environment.dataRoot)"))
-        #expect(app.components(separatedBy: "metadataStore: metadataStore").count == 3)
+        #expect(app.components(separatedBy: "metadataStore: metadataStore").count == 4)
         #expect(!environment.contains("PUBLIC_ONLINE"))
         #expect(!environment.contains("RADAR_ONLINE"))
 
@@ -45,8 +45,10 @@ struct ReleaseReadinessTests {
         )
         #expect(onlineQA.synchronizationEnabled(for: .claudeCodeRadar))
         #expect(onlineQA.synchronizationEnabled(for: .codexRadar))
+        #expect(onlineQA.synchronizationEnabled(for: .sweBenchVerified))
         #expect(onlineQA.supportLevel(for: .claudeCodeRadar) == .authorized)
         #expect(onlineQA.supportLevel(for: .codexRadar) == .authorized)
+        #expect(onlineQA.supportLevel(for: .sweBenchVerified) == .authorized)
     }
 
     @MainActor

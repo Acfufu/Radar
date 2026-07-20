@@ -134,28 +134,10 @@ final class RadarAppRuntime {
                     rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
                 )
             } else {
-                source = sourceID == .codexRadar
-                    ? RadarHTTPSource(
-                        configuration: CodexRadarConfiguration.production,
-                        transport: URLSessionHTTPTransport(),
-                        rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
-                    )
-                    : RadarHTTPSource(
-                        transport: URLSessionHTTPTransport(),
-                        rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
-                    )
+                source = productionSource()
             }
             #else
-            let source = sourceID == .codexRadar
-                ? RadarHTTPSource(
-                    configuration: CodexRadarConfiguration.production,
-                    transport: URLSessionHTTPTransport(),
-                    rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
-                )
-                : RadarHTTPSource(
-                    transport: URLSessionHTTPTransport(),
-                    rawSampleStore: RawSampleStore(dataRoot: environment.dataRoot)
-                )
+            let source = productionSource()
             #endif
             let coordinator = RadarSyncCoordinator(
                 source: source,
@@ -297,7 +279,9 @@ final class RadarAppRuntime {
         if lifecycleState == .failed { return "Synchronization unavailable" }
         guard environment.synchronizationEnabled(for: sourceID) else { return "Online source disabled" }
         guard let projection else { return "Synchronizing \(descriptor.displayName)" }
-        if projection.benchmark.error != nil || projection.community.error != nil || projection.sourceStatus.error != nil {
+        if projection.benchmark.error != nil
+            || projection.community.error != nil
+            || (sourceID != .sweBenchVerified && projection.sourceStatus.error != nil) {
             return "Last known good data retained"
         }
         return "\(descriptor.displayName) synchronized"
@@ -306,9 +290,11 @@ final class RadarAppRuntime {
     var supportLevel: SupportLevel { environment.supportLevel(for: sourceID) }
 
     var descriptor: RadarSourceDescriptor {
-        let source = sourceID == .codexRadar
-            ? CodexRadarConfiguration.descriptor
-            : ClaudeRadarConfiguration.descriptor
+        let source = switch sourceID {
+        case .codexRadar: CodexRadarConfiguration.descriptor
+        case .sweBenchVerified: SWEBenchConfiguration.descriptor
+        default: ClaudeRadarConfiguration.descriptor
+        }
         return RadarSourceDescriptor(
             id: source.id,
             displayName: source.displayName,
@@ -320,6 +306,29 @@ final class RadarAppRuntime {
 
     var statusDetail: String {
         failureMessage ?? "Automatic synchronization keeps benchmark, community, and source-status state independent."
+    }
+
+    private func productionSource() -> RadarHTTPSource {
+        let rawSamples = RawSampleStore(dataRoot: environment.dataRoot)
+        return switch sourceID {
+        case .codexRadar:
+            RadarHTTPSource(
+                configuration: CodexRadarConfiguration.production,
+                transport: URLSessionHTTPTransport(),
+                rawSampleStore: rawSamples
+            )
+        case .sweBenchVerified:
+            RadarHTTPSource(
+                configuration: SWEBenchConfiguration.production,
+                transport: URLSessionHTTPTransport(maxBodyBytes: SWEBenchConfiguration.maximumResponseBytes),
+                rawSampleStore: rawSamples
+            )
+        default:
+            RadarHTTPSource(
+                transport: URLSessionHTTPTransport(),
+                rawSampleStore: rawSamples
+            )
+        }
     }
 
     #if DEBUG

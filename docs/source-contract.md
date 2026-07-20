@@ -1,6 +1,6 @@
 # Radar Source Contracts
 
-The existing contract sections through “Canonical sanitized fixtures” describe Claude Code Radar. The final section records the independent Codex Radar public-summary adapter; the two sources never share identities, history, exports, trends, or analysis.
+The existing contract sections through “Canonical sanitized fixtures” describe Claude Code Radar. Later sections record the independent Codex Radar public-summary adapter and SWE-bench Verified leaderboard adapter. The three sources never share identities, history, exports, trends, rankings, or analysis.
 
 ## Release boundary
 
@@ -10,10 +10,10 @@ The existing contract sections through “Canonical sanitized fixtures” descri
 - Access: the inspected GET endpoints are public and require no authentication.
 - Project authorization: on 2026-07-16, the project owner authorized automatic synchronization, local history retention, and in-app re-display of the public GET responses.
 - Access controls: the app must not bypass authentication, challenges, rate limits, or other access controls and must not persist cookies or sensitive request headers.
-- Release enforcement: `AppEnvironment.current()` enables both public source runtimes outside Debug, while the Release bundle excludes every development fixture and includes only the app icon under Resources. Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
-- Manual real-site acceptance uses a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. That mode starts both production HTTP/source/parser/repository paths without fixture transport.
+- Release enforcement: `AppEnvironment.current()` enables all three public source runtimes outside Debug, while the Release bundle excludes every development fixture and includes only the app icon under Resources. Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
+- Manual real-site acceptance uses a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. That mode starts all production HTTP/source/parser/repository paths without fixture transport.
 
-## Scenario: dual-source automatic synchronization and cache restoration
+## Scenario: multi-source automatic synchronization and cache restoration
 
 ### 1. Scope / Trigger
 
@@ -22,13 +22,13 @@ Release startup, Debug `online` QA, and every future source addition share one l
 ### 2. Signatures
 
 - App startup: `RadarWorkspaceModel.start() async` starts every runtime in its source-keyed runtime map.
-- Runtime construction: `RadarAppRuntime(environment:sourceID:metadataStore:...)`; the app root passes the same `SyncMetadataStore` actor to both production runtimes.
+- Runtime construction: `RadarAppRuntime(environment:sourceID:metadataStore:...)`; the app root passes the same `SyncMetadataStore` actor to all production runtimes.
 - Metadata storage: `SyncMetadataStore(root:)` writes `<dataRoot>/SyncMetadata.json` with keys `<sourceID>|<datasetType>`.
 - Normalized storage: the three SwiftData snapshot tables keep `sourceID`, `seriesRevision`, source/fetch timestamps, fingerprint, and encoded dataset.
 
 ### 3. Contracts
 
-- Release requires no environment key and enables both sources. Debug `RADAR_FIXTURE_MODE=online` also enables both; `sequence` enables only Claude, `codex` enables only the local Codex fixture, and all other fixture modes perform no HTTP synchronization.
+- Release requires no environment key and enables all three sources. Debug `RADAR_FIXTURE_MODE=online` does the same; `sequence` enables only Claude, `codex` enables only the local Codex fixture, and all other fixture modes perform no HTTP synchronization.
 - Selecting a workspace changes presentation only. Startup, periodic, network-recovery, and wake synchronization remain active for every enabled runtime.
 - All runtimes that share a data root must share one `SyncMetadataStore` actor. Atomic file replacement alone does not make independent read-modify-write actor instances safe.
 - Benchmark, community, source-status, raw samples, metadata, LKG lookup, history, trends, and export remain scoped by `RadarSourceID`.
@@ -37,24 +37,26 @@ Release startup, Debug `online` QA, and every future source addition share one l
 
 | Condition | Required result |
 | --- | --- |
-| Both public sources succeed | Six metadata keys remain present and each source persists its own three normalized segments. |
+| All public sources succeed | Claude and Codex persist their three normalized segments; SWE-bench persists its benchmark segment only. |
 | One segment refresh fails with an existing snapshot | Preserve and label that segment's LKG; do not replace it with the failed response. |
 | Metadata is corrupt | Report metadata decoding failure while independently readable normalized history remains available. |
-| Synchronization is disabled for QA restart | Make no request and load both source-scoped cached projections. |
+| Synchronization is disabled for QA restart | Make no request and load every available source-scoped cached projection. |
 | Two runtimes update metadata concurrently | Serialize through the shared actor; no last-writer loss is allowed. |
 | Protected Codex full API is unavailable or requires credentials | Do not request, emulate, retry, or bypass it. |
+| SWE-bench has no community or quota/status segment | Persist benchmark data without manufacturing segment failures. |
 
 ### 5. Good / Base / Bad Cases
 
-- Good: an isolated `online` launch stores Claude and Codex snapshots, raw samples, and six metadata records; a disabled relaunch displays both cached workspaces.
+- Good: an isolated `online` launch stores independent Claude, Codex, and SWE-bench snapshots and raw samples; a disabled relaunch displays the available source rooms.
 - Base: a source has no prior snapshot, so its workspace remains explicitly empty until a valid public response arrives.
 - Bad: constructing one metadata actor per runtime against the same root lets concurrent read-modify-write cycles overwrite sibling-source records even though each individual file replacement is atomic.
 
 ### 6. Tests Required
 
-- `ReleaseReadinessTests`: Release/online enables both authorized sources, app startup is unconditional, and both runtimes receive the shared metadata actor.
-- `MultiSourceWorkspaceTests`: one workspace start activates both runtimes; Codex history remains Codex-scoped and survives a disabled reopen.
-- Packaged manual QA: inspect six metadata keys after a fresh dual-source online run, then relaunch without synchronization and switch between both cached workspaces.
+- `ReleaseReadinessTests`: Release/online enables all approved sources, app startup is unconditional, and every runtime receives the shared metadata actor.
+- `MultiSourceWorkspaceTests`: one workspace start activates all runtimes; source selection never merges projections.
+- `SWEBenchParserTests`: cohort filtering, exact 500-task mapping, duplicate policy, HTTP policy, and status-less synchronization remain frozen.
+- Packaged manual QA: run a fresh isolated online read, then inspect the global overview and each source-native room.
 
 ### 7. Wrong vs Correct
 
@@ -70,7 +72,22 @@ Correct: the app composition root creates one actor and injects it into every ru
 let metadataStore = SyncMetadataStore(root: environment.dataRoot)
 let claude = RadarAppRuntime(environment: environment, sourceID: .claudeCodeRadar, metadataStore: metadataStore)
 let codex = RadarAppRuntime(environment: environment, sourceID: .codexRadar, metadataStore: metadataStore)
+let sweBench = RadarAppRuntime(environment: environment, sourceID: .sweBenchVerified, metadataStore: metadataStore)
 ```
+
+## SWE-bench Verified leaderboard GET
+
+Endpoint: `https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json`
+
+- Response policy: HTTPS, same-host redirects, no credentials or cookies, at most 16 MiB, and JSON decoded from the observed `text/plain` response. Existing sources retain their 5 MiB JSON-only policy.
+- Scope: select exactly one `bash-only` board, then include rows whose `mini-swe-agent_version` begins with `2.` and whose warning is absent.
+- Identity: `folder` is the upstream key. Exact semantic duplicates collapse deterministically; conflicting duplicates reject the projection.
+- Quality: upstream `resolved` remains a percentage in `0...100` and is displayed as `% Resolved`.
+- Task counts: SWE-bench Verified has 500 tasks. `passedTasks` is derived only when `resolved × 5` is an exact integer; `validTasks` is 500.
+- Cost: published total evaluation cost maps to `benchmarkCostUSD`; absent values stay `nil`.
+- Missing fields: tokens, elapsed time, cache, community, and source status remain absent instead of being fabricated.
+- Revision: `swe-bench-verified-mini-v2-v1`. Trends and Pareto analysis stay within this source, cohort, and revision.
+- Product boundary: Radar only reads, caches, analyzes, displays, and exports published results. It never runs the evaluator or submits data.
 
 ## Observation receipt
 

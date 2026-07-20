@@ -11,7 +11,7 @@ extension RadarSyncCoordinator {
         let statusState = try? await repository.sourceStatusState(sourceID: sourceID)
         let communityState = try? await repository.communityState(sourceID: sourceID)
         let sharedCacheIsClean = benchmarkState?.value != nil && benchmarkState?.error == nil
-            && statusState?.value != nil && statusState?.error == nil
+            && (!source.supportsSourceStatusSegment || (statusState?.value != nil && statusState?.error == nil))
         let communityCacheIsClean = communityState?.value != nil && communityState?.error == nil
         await source.beginAcquisition(
             validators: sharedCacheIsClean
@@ -54,7 +54,10 @@ extension RadarSyncCoordinator {
         if let envelope = results.0 { _ = await applyEnvelope(envelope, attemptedAt: attemptedAt) }
         if let community = results.1 { _ = await applyCommunity(community, attemptedAt: attemptedAt) }
         var attemptedTypes: Set<RadarDatasetType> = []
-        if results.0 != nil { attemptedTypes.formUnion([.benchmark, .sourceStatus]) }
+        if results.0 != nil {
+            attemptedTypes.insert(.benchmark)
+            if source.supportsSourceStatusSegment { attemptedTypes.insert(.sourceStatus) }
+        }
         if results.1 != nil { attemptedTypes.insert(.community) }
         await refreshSegmentBackoff(attemptedAt: attemptedAt, attemptedTypes: attemptedTypes)
         guard !isStopped, generation == lifecycleGeneration else { return }
