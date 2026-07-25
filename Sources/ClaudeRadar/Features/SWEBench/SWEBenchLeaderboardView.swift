@@ -40,27 +40,19 @@ struct SWEBenchLeaderboardView: View {
             .padding(.horizontal)
             .padding(.vertical, 10)
             .background(palette.section.color)
-            Table(rows, selection: $selection) {
-                TableColumn("配置") { Text($0.name).lineLimit(2) }
-                    .width(min: 170, ideal: 240)
-                TableColumn("% Resolved") {
-                    Text(RadarFormat.decimal($0.benchmark.qualityScore, suffix: "%"))
+            GeometryReader { geometry in
+                Group {
+                    if geometry.size.width < 720 {
+                        compactLeaderboardTable
+                    } else {
+                        fullLeaderboardTable
+                    }
                 }
-                TableColumn("Resolved / 500") {
-                    Text("\(RadarFormat.integer($0.benchmark.passedTasks)) / 500")
-                }
-                TableColumn("总成本") {
-                    Text($0.benchmark.benchmarkCostUSD.map { "$" + RadarFormat.decimal($0) } ?? "未发布")
-                }
-                TableColumn("每解决成本") {
-                    Text($0.costPerResolved.map { "$" + RadarFormat.decimal($0) } ?? "—")
-                }
-                TableColumn("Pareto") { Text(classification(for: $0.id).label) }
-            }
-            .radarPanel()
-            .overlay {
-                if rows.isEmpty {
-                    ContentUnavailableView.search(text: query)
+                .radarPanel()
+                .overlay {
+                    if rows.isEmpty {
+                        ContentUnavailableView.search(text: query)
+                    }
                 }
             }
         }
@@ -78,6 +70,46 @@ struct SWEBenchLeaderboardView: View {
             }
         }
         .navigationTitle("SWE-bench Verified")
+    }
+
+    private var compactLeaderboardTable: some View {
+        Table(rows, selection: $selection) {
+            TableColumn("配置") { Text($0.name).lineLimit(2) }
+                .width(min: 150, ideal: 230)
+            TableColumn("% Resolved") {
+                Text(RadarFormat.decimal($0.benchmark.qualityScore, suffix: "%"))
+            }
+            .width(90)
+            TableColumn("Resolved / 500") {
+                Text("\(RadarFormat.integer($0.benchmark.passedTasks)) / 500")
+            }
+            .width(115)
+        }
+    }
+
+    private var fullLeaderboardTable: some View {
+        Table(rows, selection: $selection) {
+            TableColumn("配置") { Text($0.name).lineLimit(2) }
+                .width(min: 130, ideal: 180, max: 220)
+            TableColumn("% Resolved") {
+                Text(RadarFormat.decimal($0.benchmark.qualityScore, suffix: "%"))
+            }
+            .width(78)
+            TableColumn("Resolved / 500") {
+                Text("\(RadarFormat.integer($0.benchmark.passedTasks)) / 500")
+            }
+            .width(100)
+            TableColumn("总成本") {
+                Text($0.benchmark.benchmarkCostUSD.map { "$" + RadarFormat.decimal($0) } ?? "未发布")
+            }
+            .width(65)
+            TableColumn("每解决成本") {
+                Text($0.costPerResolved.map { "$" + RadarFormat.decimal($0) } ?? "—")
+            }
+            .width(85)
+            TableColumn("Pareto") { Text(classification(for: $0.id).label) }
+                .width(65)
+        }
     }
 
     private var header: some View {
