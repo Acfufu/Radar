@@ -23,11 +23,13 @@ struct RadarWorkspaceView: View {
             List(selection: routeBinding) {
                 Section {
                     Label("信息总览", systemImage: "rectangle.grid.1x2")
+                        .foregroundStyle(route == .informationOverview ? palette.accent.color : palette.primaryText.color)
                         .tag(WorkspaceRoute.informationOverview)
                 }
                 Section("来源") {
                     ForEach(model.sources) { source in
                         Label(source.displayName, systemImage: source.id == .sweBenchVerified ? "checkmark.seal" : "scope")
+                            .foregroundStyle(route == .source(source.id) ? palette.accent.color : palette.primaryText.color)
                             .tag(WorkspaceRoute.source(source.id))
                     }
                 }
@@ -36,6 +38,7 @@ struct RadarWorkspaceView: View {
                     Section(source.displayName) {
                         ForEach(model.destinations(for: sourceID)) { destination in
                             Label(destination.title(for: sourceID), systemImage: destination.icon)
+                                .foregroundStyle(route == .sourcePage(sourceID, destination) ? palette.accent.color : palette.primaryText.color)
                                 .tag(WorkspaceRoute.sourcePage(sourceID, destination))
                         }
                         Text(source.attributionText)
@@ -47,6 +50,7 @@ struct RadarWorkspaceView: View {
                 }
                 Section {
                     Label("导出", systemImage: "square.and.arrow.up")
+                        .foregroundStyle(route == .export ? palette.accent.color : palette.primaryText.color)
                         .tag(WorkspaceRoute.export)
                 }
             }
