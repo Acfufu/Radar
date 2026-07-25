@@ -24,36 +24,36 @@ struct ModelListView: View {
     var body: some View {
         VStack(spacing: RadarStyle.cardSpacing) {
             HStack {
-                Picker("排序", selection: $sort) { ForEach(ModelSort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 160)
+                Picker("排序", selection: $sort) { ForEach(ModelSort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: selection == nil ? 160 : 120)
                 Button { ascending.toggle() } label: { Label(ascending ? "升序" : "降序", systemImage: ascending ? "arrow.up" : "arrow.down") }
-                Picker("Pareto", selection: $paretoPreset) { ForEach(ParetoPreset.allCases) { Text($0.name).tag($0) } }.frame(width: 210)
+                Picker("Pareto", selection: $paretoPreset) { ForEach(ParetoPreset.allCases) { Text($0.name).tag($0) } }.frame(width: selection == nil ? 210 : 150)
                 Spacer()
             }
             .radarPanel()
             Table(rows, selection: $selection) {
                 TableColumn("模型") { Text($0.name).lineLimit(2) }.width(min: 150, ideal: 220)
-                if columns.contains(.quality) {
+                if selection == nil, columns.contains(.quality) {
                     TableColumn("质量") { Text(RadarFormat.decimal($0.benchmark.qualityScore)) }
                 }
-                if columns.contains(.passRate) {
+                if selection == nil, columns.contains(.passRate) {
                     TableColumn("通过率") { Text(RadarFormat.decimal($0.passRate, suffix: "%")) }
                 }
-                if columns.contains(.cost) {
+                if selection == nil, columns.contains(.cost) {
                     TableColumn("成本") { Text($0.benchmark.benchmarkCostUSD.map { "$" + RadarFormat.decimal($0) } ?? "—") }
                 }
-                if columns.contains(.tokens) {
+                if selection == nil, columns.contains(.tokens) {
                     TableColumn("Token") { Text(RadarFormat.integer($0.benchmark.totalTokens)) }
                 }
-                if columns.contains(.elapsed) {
+                if selection == nil, columns.contains(.elapsed) {
                     TableColumn("耗时") { Text(RadarFormat.seconds($0.benchmark.elapsedSeconds)) }
                 }
-                if columns.contains(.agentSteps) {
+                if selection == nil, columns.contains(.agentSteps) {
                     TableColumn("Agent Steps") { Text(RadarFormat.integer($0.benchmark.agentSteps)) }
                 }
-                if columns.contains(.cache) {
+                if selection == nil, columns.contains(.cache) {
                     TableColumn("Cache") { Text(RadarFormat.decimal($0.benchmark.cacheHitPercent, suffix: "%")) }
                 }
-                if columns.contains(.community) {
+                if selection == nil, columns.contains(.community) {
                     TableColumn("社区") { Text(RadarFormat.decimal($0.community?.average)) }
                 }
                 TableColumn("Pareto") { Text(classification(for: $0.id).label) }
@@ -66,7 +66,7 @@ struct ModelListView: View {
         .inspector(isPresented: Binding(
             get: { selected != nil },
             set: { if !$0 { selection = nil } }
-        )) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 340, ideal: 420, max: 520) } }
+        )) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 280, ideal: 320, max: 380) } }
         .navigationTitle("模型")
     }
 

@@ -13,9 +13,9 @@ struct ModelDetailView: View {
     var body: some View {
         Form {
             Section("模型") {
-                LabeledContent("名称", value: row.name)
-                LabeledContent("来源", value: sourceName)
-                LabeledContent("seriesRevision", value: revision)
+                identity("名称", row.name)
+                identity("来源", sourceName)
+                identity("seriesRevision", revision)
             }
             Section("单模型历史") {
                 Text("仅显示所选模型；seriesRevision 变化时断线。")
@@ -53,14 +53,14 @@ struct ModelDetailView: View {
             Section("派生指标") {
                 ForEach(DerivedMetrics.evaluate(model: row.benchmark)) { result in
                     VStack(alignment: .leading, spacing: 3) {
-                        LabeledContent(result.formula.name, value: RadarFormat.derived(result.value))
+                        metric(result.formula.name, RadarFormat.derived(result.value))
                         Text("\(result.formula.formulaText) · \(result.formula.unit)")
                             .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                     }
                 }
             }
             Section("Pareto") {
-                LabeledContent(paretoPreset.name, value: paretoClassification.label)
+                metric(paretoPreset.name, paretoClassification.label)
                 Text(paretoPreset.explanation).font(.caption).foregroundStyle(.secondary)
                 Text("不使用社区评分或来源额度估算。") .font(.caption).foregroundStyle(.secondary)
             }
@@ -95,5 +95,22 @@ struct ModelDetailView: View {
         }
     }
 
-    private func metric(_ label: String, _ value: String) -> some View { LabeledContent(label, value: value) }
+    private func metric(_ label: String, _ value: String) -> some View {
+        LabeledContent(label) {
+            Text(value)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+    }
+
+    private func identity(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+    }
 }
