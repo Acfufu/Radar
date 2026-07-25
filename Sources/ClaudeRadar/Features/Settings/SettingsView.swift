@@ -3,6 +3,7 @@ import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.radarPalette) private var palette
     let settings: AppSettings
     let model: RadarWorkspaceModel
     @State private var launchAtLogin = false
@@ -19,7 +20,11 @@ struct SettingsView: View {
                 Toggle("登录时启动", isOn: $launchAtLogin).onChange(of: launchAtLogin) { _, value in updateLoginItem(value) }
                 LabeledContent("当前工作区", value: model.source.displayName)
                 LabeledContent("在线来源", value: runtime.supportLevel == .disabled ? "当前构建未启用" : "已启用自动同步")
-            }.formStyle(.grouped).tabItem { Label("通用", systemImage: "gear") }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(palette.canvas.color)
+            .tabItem { Label("通用", systemImage: "gear") }
             Form {
                 Button("清除规范化历史", role: .destructive) {
                     Task { dataActionMessage = await runtime.clearHistory() ? "规范化历史已清除；原始诊断样本保留。" : "无法清除规范化历史。" }
@@ -28,18 +33,28 @@ struct SettingsView: View {
                     Task { dataActionMessage = await runtime.clearRawSamples() ? "原始诊断样本已清除；规范化历史保留。" : "无法清除原始诊断样本。" }
                 }
                 Button("在 Finder 中显示数据目录") { NSWorkspace.shared.activateFileViewerSelecting([runtime.environment.dataRoot]) }
-                Text(runtime.environment.dataRoot.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                if let dataActionMessage { Text(dataActionMessage).font(.caption).foregroundStyle(.secondary) }
-            }.formStyle(.grouped).tabItem { Label("数据", systemImage: "externaldrive") }
+                Text(runtime.environment.dataRoot.path).font(.caption).foregroundStyle(palette.secondaryText.color).textSelection(.enabled)
+                if let dataActionMessage { Text(dataActionMessage).font(.caption).foregroundStyle(palette.secondaryText.color) }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(palette.canvas.color)
+            .tabItem { Label("数据", systemImage: "externaldrive") }
             Form {
                 LabeledContent("Radar", value: appVersion)
                 Link("Claude Code Radar 来源主页", destination: URL(string: "https://claudecoderadar.com/?lang=en")!)
                 Link("Codex Radar 来源主页", destination: URL(string: "https://codexradar.com/")!)
                 Text("项目已允许两个公开来源自动同步、缓存规范化历史与再展示。Codex 仅使用公开摘要和社区评分，不访问受保护的完整 API。")
                     .fixedSize(horizontal: false, vertical: true)
-            }.formStyle(.grouped).tabItem { Label("关于", systemImage: "info.circle") }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(palette.canvas.color)
+            .tabItem { Label("关于", systemImage: "info.circle") }
         }
         .frame(width: 500, height: 300)
+        .background(palette.canvas.color)
+        .tint(palette.accent.color)
         .onAppear { launchAtLogin = SMAppService.mainApp.status == .enabled }
     }
     private var interval: Binding<Int> { Binding(get: { settings.refreshIntervalMinutes }, set: { value in

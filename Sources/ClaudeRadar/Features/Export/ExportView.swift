@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ExportView: View {
+    @Environment(\.radarPalette) private var palette
     let runtime: RadarAppRuntime
     @State private var datasets = Set(ExportDataset.normalized)
     @State private var includesRawSamples = false
@@ -54,18 +55,21 @@ struct ExportView: View {
                 }
                 if let exportedURL {
                     Label("已导出：\(exportedURL.lastPathComponent)", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(palette.positive.color)
                 }
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(palette.negative.color)
                 }
-                if invalidRange { Text("结束日期必须晚于起始日期。").foregroundStyle(.red) }
+                if invalidRange { Text("结束日期必须晚于起始日期。").foregroundStyle(palette.negative.color) }
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(palette.canvas.color)
+        .tint(palette.accent.color)
         .navigationTitle("导出")
-        .padding()
+        .padding(RadarStyle.compactSpacing)
         .onDisappear { exportTask?.cancel() }
     }
 

@@ -2,16 +2,27 @@ import AppKit
 import SwiftUI
 
 struct MenuBarView: View {
+    @Environment(\.radarPalette) private var palette
     @Environment(\.openWindow) private var openWindow
     let model: RadarWorkspaceModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack { Image(systemName: "scope").font(.title2); VStack(alignment: .leading) { Text(model.source.displayName).font(.headline); Text(freshness).font(.caption).foregroundStyle(.secondary) }; Spacer() }
+        VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+            HStack {
+                Image(systemName: "scope")
+                    .font(.title2)
+                    .foregroundStyle(palette.accent.color)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.source.displayName).font(.headline)
+                    Text(freshness).font(.caption).foregroundStyle(palette.secondaryText.color)
+                }
+                Spacer()
+            }
+            .radarPanel()
             Picker("工作区", selection: sourceBinding) {
                 ForEach(model.sources) { source in Text(source.displayName).tag(source.id) }
             }
-            Text(model.source.attributionText).font(.caption2).foregroundStyle(.secondary)
+            Text(model.source.attributionText).font(.caption2).foregroundStyle(palette.secondaryText.color)
             if let supportState = Self.presentation(for: model.projection).supportState {
                 StateBanner(state: supportState, error: nil, sourceName: model.source.displayName)
             }
@@ -19,14 +30,15 @@ struct MenuBarView: View {
                 StateBanner(state: healthState, error: Self.presentation(for: model.projection).error, sourceName: model.source.displayName)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("质量摘要").font(.caption).foregroundStyle(.secondary)
+                Text("质量摘要").font(.caption).foregroundStyle(palette.secondaryText.color)
                 ForEach(topThree) { row in HStack { Text(short(row.name)); Spacer(); Text(RadarFormat.decimal(row.benchmark.qualityScore)).monospacedDigit() } }
-                if topThree.isEmpty { Text("暂无模型数据").foregroundStyle(.secondary) }
+                if topThree.isEmpty { Text("暂无模型数据").foregroundStyle(palette.secondaryText.color) }
             }
-            Divider()
-            HStack { Text(WorkspaceCopy.quotaTitle(for: model.source)).font(.caption).foregroundStyle(.secondary); Spacer(); Text(quota).font(.caption).monospacedDigit() }
-            if let error = model.projection.latestError { Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange).lineLimit(2) }
-            Divider()
+            .radarPanel()
+            Divider().overlay(palette.divider.color)
+            HStack { Text(WorkspaceCopy.quotaTitle(for: model.source)).font(.caption).foregroundStyle(palette.secondaryText.color); Spacer(); Text(quota).font(.caption).monospacedDigit() }
+            if let error = model.projection.latestError { Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(palette.negative.color).lineLimit(2) }
+            Divider().overlay(palette.divider.color)
             HStack {
                 Button("刷新") { Task { await model.refresh() } }
                     .keyboardShortcut("r")
@@ -36,7 +48,9 @@ struct MenuBarView: View {
                 Button("退出") { NSApplication.shared.terminate(nil) }.keyboardShortcut("q")
             }
         }
-        .padding(16).frame(width: 400)
+        .padding(RadarStyle.cardSpacing)
+        .frame(width: 400)
+        .background(palette.canvas.color)
     }
     static func presentation(for projection: WorkspaceProjection) -> BenchmarkPresentation {
         projection.benchmarkPresentation
