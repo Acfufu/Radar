@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RadarWorkspaceView: View {
+    @Environment(\.radarPalette) private var palette
     let model: RadarWorkspaceModel
     @SceneStorage("workspaceRoute") private var routeRaw = WorkspaceRoute.initial.storageKey
 
@@ -39,7 +40,7 @@ struct RadarWorkspaceView: View {
                         }
                         Text(source.attributionText)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(palette.secondaryText.color)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -50,10 +51,14 @@ struct RadarWorkspaceView: View {
                 }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(palette.section.color)
             .navigationTitle("Radar")
             .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 250)
         } detail: {
             destinationView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.canvas.color)
                 .toolbar {
                     ToolbarItem {
                         Button { Task { await refresh() } } label: { Label(refreshLabel, systemImage: "arrow.clockwise") }
@@ -63,6 +68,9 @@ struct RadarWorkspaceView: View {
                     ToolbarItem { SettingsLink { Label("设置", systemImage: "gear") } }
                 }
         }
+        .tint(palette.accent.color)
+        .toolbarBackground(palette.section.color, for: .windowToolbar)
+        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .task {
             #if DEBUG
             if let requestedSource = ProcessInfo.processInfo.environment["RADAR_UI_SOURCE"] {

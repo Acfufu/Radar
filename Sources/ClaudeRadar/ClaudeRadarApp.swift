@@ -6,6 +6,7 @@ struct ClaudeRadarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let workspaceModel: RadarWorkspaceModel
     @State private var settings: AppSettings
+    @AppStorage("appearance") private var appearance = AppAppearance.system
 
     init() {
         let settings = AppSettings()
@@ -43,21 +44,24 @@ struct ClaudeRadarApp: App {
     var body: some Scene {
         Window("Claude Radar", id: "workspace") {
             RadarWorkspaceView(model: workspaceModel)
+                .radarAppStyle()
                 .frame(minWidth: 820, minHeight: 560)
-                .preferredColorScheme(settings.appearance.colorScheme)
+                .preferredColorScheme(appearance.colorScheme)
         }
         .defaultSize(width: 1080, height: 720)
         .commands { AppCommands(model: workspaceModel) }
 
         MenuBarExtra("Claude Radar", systemImage: "scope") {
             MenuBarView(model: workspaceModel)
-                .preferredColorScheme(settings.appearance.colorScheme)
+                .radarAppStyle()
+                .preferredColorScheme(appearance.colorScheme)
         }
             .menuBarExtraStyle(.window)
 
         Settings {
             SettingsView(settings: settings, model: workspaceModel)
-                .preferredColorScheme(settings.appearance.colorScheme)
+                .radarAppStyle()
+                .preferredColorScheme(appearance.colorScheme)
         }
     }
 }
