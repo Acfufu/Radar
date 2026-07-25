@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct MetricTrendChart: View {
+    @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
     @State private var metric: TrendMetric = .quality
@@ -10,7 +11,7 @@ struct MetricTrendChart: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(
                     title: "趋势",
                     subtitle: "\(projection.source.displayName) · 每条线限定同一配置与同一 seriesRevision"
@@ -24,16 +25,36 @@ struct MetricTrendChart: View {
                         .frame(width: 190)
                     Spacer()
                 }
-                if projection.rows.isEmpty { ContentUnavailableView("暂无趋势数据", systemImage: "chart.xyaxis.line") }
+                .radarPanel()
+                if projection.rows.isEmpty {
+                    ContentUnavailableView("暂无趋势数据", systemImage: "chart.xyaxis.line")
+                        .frame(maxWidth: .infinity, minHeight: 240)
+                        .radarPanel()
+                }
                 else {
                     ScrollView(.horizontal) { HStack { ForEach(projection.rows) { row in Toggle(row.name, isOn: binding(row.id)).toggleStyle(.button) } } }
-                    scaledTrendChart.chartLegend(position: .bottom).frame(minHeight: 320)
-                    Text("系列分组：" + series.map { "\($0.modelName) · \($0.seriesRevision)" }.joined(separator: "，")).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                    Divider().padding(.vertical, 8)
+                        .radarPanel()
+                    VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+                        scaledTrendChart
+                            .chartLegend(position: .bottom)
+                            .chartXAxis {
+                                AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                            }
+                            .chartYAxis {
+                                AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                            }
+                            .chartPlotStyle { $0.background(palette.section.color) }
+                            .frame(minHeight: 320)
+                        Text("系列分组：" + series.map { "\($0.modelName) · \($0.seriesRevision)" }.joined(separator: "，"))
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryText.color)
+                            .textSelection(.enabled)
+                    }
+                    .radarPanel()
                     ParetoComparisonView(projection: projection)
                 }
             }
-            .padding(24)
+            .radarPage()
         }
         .onChange(of: selectionCandidates, initial: true) { _, _ in reconcileSelection() }
     }

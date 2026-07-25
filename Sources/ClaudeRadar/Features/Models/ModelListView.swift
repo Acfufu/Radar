@@ -22,13 +22,14 @@ struct ModelListView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: RadarStyle.cardSpacing) {
             HStack {
                 Picker("排序", selection: $sort) { ForEach(ModelSort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 160)
                 Button { ascending.toggle() } label: { Label(ascending ? "升序" : "降序", systemImage: ascending ? "arrow.up" : "arrow.down") }
                 Picker("Pareto", selection: $paretoPreset) { ForEach(ParetoPreset.allCases) { Text($0.name).tag($0) } }.frame(width: 210)
                 Spacer()
-            }.padding([.horizontal, .top])
+            }
+            .radarPanel()
             Table(rows, selection: $selection) {
                 TableColumn("模型") { Text($0.name).lineLimit(2) }.width(min: 150, ideal: 220)
                 if columns.contains(.quality) {
@@ -58,9 +59,14 @@ struct ModelListView: View {
                 TableColumn("Pareto") { Text(classification(for: $0.id).label) }
             }
             .overlay { if rows.isEmpty { ContentUnavailableView.search(text: query) } }
+            .radarPanel()
         }
+        .radarPage()
         .searchable(text: $query, prompt: "筛选模型")
-        .inspector(isPresented: .constant(selected != nil)) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 340, ideal: 420, max: 520) } }
+        .inspector(isPresented: Binding(
+            get: { selected != nil },
+            set: { if !$0 { selection = nil } }
+        )) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 340, ideal: 420, max: 520) } }
         .navigationTitle("模型")
     }
 
