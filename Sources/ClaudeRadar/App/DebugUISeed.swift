@@ -1,6 +1,16 @@
 #if DEBUG
 import Foundation
 
+actor DebugBlockingExportArchiver: RadarExportArchiver {
+    func archive(contentsOf directory: URL, to destination: URL) async throws {
+        try Data("partial".utf8).write(to: destination)
+        while !Task.isCancelled {
+            await Task.yield()
+        }
+        throw CancellationError()
+    }
+}
+
 enum DebugUISeed {
     static func populate(repository: RadarRepository, sourceID: RadarSourceID, state: String) async throws {
         let now = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down))

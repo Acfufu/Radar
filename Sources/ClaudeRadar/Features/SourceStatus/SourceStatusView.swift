@@ -29,6 +29,8 @@ struct SourceStatusView: View {
                 .groupBoxStyle(RadarGroupBoxStyle())
                 if let error = projection.latestError {
                     StateBanner(state: .error(error), error: nil, sourceName: projection.source.displayName)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
                 }
                 if let homepageURL = projection.source.homepageURL {

@@ -85,11 +85,7 @@ struct ExportView: View {
     }
 
     private func beginExport() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.zip]
-        panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "ClaudeRadarExport-\(filenameTimestamp()).zip"
-        guard panel.runModal() == .OK, let destination = panel.url else { return }
+        guard let destination = exportDestination() else { return }
         progress = nil
         exportedURL = nil
         errorMessage = nil
@@ -116,6 +112,20 @@ struct ExportView: View {
             }
             exportTask = nil
         }
+    }
+
+    private func exportDestination() -> URL? {
+        #if DEBUG
+        if let path = ProcessInfo.processInfo.environment["RADAR_UI_EXPORT_DESTINATION"] {
+            return URL(filePath: path).standardizedFileURL
+        }
+        #endif
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.zip]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "ClaudeRadarExport-\(filenameTimestamp()).zip"
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
     }
 
     private func datasetTitle(_ dataset: ExportDataset) -> String {
