@@ -13,23 +13,36 @@ struct ClaudeRadarApp: App {
         _settings = State(initialValue: settings)
         let environment = AppEnvironment.current()
         let metadataStore = SyncMetadataStore(root: environment.dataRoot)
+        let exportArchiver: any RadarExportArchiver
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["RADAR_UI_EXPORT_ARCHIVER"] == "blocking" {
+            exportArchiver = DebugBlockingExportArchiver()
+        } else {
+            exportArchiver = SystemZipArchiver()
+        }
+        #else
+        exportArchiver = SystemZipArchiver()
+        #endif
         let runtimes = [
             RadarSourceID.claudeCodeRadar: RadarAppRuntime(
                 environment: environment,
                 sourceID: .claudeCodeRadar,
                 metadataStore: metadataStore,
+                exportArchiver: exportArchiver,
                 refreshIntervalMinutes: settings.refreshIntervalMinutes
             ),
             RadarSourceID.codexRadar: RadarAppRuntime(
                 environment: environment,
                 sourceID: .codexRadar,
                 metadataStore: metadataStore,
+                exportArchiver: exportArchiver,
                 refreshIntervalMinutes: settings.refreshIntervalMinutes
             ),
             RadarSourceID.sweBenchVerified: RadarAppRuntime(
                 environment: environment,
                 sourceID: .sweBenchVerified,
                 metadataStore: metadataStore,
+                exportArchiver: exportArchiver,
                 refreshIntervalMinutes: settings.refreshIntervalMinutes
             ),
         ]
