@@ -2,30 +2,51 @@ import SwiftUI
 
 @MainActor
 struct InformationOverviewView: View {
+    @Environment(\.radarPalette) private var palette
     let model: RadarWorkspaceModel
     let openSource: (RadarSourceID) -> Void
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                ViewHeader(
-                    title: "信息总览",
-                    subtitle: "浏览各来源已发布信息；指标口径保持独立"
-                )
-                Label("各来源口径独立，不生成统一排名", systemImage: "info.circle")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.secondary.opacity(0.08), in: .rect(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
+                compactHeader
+                informationNotice
                 operationalStrip
                 ForEach(model.sources) { source in
                     sourceBand(source)
                 }
             }
-            .padding(24)
+            .radarPage()
         }
         .navigationTitle("信息总览")
+    }
+
+    private var compactHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("信息总览")
+                .font(.title2.bold())
+            Text("浏览各来源已发布信息；指标口径保持独立")
+                .font(.callout)
+                .foregroundStyle(palette.secondaryText.color)
+                .textSelection(.enabled)
+        }
+    }
+
+    private var informationNotice: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(palette.accent.color)
+            Text("各来源口径独立，不生成统一排名")
+                .font(.callout)
+                .foregroundStyle(palette.primaryText.color)
+        }
+        .padding(RadarStyle.compactSpacing)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.accentSoft.color, in: .rect(cornerRadius: RadarStyle.cornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: RadarStyle.cornerRadius)
+                .stroke(palette.accentBorder.color)
+        }
     }
 
     private var operationalStrip: some View {
@@ -36,7 +57,10 @@ struct InformationOverviewView: View {
             if case .validationFailed(hasLastKnownGood: true) = projection.benchmarkState { return true }
             return false
         }.count
-        return HStack(spacing: 12) {
+        return LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 150), spacing: RadarStyle.compactSpacing)],
+            spacing: RadarStyle.compactSpacing
+        ) {
             summaryCard("来源", value: "\(model.sources.count)", icon: "square.stack.3d.up")
             summaryCard("已有快照", value: "\(available)", icon: "checkmark.circle")
             summaryCard("使用 LKG", value: "\(retained)", icon: "clock.arrow.circlepath")
@@ -44,17 +68,19 @@ struct InformationOverviewView: View {
     }
 
     private func summaryCard(_ title: String, value: String, icon: String) -> some View {
-        GroupBox {
-            HStack {
-                Image(systemName: icon).foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(value).font(.title2.weight(.semibold)).monospacedDigit()
-                    Text(title).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
+        HStack {
+            Image(systemName: icon)
+                .foregroundStyle(palette.accent.color)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value).font(.title2.weight(.semibold)).monospacedDigit()
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText.color)
             }
-            .frame(maxWidth: .infinity)
+            Spacer()
         }
+        .frame(maxWidth: .infinity)
+        .radarMetricCard()
     }
 
     private func sourceBand(_ source: RadarSourceDescriptor) -> some View {
@@ -69,47 +95,70 @@ struct InformationOverviewView: View {
             }
         let metricName = source.id == .sweBenchVerified ? "% Resolved" : "IQ"
 
-        return GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Label(source.displayName, systemImage: source.icon)
+        return VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(source.displayName, systemImage: source.icon)
+                    .font(.headline)
+                Spacer()
+                Label(stateText(projection?.benchmarkState), systemImage: stateIcon(projection?.benchmarkState))
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText.color)
+            }
+            Divider().overlay(palette.divider.color)
+            HStack(alignment: .firstTextBaseline, spacing: RadarStyle.compactSpacing) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(metricName)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText.color)
+                    Text(RadarFormat.decimal(leader?.benchmark.qualityScore))
+                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(leader?.name ?? "等待已发布快照")
                         .font(.headline)
-                    Spacer()
-                    Label(stateText(projection?.benchmarkState), systemImage: stateIcon(projection?.benchmarkState))
+                        .lineLimit(2)
+                    Text(sourceContext(source, projection: projection))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText.color)
                 }
-                Divider()
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(metricName).font(.caption).foregroundStyle(.secondary)
-                        Text(RadarFormat.decimal(leader?.benchmark.qualityScore))
-                            .font(.system(size: 30, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(leader?.name ?? "等待已发布快照")
-                            .font(.headline)
-                            .lineLimit(2)
-                        Text(sourceContext(source, projection: projection))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                HStack {
-                    Button("打开来源分析") { openSource(source.id) }
-                    if let homepageURL = source.homepageURL {
-                        Link("打开上游页面", destination: homepageURL)
-                    }
-                    Spacer()
-                    Text("读取于 \(RadarFormat.date(projection?.updatedAt))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+            ViewThatFits(in: .horizontal) {
+                sourceActions(source, projection: projection)
+                sourceActionsStacked(source, projection: projection)
+            }
+        }
+        .radarPanel()
+    }
+
+    private func sourceActions(_ source: RadarSourceDescriptor, projection: WorkspaceProjection?) -> some View {
+        HStack {
+            Button("打开来源分析") { openSource(source.id) }
+            if let homepageURL = source.homepageURL {
+                Link("打开上游页面", destination: homepageURL)
+            }
+            Spacer()
+            timestamp(projection)
+        }
+    }
+
+    private func sourceActionsStacked(_ source: RadarSourceDescriptor, projection: WorkspaceProjection?) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button("打开来源分析") { openSource(source.id) }
+                if let homepageURL = source.homepageURL {
+                    Link("打开上游页面", destination: homepageURL)
                 }
             }
-            .padding(.top, 4)
+            timestamp(projection)
         }
+    }
+
+    private func timestamp(_ projection: WorkspaceProjection?) -> some View {
+        Text("读取于 \(RadarFormat.date(projection?.updatedAt))")
+            .font(.caption)
+            .foregroundStyle(palette.secondaryText.color)
     }
 
     private func sourceContext(_ source: RadarSourceDescriptor, projection: WorkspaceProjection?) -> String {
