@@ -107,8 +107,8 @@ final class RadarAppRuntime {
             )
             self.repository = repository
             #if DEBUG
-            if sourceID == .claudeCodeRadar, environment.fixtureMode == .ui {
-                try await DebugUISeed.populate(repository: repository, state: ProcessInfo.processInfo.environment["RADAR_UI_STATE"] ?? "fresh")
+            if environment.fixtureMode == .ui {
+                try await DebugUISeed.populate(repository: repository, sourceID: sourceID, state: ProcessInfo.processInfo.environment["RADAR_UI_STATE"] ?? "fresh")
             }
             #endif
             #if DEBUG
