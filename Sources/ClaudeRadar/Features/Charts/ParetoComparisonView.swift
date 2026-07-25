@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct ParetoComparisonView: View {
+    @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
     @State private var preset: ParetoPreset = .qualityCost
 
@@ -27,8 +28,24 @@ struct ParetoComparisonView: View {
                 )
                 .foregroundStyle(by: .value("状态", point.classification.label))
                 .symbol(by: .value("状态", point.classification.label))
-                .annotation(position: .top) { Text(point.displayName).font(.caption2) }
+                .annotation(position: point.classification == .frontier ? .top : .bottom) {
+                    Text(point.displayName)
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: 160)
+                        .padding(.horizontal, 3)
+                        .background(palette.card.color.opacity(0.9), in: .rect(cornerRadius: 3))
+                }
             }
+            .chartLegend(position: .bottom)
+            .chartXAxis {
+                AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+            }
+            .chartYAxis {
+                AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+            }
+            .chartPlotStyle { $0.background(palette.section.color) }
             .frame(minHeight: 260)
             ForEach(results) { result in
                 HStack {
@@ -46,6 +63,7 @@ struct ParetoComparisonView: View {
             Text("仅当前数据集 · \(projection.sync?.benchmark.value?.seriesRevision ?? "—") · 不含社区评分与来源额度")
                 .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
         }
+        .radarPanel()
     }
 
     private var results: [ParetoResult] { projection.pareto(preset) }

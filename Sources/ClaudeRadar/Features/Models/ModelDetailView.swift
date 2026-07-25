@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct ModelDetailView: View {
+    @Environment(\.radarPalette) private var palette
     let row: WorkspaceModelRow
     let sourceName: String
     let revision: String
@@ -25,6 +26,13 @@ struct ModelDetailView: View {
                 } else {
                     scaledHistoryChart
                         .chartLegend(position: .bottom)
+                        .chartXAxis {
+                            AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                        }
+                        .chartYAxis {
+                            AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                        }
+                        .chartPlotStyle { $0.background(palette.section.color) }
                         .frame(minHeight: 190)
                     Text(historySeries.map { "\($0.seriesRevision)：\($0.points.count) 个点" }.joined(separator: " · "))
                         .font(.caption)
@@ -58,6 +66,8 @@ struct ModelDetailView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(palette.canvas.color)
         .navigationTitle(row.name)
     }
 
