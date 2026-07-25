@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct SWEBenchLeaderboardView: View {
+    @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
     @State private var query = ""
@@ -13,7 +14,7 @@ struct SWEBenchLeaderboardView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
                     header
                     if let supportState = projection.benchmarkPresentation.supportState {
                         StateBanner(state: supportState, error: nil, sourceName: projection.source.displayName)
@@ -21,24 +22,24 @@ struct SWEBenchLeaderboardView: View {
                     summary
                     analysis
                 }
-                .padding(24)
+                .radarPage()
             }
             .frame(minHeight: 300, idealHeight: 340, maxHeight: 380)
-            Divider()
-            HStack {
-                Picker("排序", selection: $sort) {
-                    ForEach(SWEBenchSort.allCases) { Text($0.rawValue).tag($0) }
+            Divider().overlay(palette.divider.color)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    filterControls
+                    Spacer()
+                    rowCount
                 }
-                .frame(width: 170)
-                Button { ascending.toggle() } label: {
-                    Label(ascending ? "升序" : "降序", systemImage: ascending ? "arrow.up" : "arrow.down")
+                VStack(alignment: .leading, spacing: 8) {
+                    compactFilterControls
+                    rowCount
                 }
-                Toggle("仅显示成本数据", isOn: $onlyWithCost)
-                Spacer()
-                Text("\(rows.count) 个配置").foregroundStyle(.secondary)
             }
             .padding(.horizontal)
             .padding(.vertical, 10)
+            .background(palette.section.color)
             Table(rows, selection: $selection) {
                 TableColumn("配置") { Text($0.name).lineLimit(2) }
                     .width(min: 170, ideal: 240)
@@ -56,6 +57,7 @@ struct SWEBenchLeaderboardView: View {
                 }
                 TableColumn("Pareto") { Text(classification(for: $0.id).label) }
             }
+            .radarPanel()
             .overlay {
                 if rows.isEmpty {
                     ContentUnavailableView.search(text: query)
@@ -63,6 +65,7 @@ struct SWEBenchLeaderboardView: View {
             }
         }
         .searchable(text: $query, prompt: "筛选配置")
+        .background(palette.canvas.color)
         .inspector(isPresented: .constant(selected != nil)) {
             if let selected {
                 SWEBenchDetailView(
@@ -86,12 +89,22 @@ struct SWEBenchLeaderboardView: View {
             Spacer()
             Label("只读", systemImage: "eye")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.accent.color)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(palette.accentSoft.color, in: .rect(cornerRadius: RadarStyle.cornerRadius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: RadarStyle.cornerRadius)
+                        .stroke(palette.accentBorder.color)
+                }
         }
     }
 
     private var summary: some View {
-        HStack(spacing: 10) {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 150), spacing: RadarStyle.compactSpacing)],
+            spacing: RadarStyle.compactSpacing
+        ) {
             metricCard("配置数", "\(projection.rows.count)")
             metricCard("最高解决率", RadarFormat.decimal(leader?.benchmark.qualityScore, suffix: "%"))
             metricCard("任务数", "500")
@@ -103,13 +116,14 @@ struct SWEBenchLeaderboardView: View {
     }
 
     private func metricCard(_ title: String, _ value: String) -> some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(value).font(.title3.weight(.semibold)).monospacedDigit()
-                Text(title).font(.caption).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value).font(.title3.weight(.semibold)).monospacedDigit()
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(palette.secondaryText.color)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarMetricCard()
     }
 
     private var analysis: some View {
@@ -132,12 +146,67 @@ struct SWEBenchLeaderboardView: View {
                 }
                 .chartXScale(domain: 0...maximumChartCost)
                 .chartYScale(domain: 0...100)
+                .chartLegend(position: .bottom, alignment: .leading)
+                .chartXAxis {
+                    AxisMarks {
+                        AxisGridLine().foregroundStyle(palette.divider.color)
+                        AxisValueLabel().foregroundStyle(palette.secondaryText.color)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks {
+                        AxisGridLine().foregroundStyle(palette.divider.color)
+                        AxisValueLabel().foregroundStyle(palette.secondaryText.color)
+                    }
+                }
+                .chartPlotStyle { $0.background(palette.section.color) }
                 .frame(minHeight: 190)
                 Text("Pareto 仅在 Verified · mini-SWE-agent v2 · \(projection.source.seriesRevision) 内计算。")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText.color)
             }
         }
+        .groupBoxStyle(RadarGroupBoxStyle())
+    }
+
+    private var filterControls: some View {
+        HStack {
+            sortPicker
+            directionButton
+            costToggle
+        }
+    }
+
+    private var compactFilterControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                sortPicker
+                directionButton
+            }
+            costToggle
+        }
+    }
+
+    private var sortPicker: some View {
+        Picker("排序", selection: $sort) {
+            ForEach(SWEBenchSort.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .frame(width: 170)
+    }
+
+    private var directionButton: some View {
+        Button { ascending.toggle() } label: {
+            Label(ascending ? "升序" : "降序", systemImage: ascending ? "arrow.up" : "arrow.down")
+        }
+    }
+
+    private var costToggle: some View {
+        Toggle("仅显示成本数据", isOn: $onlyWithCost)
+    }
+
+    private var rowCount: some View {
+        Text("\(rows.count) 个配置")
+            .foregroundStyle(palette.secondaryText.color)
     }
 
     private var leader: WorkspaceModelRow? {
@@ -291,6 +360,9 @@ private struct SWEBenchDetailView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .radarPanel()
+        .radarPage()
         .navigationTitle(row.name)
     }
 }
