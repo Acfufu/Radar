@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct OverviewView: View {
+    @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
     let refreshIntervalMinutes: Int
@@ -10,7 +11,7 @@ struct OverviewView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
                 header
                 banners
 
@@ -23,7 +24,10 @@ struct OverviewView: View {
                     .frame(maxWidth: .infinity, minHeight: 360)
                 } else {
                     signalHero
-                    HStack(alignment: .top, spacing: 12) {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 340), alignment: .top)],
+                        spacing: RadarStyle.compactSpacing
+                    ) {
                         familyHealth
                         tierHeatmap
                         quotaContext
@@ -31,7 +35,8 @@ struct OverviewView: View {
                     monitoringAndRecentPerformance
                 }
             }
-            .padding(18)
+            .radarPage()
+            .groupBoxStyle(RadarGroupBoxStyle())
         }
     }
 
@@ -78,9 +83,12 @@ struct OverviewView: View {
         if let community = Self.communityPresentation(for: projection) {
             Label(community.message, systemImage: "person.2.badge.exclamationmark")
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .foregroundStyle(.orange)
-                .background(.orange.opacity(0.08), in: .rect(cornerRadius: 8))
+                .foregroundStyle(
+                    community.state == .usingLastKnownGood
+                        ? palette.secondaryText.color
+                        : palette.negative.color
+                )
+                .radarPanel()
         }
     }
 
@@ -107,6 +115,7 @@ struct OverviewView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(width: 180, alignment: .leading)
+                .radarMetricCard()
 
                 Divider()
 
@@ -236,7 +245,10 @@ struct OverviewView: View {
     }
 
     private var monitoringAndRecentPerformance: some View {
-        HStack(alignment: .top, spacing: 12) {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 360), alignment: .top)],
+            spacing: RadarStyle.compactSpacing
+        ) {
             GroupBox("近期表现") {
                 Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 0) {
                     GridRow {
@@ -296,7 +308,7 @@ struct OverviewView: View {
                     .padding(.top, 6)
                 }
             }
-            .frame(width: 300)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -419,21 +431,24 @@ struct DecisionLensPageView: View {
 
     var body: some View {
         ScrollView {
-            if projection.rows.isEmpty {
-                ContentUnavailableView(
-                    "暂无 Benchmark 数据",
-                    systemImage: "scope",
-                    description: Text("刷新后仍无数据时，请查看来源状态。")
-                )
-                .frame(maxWidth: .infinity, minHeight: 360)
-            } else {
-                DecisionLensView(
-                    rows: projection.rows,
-                    familyRows: RadarIdentity.familySummaries(projection.rows).map(\.row),
-                    goal: $goal
-                )
-                .padding(18)
+            Group {
+                if projection.rows.isEmpty {
+                    ContentUnavailableView(
+                        "暂无 Benchmark 数据",
+                        systemImage: "scope",
+                        description: Text("刷新后仍无数据时，请查看来源状态。")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 360)
+                } else {
+                    DecisionLensView(
+                        rows: projection.rows,
+                        familyRows: RadarIdentity.familySummaries(projection.rows).map(\.row),
+                        goal: $goal
+                    )
+                }
             }
+            .radarPage()
+            .groupBoxStyle(RadarGroupBoxStyle())
         }
     }
 }
@@ -449,7 +464,10 @@ private struct DecisionLensView: View {
 
     var body: some View {
         GroupBox("决策透镜 · 选择目标，获得推荐") {
-            HStack(alignment: .top, spacing: 14) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 230), alignment: .top)],
+                spacing: RadarStyle.cardSpacing
+            ) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("选择你的目标")
                         .font(.headline)
@@ -468,10 +486,10 @@ private struct DecisionLensView: View {
                             .padding(8)
                             .background(
                                 goal == candidate ? Color.accentColor.opacity(0.15) : Color.clear,
-                                in: .rect(cornerRadius: 7)
+                                in: .rect(cornerRadius: RadarStyle.cornerRadius)
                             )
                             .overlay {
-                                RoundedRectangle(cornerRadius: 7)
+                                RoundedRectangle(cornerRadius: RadarStyle.cornerRadius)
                                     .stroke(
                                         goal == candidate
                                             ? Color.accentColor
@@ -483,9 +501,7 @@ private struct DecisionLensView: View {
                         .accessibilityLabel("决策目标：\(candidate.rawValue)")
                     }
                 }
-                .frame(width: 190)
-
-                Divider()
+                .frame(maxWidth: .infinity)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("模型对比图")
@@ -509,8 +525,6 @@ private struct DecisionLensView: View {
                     .frame(minHeight: 220)
                 }
                 .frame(maxWidth: .infinity)
-
-                Divider()
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("推荐结果")
@@ -545,7 +559,7 @@ private struct DecisionLensView: View {
                         )
                     }
                 }
-                .frame(width: 230, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.top, 6)
         }
