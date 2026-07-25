@@ -1,11 +1,12 @@
 import SwiftUI
 
 struct SWEBenchProvenanceView: View {
+    @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(
                     title: "来源与口径",
                     subtitle: "SWE-bench Verified · mini-SWE-agent v2"
@@ -14,7 +15,7 @@ struct SWEBenchProvenanceView: View {
                     StateBanner(state: supportState, error: nil, sourceName: projection.source.displayName)
                 }
                 GroupBox("测评口径") {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
                         LabeledContent("数据集", value: "SWE-bench Verified")
                         LabeledContent("Agent 基线", value: "mini-SWE-agent v2")
                         LabeledContent("任务数", value: "500")
@@ -22,31 +23,29 @@ struct SWEBenchProvenanceView: View {
                         LabeledContent("seriesRevision", value: projection.source.seriesRevision)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 6)
                 }
                 GroupBox("读取状态") {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
                         LabeledContent("最近读取", value: RadarFormat.date(projection.updatedAt))
                         LabeledContent("本地状态", value: stateText)
                         if let error = projection.latestError {
                             Label(error, systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(palette.negative.color)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 6)
                 }
                 GroupBox("只读边界") {
                     Text("Radar 读取、缓存、分析和导出上游已发布榜单；不运行评测、不提交结果、不生成任务数据，也不回写上游。")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 6)
                 }
                 if let homepageURL = projection.source.homepageURL {
                     Link("打开 SWE-bench 官方页面", destination: homepageURL)
                 }
             }
-            .padding(24)
+            .radarPage()
         }
+        .groupBoxStyle(RadarGroupBoxStyle())
         .navigationTitle("来源与口径")
     }
 
