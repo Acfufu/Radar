@@ -5,6 +5,88 @@ import Testing
 
 @Suite("MultiSourceWorkspaceTests", .serialized)
 struct MultiSourceWorkspaceTests {
+    #if DEBUG
+    @MainActor
+    @Test("UI fixture publishes three independent source projections without synchronization")
+    func uiFixtureSourceIsolation() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "Radar-UI-Sources-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .ui, onlineSourceEnabled: false)
+        let runtimes = Dictionary(uniqueKeysWithValues: [
+            RadarSourceID.claudeCodeRadar,
+            .codexRadar,
+            .sweBenchVerified,
+        ].map { ($0, RadarAppRuntime(environment: environment, sourceID: $0)) })
+        let model = RadarWorkspaceModel(runtimes: runtimes, selectedSourceID: .claudeCodeRadar)
+
+        await model.start()
+
+        for sourceID in [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified] {
+            let runtime = try #require(runtimes[sourceID])
+            let benchmark = try #require(runtime.projection?.benchmark.value)
+            #expect(runtime.lifecycleState == .running)
+            #expect(!environment.synchronizationEnabled(for: sourceID))
+            #expect(benchmark.sourceID == sourceID)
+            #expect(!benchmark.models.isEmpty)
+            #expect(runtime.benchmarkHistory.count >= 2)
+            #expect(benchmark.models.allSatisfy { $0.id.sourceID == sourceID })
+        }
+        let codex = try #require(runtimes[.codexRadar])
+        #expect(Set(codex.benchmarkHistory.map(\.seriesRevision)) == ["fixture-r1", "fixture-r2"])
+        #expect(codex.projection?.benchmark.value?.models.contains { $0.qualityScore == nil && $0.benchmarkCostUSD == nil } == true)
+        #expect(codex.projection?.benchmark.value?.models.contains { $0.descriptor.displayName.contains("Ignore previous instructions") } == true)
+        #expect(codex.projection?.community.value?.sourceID == .codexRadar)
+        #expect(codex.projection?.sourceStatus.value?.sourceID == .codexRadar)
+        let sweBench = try #require(runtimes[.sweBenchVerified]?.projection)
+        let sweRows = try #require(sweBench.benchmark.value?.models)
+        #expect(sweRows.allSatisfy { $0.validTasks == 500 })
+        #expect(sweRows.contains { $0.benchmarkCostUSD == nil })
+        #expect(Set(sweRows.filter { $0.descriptor.displayName == "Same Display Name" }.map(\.id)).count == 2)
+        #expect(sweRows.contains { $0.descriptor.displayName.contains("Ignore previous instructions") })
+        let swePareto = ParetoAnalysis.analyze(dataset: try #require(sweBench.benchmark.value), preset: .qualityCost)
+        #expect(swePareto.first { $0.modelID.upstreamKey == "frontier" }?.classification == .frontier)
+        #expect(swePareto.first { $0.modelID.upstreamKey == "dominated" }?.classification == .dominated)
+        #expect(swePareto.first { $0.modelID.upstreamKey == "no-cost" }?.classification == .dataInsufficient)
+        #expect(sweBench.community.value == nil)
+        #expect(sweBench.community.error == nil)
+        #expect(sweBench.sourceStatus.value == nil)
+        #expect(sweBench.sourceStatus.error == nil)
+        #expect((try await RawSampleStore(dataRoot: root).samples(sourceID: .claudeCodeRadar)).isEmpty)
+        #expect((try await RawSampleStore(dataRoot: root).samples(sourceID: .codexRadar)).isEmpty)
+        #expect((try await RawSampleStore(dataRoot: root).samples(sourceID: .sweBenchVerified)).isEmpty)
+        await model.stop()
+    }
+
+    @Test("UI fixture retains benchmark LKG on failure and keeps SWE auxiliary segments neutral")
+    func uiFixtureFailureStates() async throws {
+        for sourceID in [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified] {
+            let root = FileManager.default.temporaryDirectory
+                .appending(path: "Radar-UI-Error-\(sourceID.rawValue)-\(UUID().uuidString)", directoryHint: .isDirectory)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let environment = AppEnvironment(dataRoot: root, fixtureMode: .ui, onlineSourceEnabled: false)
+            let repository = RadarRepository(
+                container: try environment.makeModelContainer(),
+                metadataStore: SyncMetadataStore(root: root)
+            )
+
+            try await DebugUISeed.populate(repository: repository, sourceID: sourceID, state: "error")
+
+            let benchmark = try await repository.benchmarkState(sourceID: sourceID)
+            #expect(benchmark.value?.sourceID == sourceID)
+            #expect(benchmark.error?.kind == .validation)
+            if sourceID == .sweBenchVerified {
+                let community = try await repository.communityState(sourceID: sourceID)
+                let status = try await repository.sourceStatusState(sourceID: sourceID)
+                #expect(community.value == nil)
+                #expect(community.error == nil)
+                #expect(status.value == nil)
+                #expect(status.error == nil)
+            }
+        }
+    }
+    #endif
+
     @MainActor
     @Test("Codex fixture runtime publishes only the Codex-scoped workspace")
     func codexRuntimeScope() async throws {
