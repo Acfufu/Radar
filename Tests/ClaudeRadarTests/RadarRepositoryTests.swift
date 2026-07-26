@@ -87,11 +87,8 @@ struct RadarRepositoryTests {
         try await insertPersistentHistory(storeURL: storeURL, metadataRoot: root)
 
         // When
-        let restartedContainer = try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: ModelConfiguration(url: storeURL)
+        let restartedContainer = try RadarModelSchema.makeContainer(
+            configuration: ModelConfiguration(url: storeURL)
         )
         let restarted = RadarRepository(container: restartedContainer, metadataStore: SyncMetadataStore(root: root))
         let state = try await restarted.benchmarkState(sourceID: .claudeCodeRadar)
@@ -303,7 +300,7 @@ struct RadarRepositoryTests {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: BenchmarkSnapshotEntity.self, CommunitySnapshotEntity.self, SourceStatusSnapshotEntity.self, configurations: configuration)
+        let container = try RadarModelSchema.makeContainer(configuration: configuration)
         return RepositoryFixture(
             root: root,
             container: container,
@@ -312,11 +309,8 @@ struct RadarRepositoryTests {
     }
 
     private func insertPersistentHistory(storeURL: URL, metadataRoot: URL) async throws {
-        let container = try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: ModelConfiguration(url: storeURL)
+        let container = try RadarModelSchema.makeContainer(
+            configuration: ModelConfiguration(url: storeURL)
         )
         let repository = RadarRepository(container: container, metadataStore: SyncMetadataStore(root: metadataRoot))
         _ = try await repository.insertBenchmark(benchmark(fetchedAt: Date(timeIntervalSince1970: 10), score: 60))

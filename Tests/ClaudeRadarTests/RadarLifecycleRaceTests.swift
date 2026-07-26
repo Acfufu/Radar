@@ -187,11 +187,8 @@ struct RadarLifecycleRaceTests {
 
     private func repositoryFixture() throws -> LifecycleRepositoryFixture {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
-        let container = try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try RadarModelSchema.makeContainer(
+            configuration: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return LifecycleRepositoryFixture(repository: RadarRepository(container: container, metadataStore: SyncMetadataStore(root: root)))
     }

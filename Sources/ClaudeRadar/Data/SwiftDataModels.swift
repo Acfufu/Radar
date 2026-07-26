@@ -5,6 +5,22 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case benchmark
     case community
     case sourceStatus = "source-status"
+    case renderedWarnings = "rendered-warnings"
+}
+
+enum RadarModelSchema {
+    static var current: Schema {
+        Schema([
+            BenchmarkSnapshotEntity.self,
+            CommunitySnapshotEntity.self,
+            SourceStatusSnapshotEntity.self,
+            CodexRenderedWarningSnapshotEntity.self,
+        ])
+    }
+
+    static func makeContainer(configuration: ModelConfiguration) throws -> ModelContainer {
+        try ModelContainer(for: current, configurations: configuration)
+    }
 }
 
 @Model
@@ -95,5 +111,45 @@ final class SourceStatusSnapshotEntity {
         chronologyAt = dataset.sourceUpdatedAt ?? dataset.fetchedAt
         self.seriesRevision = seriesRevision
         self.encodedDataset = encodedDataset
+    }
+}
+
+@Model
+final class CodexRenderedWarningSnapshotEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var contentFingerprint: String
+    var sourceTimeLabel: String
+    var finalOrigin: String
+    var capturedAt: Date
+    var chronologyAt: Date
+    var parserRevision: String
+    var encodedSnapshot: Data
+
+    init(
+        snapshot: CodexRenderedWarningSnapshot,
+        fingerprint: String,
+        encodedSnapshot: Data
+    ) {
+        dedupeKey = "\(snapshot.sourceID.rawValue)|\(RadarDatasetType.renderedWarnings.rawValue)|\(fingerprint)"
+        id = UUID()
+        sourceID = snapshot.sourceID.rawValue
+        contentFingerprint = fingerprint
+        sourceTimeLabel = snapshot.sourceTimeLabel
+        finalOrigin = snapshot.finalOrigin
+        capturedAt = snapshot.capturedAt
+        chronologyAt = snapshot.capturedAt
+        parserRevision = snapshot.parserRevision
+        self.encodedSnapshot = encodedSnapshot
+    }
+
+    convenience init(snapshot: CodexRenderedWarningSnapshot) throws {
+        let fingerprint = try ContentFingerprint.renderedWarning(snapshot)
+        self.init(
+            snapshot: snapshot,
+            fingerprint: fingerprint,
+            encodedSnapshot: try JSONEncoder.radar.encode(snapshot)
+        )
     }
 }

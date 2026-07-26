@@ -155,11 +155,8 @@ struct RadarExportServiceTests {
     func repositoryBoundedPaging() async throws {
         // Given
         let root = try temporaryDirectory()
-        let container = try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try RadarModelSchema.makeContainer(
+            configuration: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
         var expectedIDs: [Int: String] = [:]
@@ -488,11 +485,8 @@ private struct ExportRepositoryFixture {
 }
 
 private func exportRepository(root: URL, count: Int) throws -> ExportRepositoryFixture {
-    let container = try ModelContainer(
-        for: BenchmarkSnapshotEntity.self,
-        CommunitySnapshotEntity.self,
-        SourceStatusSnapshotEntity.self,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try RadarModelSchema.makeContainer(
+        configuration: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     let context = ModelContext(container)
     for index in 0..<count {

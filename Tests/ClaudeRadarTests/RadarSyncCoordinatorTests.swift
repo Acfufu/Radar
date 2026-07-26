@@ -825,11 +825,8 @@ struct RadarSyncCoordinatorTests {
 
     private func repositoryFixture() throws -> RepositoryFixture {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
-        let container = try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try RadarModelSchema.makeContainer(
+            configuration: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return RepositoryFixture(root: root, container: container, repository: RadarRepository(container: container, metadataStore: SyncMetadataStore(root: root)))
     }
