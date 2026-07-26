@@ -6,6 +6,70 @@ import Testing
 @Suite("RadarLifecycleRaceTests", .serialized)
 struct RadarLifecycleRaceTests {
     @MainActor
+    @Test("Codex runtime stop fences a warning read that completes late")
+    func codexRuntimeStopFencesLateWarningRead() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarLifecycleRaceTests-WarningRead-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let gate = LifecycleWarningGate()
+        let reader = LifecycleWarningReader(gate: gate)
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            renderedWarningReaderFactory: { reader }
+        )
+        let starting = Task { await runtime.start() }
+        await gate.waitUntilStarted()
+
+        let stopping = Task { await runtime.stop() }
+        while runtime.lifecycleState != .stopping { await Task.yield() }
+        await gate.succeed(try lifecycleWarning(capturedAt: Date(timeIntervalSince1970: 100)))
+        await stopping.value
+        await starting.value
+
+        let repository = RadarRepository(
+            container: try AppEnvironment(
+                dataRoot: root,
+                fixtureMode: .disabled,
+                onlineSourceEnabled: false
+            ).makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+        #expect(runtime.lifecycleState == .stopped)
+        #expect(runtime.renderedWarningProjection?.value == nil)
+        #expect(runtime.renderedWarningProjection?.error == nil)
+        #expect(runtime.renderedWarningHistory.isEmpty)
+        #expect(try await repository.snapshotCount(
+            datasetType: .renderedWarnings,
+            sourceID: .codexRadar
+        ) == 0)
+        #expect(reader.cancelCount == 1)
+    }
+
+    @MainActor
+    @Test("startup failure stops and cancels the Codex warning coordinator")
+    func codexStartupFailureCleansWarningCoordinator() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarLifecycleRaceTests-WarningFailure-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let reader = LifecycleImmediateWarningReader()
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            startupLoadCheckpoint: { _ in throw StartupLoadFailure.injected },
+            renderedWarningReaderFactory: { reader }
+        )
+
+        await runtime.start()
+
+        #expect(runtime.lifecycleState == .failed)
+        #expect(reader.readCount == 1)
+        #expect(reader.cancelCount == 1)
+        await runtime.stop()
+        #expect(runtime.lifecycleState == .stopped)
+    }
+
+    @MainActor
     @Test("runtime stop is bounded while a cancelled start checkpoint ignores cancellation")
     func runtimeStopDoesNotAwaitStartCheckpoint() async throws {
         // Given
@@ -207,6 +271,91 @@ struct RadarLifecycleRaceTests {
 }
 
 private enum StartupLoadFailure: Error { case injected }
+
+private actor LifecycleWarningGate {
+    private var started = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var continuation: CheckedContinuation<CodexRenderedWarningSnapshot, Error>?
+
+    func read() async throws -> CodexRenderedWarningSnapshot {
+        started = true
+        startWaiters.forEach { $0.resume() }
+        startWaiters.removeAll()
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+
+    func waitUntilStarted() async {
+        if started { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func succeed(_ snapshot: CodexRenderedWarningSnapshot) {
+        continuation?.resume(returning: snapshot)
+        continuation = nil
+    }
+}
+
+@MainActor
+private final class LifecycleWarningReader: CodexRenderedWarningReading {
+    private let gate: LifecycleWarningGate
+    private(set) var cancelCount = 0
+
+    init(gate: LifecycleWarningGate) {
+        self.gate = gate
+    }
+
+    func read() async throws -> CodexRenderedWarningSnapshot {
+        try await gate.read()
+    }
+
+    func cancel() {
+        cancelCount += 1
+    }
+}
+
+@MainActor
+private final class LifecycleImmediateWarningReader: CodexRenderedWarningReading {
+    private(set) var readCount = 0
+    private(set) var cancelCount = 0
+
+    func read() async throws -> CodexRenderedWarningSnapshot {
+        readCount += 1
+        throw CodexRenderedWarningPageReaderError.navigationFailed
+    }
+
+    func cancel() {
+        cancelCount += 1
+    }
+}
+
+private func lifecycleWarning(capturedAt: Date) throws -> CodexRenderedWarningSnapshot {
+    let cards = [
+        CodexRenderedWarningCard(
+            displayName: "GPT-5 High",
+            family: "gpt-5",
+            effort: "high",
+            sourceOrder: 0,
+            iq: 80,
+            drop24h: 3,
+            drop48h: 5
+        ),
+    ]
+    let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
+        sourceTimeLabel: "刚刚",
+        cards: cards,
+        finalOrigin: "https://codexradar.com",
+        parserRevision: CodexRenderedWarningDOMParser.parserRevision
+    )
+    return CodexRenderedWarningSnapshot(
+        sourceID: .codexRadar,
+        parserRevision: CodexRenderedWarningDOMParser.parserRevision,
+        finalOrigin: "https://codexradar.com",
+        sourceTimeLabel: "刚刚",
+        capturedAt: capturedAt,
+        cards: cards,
+        semanticFingerprint: fingerprint
+    )
+}
 
 private actor CoordinatorProbe {
     private(set) var coordinator: RadarSyncCoordinator?

@@ -5,6 +5,39 @@ import Testing
 
 @Suite("RadarSyncCoordinatorTests", .serialized)
 struct RadarSyncCoordinatorTests {
+    @Test("the public refresh entry observes every existing trigger exactly once")
+    func observesExistingTriggerStream() async throws {
+        let fixture = try repositoryFixture()
+        let recorder = SyncTriggerRecorder()
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(
+                configuration: ClaudeRadarConfiguration(
+                    benchmarkURL: benchmarkURL,
+                    communityURL: nil,
+                    sourceStatusURL: nil
+                ),
+                transport: GatedRoutingTransport(routes: [:])
+            ),
+            repository: fixture.repository,
+            triggerObserver: { trigger in Task { await recorder.append(trigger) } }
+        )
+
+        for trigger in [
+            SyncTrigger.startup,
+            .manual,
+            .periodic,
+            .networkRecovery,
+            .sleepRecovery,
+        ] {
+            await coordinator.refresh(trigger: trigger)
+        }
+
+        await recorder.waitForCount(5)
+        #expect(await recorder.values.map(syncTriggerName) == [
+            "startup", "manual", "periodic", "networkRecovery", "sleepRecovery",
+        ])
+    }
+
     @Test("simultaneous refreshes coalesce while community failure preserves healthy benchmark and status")
     func coalescedSegmentedRefresh() async throws {
         // Given
@@ -106,10 +139,14 @@ struct RadarSyncCoordinatorTests {
             ],
             communityURL: [.json(url: communityURL, body: try fixtureData("claude-radar-community-valid"))],
         ], gatedURL: benchmarkURL)
+        let triggerRecorder = SyncTriggerRecorder()
         let coordinator = RadarSyncCoordinator(
             source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
             repository: fixture.repository,
-            clock: TestRadarClock(now)
+            clock: TestRadarClock(now),
+            triggerObserver: { trigger in
+                Task { await triggerRecorder.append(trigger) }
+            }
         )
 
         let periodic = Task { await coordinator.refresh(trigger: .periodic) }
@@ -118,9 +155,11 @@ struct RadarSyncCoordinatorTests {
         for _ in 0..<20 { await Task.yield() }
         await transport.release()
         _ = await (periodic.value, manual.value)
+        await triggerRecorder.waitForCount(2)
 
         #expect(await transport.requestCount(for: benchmarkURL) == 1)
         #expect(await transport.requestCount(for: communityURL) == 1)
+        #expect(await triggerRecorder.values.map(syncTriggerName) == ["periodic", "manual"])
         #expect(try await fixture.repository.snapshotCount(datasetType: .benchmark, sourceID: .claudeCodeRadar) == 1)
         #expect(try await fixture.repository.snapshotCount(datasetType: .sourceStatus, sourceID: .claudeCodeRadar) == 1)
         #expect(try await fixture.repository.snapshotCount(datasetType: .community, sourceID: .claudeCodeRadar) == 1)
@@ -873,6 +912,33 @@ private final class TestRadarClock: RadarClock, @unchecked Sendable {
 
     func advance(by interval: TimeInterval) {
         lock.withLock { date = date.addingTimeInterval(interval) }
+    }
+}
+
+private actor SyncTriggerRecorder {
+    private(set) var values: [SyncTrigger] = []
+    private var waiters: [(Int, CheckedContinuation<Void, Never>)] = []
+
+    func append(_ trigger: SyncTrigger) {
+        values.append(trigger)
+        let ready = waiters.filter { values.count >= $0.0 }
+        waiters.removeAll { values.count >= $0.0 }
+        ready.forEach { $0.1.resume() }
+    }
+
+    func waitForCount(_ count: Int) async {
+        if values.count >= count { return }
+        await withCheckedContinuation { waiters.append((count, $0)) }
+    }
+}
+
+private func syncTriggerName(_ trigger: SyncTrigger) -> String {
+    switch trigger {
+    case .startup: "startup"
+    case .manual: "manual"
+    case .periodic: "periodic"
+    case .networkRecovery: "networkRecovery"
+    case .sleepRecovery: "sleepRecovery"
     }
 }
 
