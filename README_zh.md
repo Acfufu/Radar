@@ -9,7 +9,7 @@
 <div>
   <img alt="平台：macOS 26 或更高版本" src="https://img.shields.io/badge/macOS-26%2B-111111?logo=apple">
   <img alt="Swift 6.2" src="https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white">
-  <img alt="版本 0.2.0" src="https://img.shields.io/badge/version-0.2.0-4C8BF5">
+  <a href="https://github.com/Acfufu/Radar/releases/latest"><img alt="最新版本：0.2.0" src="https://img.shields.io/badge/release-v0.2.0-4C8BF5"></a>
   <img alt="状态：本地 QA 预览" src="https://img.shields.io/badge/status-local_QA_preview-D97706">
 </div>
 
@@ -29,7 +29,18 @@ Claude Radar 将 Claude Code Radar、Codex Radar 与 SWE-bench Verified 的快�
 
 ## 下载与安装
 
-Claude Radar 目前从源码构建，需要 macOS 26 或更高版本、Xcode 26 与 Swift 6.2。
+Claude Radar 需要 macOS 26 或更高版本。推荐从 [GitHub 最新发行版](https://github.com/Acfufu/Radar/releases/latest) 下载已进行 ad-hoc 签名的应用压缩包。
+
+```bash
+shasum -a 256 -c ClaudeRadar-0.2.0-macos.zip.sha256
+ditto -x -k ClaudeRadar-0.2.0-macos.zip .
+open ClaudeRadar.app
+```
+
+校验文件会与 ZIP 一同发布。应用只使用本地 ad-hoc 签名，尚未完成公证；如果 macOS 阻止首次启动，请在 Finder 中右键应用并选择“打开”，阅读系统提示后再继续。
+
+<details>
+<summary>使用 Xcode 26 与 Swift 6.2 从源码构建</summary>
 
 ```bash
 git clone "https://github.com/Acfufu/Radar.git"
@@ -38,7 +49,9 @@ cd Radar
 open .build/app/ClaudeRadar.app
 ```
 
-生成的应用只进行本地 ad-hoc 签名，尚未完成面向外部分发的公证。
+生成的应用位于 `.build/app/ClaudeRadar.app`。
+
+</details>
 
 ## 亮点功能
 
