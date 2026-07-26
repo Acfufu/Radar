@@ -37,6 +37,7 @@ actor RadarSyncCoordinator {
     private let sleepNotifier: (any SleepRecoveryNotifying)?
     let projectionDidChange: (@Sendable (RadarSyncProjection) async -> Void)?
     let persistenceCheckpoint: (@Sendable () async -> Void)?
+    private let triggerObserver: (@Sendable (SyncTrigger) -> Void)?
     private var activeTask: Task<Void, Never>?
     private var activeTrigger: SyncTrigger?
     private var activeRefreshID = 0
@@ -62,7 +63,8 @@ actor RadarSyncCoordinator {
         networkMonitor: (any NetworkMonitoring)? = nil,
         sleepNotifier: (any SleepRecoveryNotifying)? = nil,
         projectionDidChange: (@Sendable (RadarSyncProjection) async -> Void)? = nil,
-        persistenceCheckpoint: (@Sendable () async -> Void)? = nil
+        persistenceCheckpoint: (@Sendable () async -> Void)? = nil,
+        triggerObserver: (@Sendable (SyncTrigger) -> Void)? = nil
     ) {
         self.source = source
         self.repository = repository
@@ -72,9 +74,11 @@ actor RadarSyncCoordinator {
         self.sleepNotifier = sleepNotifier
         self.projectionDidChange = projectionDidChange
         self.persistenceCheckpoint = persistenceCheckpoint
+        self.triggerObserver = triggerObserver
     }
 
     func refresh(trigger: SyncTrigger) async {
+        triggerObserver?(trigger)
         await refresh(trigger: trigger, eligibilityLimit: nil)
     }
 

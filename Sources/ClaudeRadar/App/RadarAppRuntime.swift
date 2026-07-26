@@ -19,9 +19,12 @@ final class RadarAppRuntime {
     private(set) var lifecycleState: RadarAppLifecycleState = .idle
     private(set) var failureMessage: String?
     private(set) var benchmarkHistory: [BenchmarkDataset] = []
+    private(set) var renderedWarningProjection: SegmentState<CodexRenderedWarningSnapshot>?
+    private(set) var renderedWarningHistory: [CodexRenderedWarningSnapshot] = []
     private(set) var refreshIntervalMinutes: Int
 
     private var coordinator: RadarSyncCoordinator?
+    private var renderedWarningCoordinator: CodexRenderedWarningCoordinator?
     private var repository: RadarRepository?
     #if DEBUG
     private var evidenceStages: [[String: Any]] = []
@@ -30,6 +33,7 @@ final class RadarAppRuntime {
     private let startupLoadCheckpoint: (@Sendable (RadarSyncCoordinator) async throws -> Void)?
     private let exportArchiver: any RadarExportArchiver
     private let metadataStore: SyncMetadataStore
+    private let renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)?
     private var lifecycleGeneration = 0
     private var startOperation: Task<Void, Never>?
     private var stopOperation: Task<Void, Never>?
@@ -42,7 +46,8 @@ final class RadarAppRuntime {
         startCheckpoint: (@Sendable () async -> Void)? = nil,
         startupLoadCheckpoint: (@Sendable (RadarSyncCoordinator) async throws -> Void)? = nil,
         exportArchiver: any RadarExportArchiver = SystemZipArchiver(),
-        refreshIntervalMinutes: Int = 30
+        refreshIntervalMinutes: Int = 30,
+        renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)? = nil
     ) {
         self.environment = environment
         self.sourceID = sourceID
@@ -50,6 +55,7 @@ final class RadarAppRuntime {
         self.startCheckpoint = startCheckpoint
         self.startupLoadCheckpoint = startupLoadCheckpoint
         self.exportArchiver = exportArchiver
+        self.renderedWarningReaderFactory = renderedWarningReaderFactory
         self.refreshIntervalMinutes = AppSettings.allowedIntervals.contains(refreshIntervalMinutes) ? refreshIntervalMinutes : 30
     }
 
@@ -81,6 +87,7 @@ final class RadarAppRuntime {
         let generation = lifecycleGeneration
         let starting = startOperation
         let activeCoordinator = coordinator
+        let activeRenderedWarningCoordinator = renderedWarningCoordinator
         let activeExports = Array(exportOperations.values)
         starting?.cancel()
         activeExports.forEach { $0.cancel() }
@@ -88,9 +95,11 @@ final class RadarAppRuntime {
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             for export in activeExports { _ = try? await export.value }
+            if let activeRenderedWarningCoordinator { await activeRenderedWarningCoordinator.stop() }
             if let activeCoordinator { await activeCoordinator.stop() }
             guard generation == self.lifecycleGeneration else { return }
             self.coordinator = nil
+            self.renderedWarningCoordinator = nil
             self.repository = nil
             self.lifecycleState = .stopped
         }
@@ -139,6 +148,38 @@ final class RadarAppRuntime {
             #else
             let source = productionSource()
             #endif
+            let renderedWarningCoordinator: CodexRenderedWarningCoordinator?
+            if sourceID == .codexRadar, let renderedWarningReaderFactory {
+                let warningCoordinator = CodexRenderedWarningCoordinator(
+                    reader: renderedWarningReaderFactory(),
+                    repository: repository,
+                    policy: SyncPolicy(refreshInterval: TimeInterval(refreshIntervalMinutes * 60)),
+                    projectionDidChange: { [weak self] state, history in
+                        await self?.acceptRenderedWarning(
+                            state,
+                            history: history,
+                            generation: generation
+                        )
+                    }
+                )
+                renderedWarningCoordinator = warningCoordinator
+                self.renderedWarningCoordinator = warningCoordinator
+                _ = try await warningCoordinator.loadPersistedProjection()
+                guard isStarting(generation) else {
+                    await warningCoordinator.stop()
+                    return
+                }
+            } else {
+                renderedWarningCoordinator = nil
+            }
+            let warningTriggerObserver: (@Sendable (SyncTrigger) -> Void)?
+            if let renderedWarningCoordinator {
+                warningTriggerObserver = { trigger in
+                    Task { await renderedWarningCoordinator.refresh(trigger: trigger) }
+                }
+            } else {
+                warningTriggerObserver = nil
+            }
             let coordinator = RadarSyncCoordinator(
                 source: source,
                 repository: repository,
@@ -147,7 +188,8 @@ final class RadarAppRuntime {
                 sleepNotifier: SleepRecoveryNotifier(),
                 projectionDidChange: { [weak self] projection in
                     await self?.accept(projection, repository: repository, generation: generation)
-                }
+                },
+                triggerObserver: warningTriggerObserver
             )
             self.coordinator = coordinator
             await startCheckpoint?()
@@ -191,8 +233,10 @@ final class RadarAppRuntime {
             startOperation = nil
         } catch {
             if let coordinator { await coordinator.stop() }
+            if let renderedWarningCoordinator { await renderedWarningCoordinator.stop() }
             guard isStarting(generation) else { return }
             self.coordinator = nil
+            self.renderedWarningCoordinator = nil
             self.repository = nil
             lifecycleState = .failed
             failureMessage = "Synchronization runtime could not start"
@@ -215,6 +259,7 @@ final class RadarAppRuntime {
         let normalized = AppSettings.allowedIntervals.contains(minutes) ? minutes : 30
         refreshIntervalMinutes = normalized
         await coordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
+        await renderedWarningCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         if let coordinator { projection = try? await coordinator.projection() }
     }
 
@@ -225,6 +270,8 @@ final class RadarAppRuntime {
             try await coordinator.repository.deleteAll()
             projection = try await coordinator.projection()
             benchmarkHistory = []
+            renderedWarningProjection = nil
+            renderedWarningHistory = []
             return true
         } catch {
             return false
@@ -273,6 +320,17 @@ final class RadarAppRuntime {
               lifecycleState == .starting || lifecycleState == .running else { return }
         self.projection = projection
         benchmarkHistory = history
+    }
+
+    private func acceptRenderedWarning(
+        _ state: SegmentState<CodexRenderedWarningSnapshot>,
+        history: [CodexRenderedWarningSnapshot],
+        generation: Int
+    ) {
+        guard lifecycleGeneration == generation,
+              lifecycleState == .starting || lifecycleState == .running else { return }
+        renderedWarningProjection = state
+        renderedWarningHistory = history
     }
 
     var statusTitle: String {

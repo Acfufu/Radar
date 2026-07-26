@@ -36,7 +36,8 @@ struct ClaudeRadarApp: App {
                 sourceID: .codexRadar,
                 metadataStore: metadataStore,
                 exportArchiver: exportArchiver,
-                refreshIntervalMinutes: settings.refreshIntervalMinutes
+                refreshIntervalMinutes: settings.refreshIntervalMinutes,
+                renderedWarningReaderFactory: { CodexRenderedWarningPageReader() }
             ),
             RadarSourceID.sweBenchVerified: RadarAppRuntime(
                 environment: environment,
