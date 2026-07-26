@@ -24,6 +24,7 @@ struct OverviewView: View {
                     .frame(maxWidth: .infinity, minHeight: 360)
                 } else {
                     signalHero
+                    localInsights
                     LazyVGrid(
                         columns: [GridItem(.adaptive(minimum: 340), alignment: .top)],
                         spacing: RadarStyle.compactSpacing
@@ -37,6 +38,95 @@ struct OverviewView: View {
             }
             .radarPage()
             .groupBoxStyle(RadarGroupBoxStyle())
+        }
+    }
+
+    private var localInsights: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 360), alignment: .top)],
+            spacing: RadarStyle.compactSpacing
+        ) {
+            GroupBox("本地 IQ 下降信号") {
+                VStack(alignment: .leading, spacing: 10) {
+                    if projection.benchmarkState != .fresh {
+                        Text("仅在来源数据为最新状态时计算，当前状态不生成信号。")
+                            .foregroundStyle(.secondary)
+                    } else if declineSignals.isEmpty {
+                        Text("当前本地快照未触发信号；同步点不足时不会推断或插值。")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(declineSignals) { signal in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(signal.modelName).fontWeight(.medium)
+                                    Spacer()
+                                    Text("当前 IQ \(RadarFormat.decimal(signal.currentIQ))")
+                                        .monospacedDigit()
+                                }
+                                HStack(spacing: 12) {
+                                    Text("24h ↓\(RadarFormat.decimal(signal.drop24Hours))")
+                                        .foregroundStyle(palette.negative.color)
+                                    Text("12h ↓\(RadarFormat.decimal(signal.drop12Hours))")
+                                    Text(signal.drop48Hours.map { "48h \($0 >= 0 ? "↓" : "↑")\(RadarFormat.decimal(abs($0)))" } ?? "48h —")
+                                }
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                    Text("Radar 本地规则：同一来源、模型与 revision；24h 下降至少 2 IQ 且 12h 仍下降。按 24h 降幅排序，最多 4 条；非来源官方预警。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
+
+            GroupBox("本地效率估算") {
+                VStack(alignment: .leading, spacing: 8) {
+                    if efficiencyPoints.isEmpty {
+                        Text("缺少 IQ、费用或耗时，暂无法估算。")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ScrollView(.horizontal) {
+                            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 7) {
+                                GridRow {
+                                    Text("模型")
+                                    Text("IQ")
+                                    Text("平均费用/每有效题")
+                                    Text("平均耗时/每有效题")
+                                    Text("成本指数")
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                ForEach(efficiencyPoints.prefix(6)) { point in
+                                    GridRow {
+                                        Text(point.modelName).lineLimit(1)
+                                        Text(point.quality.formatted(.number.precision(.fractionLength(1))))
+                                        Text(point.averageCostUSD.formatted(.currency(code: "USD").precision(.fractionLength(2))))
+                                        Text("\(point.averageMinutes.formatted(.number.precision(.fractionLength(1)))) 分钟")
+                                        Text(point.combinedCostIndex.formatted(.number.precision(.fractionLength(2))))
+                                    }
+                                    .monospacedDigit()
+                                    .accessibilityElement(children: .combine)
+                                }
+                            }
+                        }
+                    }
+                    Text("按每有效题平均费用与平均分钟计算；仅在当前来源数据集内归一。Radar 本地估算，非来源官方指标。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    Text(projection.source.attributionText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -314,6 +404,17 @@ struct OverviewView: View {
 
     private var recentPerformance: [RadarPerformanceRow] {
         RadarRecentPerformance.rows(current: projection.rows, history: history)
+    }
+
+    private var declineSignals: [RadarDeclineSignal] {
+        projection.localDeclineSignals(history: history)
+    }
+
+    private var efficiencyPoints: [IntelligenceEfficiencyPoint] {
+        projection.intelligenceEfficiency.sorted {
+            if $0.quality != $1.quality { return $0.quality > $1.quality }
+            return $0.modelName.localizedStandardCompare($1.modelName) == .orderedAscending
+        }
     }
 
     private var sourceHistory: [BenchmarkDataset] {

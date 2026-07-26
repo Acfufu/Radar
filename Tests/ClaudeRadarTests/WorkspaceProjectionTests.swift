@@ -329,6 +329,248 @@ struct WorkspaceProjectionTests {
         #expect(series.flatMap(\.points).map(\.date).min() == Date(timeIntervalSince1970: day * 3))
     }
 
+    @Test("48 hour trend range is inclusive and drops older snapshots")
+    func fortyEightHourTrendRange() {
+        let hour: TimeInterval = 3_600
+        let epsilon: TimeInterval = 0.001
+        let alpha = ModelID(sourceID: .claudeCodeRadar, upstreamKey: "alpha")
+        let snapshots = [
+            benchmark(at: 0, models: [model("alpha", "Alpha", quality: 49)]),
+            benchmark(at: hour - epsilon, models: [model("alpha", "Alpha", quality: 49.5)]),
+            benchmark(at: hour, models: [model("alpha", "Alpha", quality: 50)]),
+            benchmark(at: 25 * hour, models: [model("alpha", "Alpha", quality: 60)]),
+            benchmark(at: 49 * hour, models: [model("alpha", "Alpha", quality: 70)]),
+        ]
+
+        let points = WorkspaceProjection.trendSeries(
+            history: snapshots,
+            metric: .quality,
+            selected: [alpha],
+            timeRange: .lastTwoDays
+        ).flatMap(\.points)
+
+        #expect(points.map(\.date) == [
+            Date(timeIntervalSince1970: hour),
+            Date(timeIntervalSince1970: 25 * hour),
+            Date(timeIntervalSince1970: 49 * hour),
+        ])
+    }
+
+    @Test("all six historical metrics preserve missing values as gaps")
+    func allHistoricalMetricsPreserveGaps() {
+        let alpha = ModelID(sourceID: .claudeCodeRadar, upstreamKey: "alpha")
+        let complete = model(
+            "alpha",
+            "Alpha",
+            quality: 8,
+            cost: 7,
+            tokens: 123,
+            elapsed: 4,
+            steps: 5,
+            cache: 6
+        )
+        let missing = model(
+            "alpha",
+            "Alpha",
+            quality: nil,
+            cost: nil,
+            tokens: nil,
+            elapsed: nil,
+            steps: nil,
+            cache: nil
+        )
+        let history = [
+            benchmark(at: 1, models: [complete]),
+            benchmark(at: 2, models: [missing]),
+            benchmark(at: 3, models: [complete]),
+        ]
+        let expected: [TrendMetric: Double] = [
+            .quality: 8,
+            .cost: 7,
+            .elapsed: 4,
+            .agentSteps: 5,
+            .cache: 6,
+            .tokens: 123,
+        ]
+
+        for metric in TrendMetric.allCases {
+            let expectedValue = expected[metric] ?? .nan
+            let points = WorkspaceProjection.trendSeries(
+                history: history,
+                metric: metric,
+                selected: [alpha]
+            ).flatMap(\.points)
+            #expect(points.count == 2)
+            #expect(points.map(\.date) == [
+                Date(timeIntervalSince1970: 1),
+                Date(timeIntervalSince1970: 3),
+            ])
+            #expect(points.map(\.value) == [expectedValue, expectedValue])
+            #expect(points.map(\.segmentIndex) == [0, 1])
+        }
+    }
+
+    @Test("local decline signals include exact threshold and suppress just below it")
+    func localDeclineThreshold() {
+        let hour: TimeInterval = 3_600
+        let qualifying = [
+            benchmark(at: 0, revision: "r1", models: [
+                model("alpha", "Same", quality: 100),
+                model("beta", "Same", quality: 100),
+            ]),
+            benchmark(at: 12 * hour, revision: "r1", models: [
+                model("alpha", "Same", quality: 99),
+                model("beta", "Same", quality: 99),
+            ]),
+            benchmark(at: 24 * hour, revision: "r1", models: [
+                model("alpha", "Same", quality: 98),
+                model("beta", "Same", quality: Decimal(string: "98.0000001")!),
+            ]),
+        ]
+
+        let signals = RadarDeclineAnalysis.signals(
+            history: qualifying,
+            sourceID: .claudeCodeRadar
+        )
+
+        #expect(signals.count == 1)
+        #expect(signals.first?.modelID.upstreamKey == "alpha")
+        #expect(signals.first?.drop24Hours == Decimal(string: "2.0")!)
+        #expect(signals.first?.drop12Hours == 1)
+    }
+
+    @Test("local decline signals use predecessor windows within inclusive six hour tolerance")
+    func localDeclineTolerance() {
+        let hour: TimeInterval = 3_600
+        let epsilon: TimeInterval = 0.001
+        let history = [
+            benchmark(at: -epsilon, models: [
+                model("outside", "Outside", quality: 100),
+            ]),
+            benchmark(at: 0, models: [
+                model("exact", "Exact", quality: 100),
+            ]),
+            benchmark(at: 12 * hour, models: [
+                model("exact", "Exact", quality: 99),
+                model("outside", "Outside", quality: 99),
+            ]),
+            benchmark(at: 30 * hour, models: [
+                model("exact", "Exact", quality: 97),
+                model("outside", "Outside", quality: 97),
+            ]),
+        ]
+
+        let signals = RadarDeclineAnalysis.signals(history: history, sourceID: .claudeCodeRadar)
+
+        #expect(signals.map(\.modelID.upstreamKey) == ["exact"])
+    }
+
+    @Test("local decline signals require three unique points and suppress equal-time conflicts")
+    func localDeclineEqualTimeHandling() {
+        let hour: TimeInterval = 3_600
+        let twoPoints = [
+            benchmark(at: 0, models: [model("alpha", "Alpha", quality: 100)]),
+            benchmark(at: 24 * hour, models: [model("alpha", "Alpha", quality: 98)]),
+        ]
+        #expect(RadarDeclineAnalysis.signals(
+            history: twoPoints,
+            sourceID: .claudeCodeRadar
+        ).isEmpty)
+
+        let unique = [
+            benchmark(at: 0, models: [model("alpha", "Alpha", quality: 100)]),
+            benchmark(at: 12 * hour, models: [model("alpha", "Alpha", quality: 99)]),
+            benchmark(at: 24 * hour, models: [model("alpha", "Alpha", quality: 98)]),
+        ]
+        #expect(RadarDeclineAnalysis.signals(
+            history: unique + [unique[1]],
+            sourceID: .claudeCodeRadar
+        ).count == 1)
+
+        let conflict = benchmark(
+            at: 12 * hour,
+            models: [model("alpha", "Alpha", quality: 80)]
+        )
+        #expect(RadarDeclineAnalysis.signals(
+            history: unique + [conflict],
+            sourceID: .claudeCodeRadar
+        ).isEmpty)
+    }
+
+    @Test("local decline signals isolate source model and revision with deterministic custom limits")
+    func localDeclineIsolationAndOrdering() {
+        let hour: TimeInterval = 3_600
+        let sourceMismatch = ModelID(sourceID: .sweBenchVerified, upstreamKey: "foreign")
+        let history = [
+            benchmark(at: 0, revision: "r1", models: [
+                model("z", "Same", quality: 100),
+                model("a", "Same", quality: 100),
+                model(sourceMismatch, "Foreign", quality: 100),
+            ]),
+            benchmark(at: 12 * hour, revision: "r1", models: [
+                model("z", "Same", quality: 99),
+                model("a", "Same", quality: 99),
+                model(sourceMismatch, "Foreign", quality: 99),
+            ]),
+            benchmark(at: 24 * hour, revision: "r1", models: [
+                model("z", "Same", quality: 98),
+                model("a", "Same", quality: 98),
+                model(sourceMismatch, "Foreign", quality: 98),
+            ]),
+        ]
+
+        #expect(RadarDeclineAnalysis.signals(
+            history: history,
+            sourceID: .claudeCodeRadar,
+            limit: 1
+        ).map(\.modelID.upstreamKey) == ["a"])
+        #expect(RadarDeclineAnalysis.signals(
+            history: history,
+            sourceID: .claudeCodeRadar,
+            limit: 0
+        ).isEmpty)
+        #expect(RadarDeclineAnalysis.signals(
+            history: history,
+            sourceID: .sweBenchVerified
+        ).isEmpty)
+
+        let splitRevision = [
+            benchmark(at: 0, revision: "r1", models: [model("alpha", "Alpha", quality: 100)]),
+            benchmark(at: 12 * hour, revision: "r1", models: [model("alpha", "Alpha", quality: 99)]),
+            benchmark(at: 24 * hour, revision: "r2", models: [model("alpha", "Alpha", quality: 80)]),
+        ]
+        #expect(RadarDeclineAnalysis.signals(
+            history: splitRevision,
+            sourceID: .claudeCodeRadar
+        ).isEmpty)
+    }
+
+    @Test("local insight projection is available only for fresh benchmark state")
+    func localInsightsRequireFreshBenchmark() {
+        let hour: TimeInterval = 3_600
+        let models = [model("alpha", "Alpha", quality: 98, cost: 1, valid: 1, elapsed: 60)]
+        let history = [
+            benchmark(at: 0, models: [model("alpha", "Alpha", quality: 100)]),
+            benchmark(at: 12 * hour, models: [model("alpha", "Alpha", quality: 99)]),
+            benchmark(at: 24 * hour, models: models),
+        ]
+        let dataset = benchmark(at: 24 * hour, models: models)
+        let fresh = projection(sync: sync(benchmark: state(value: dataset)))
+        let stale = projection(sync: sync(benchmark: state(value: dataset, stale: true)))
+        let lkg = projection(sync: sync(benchmark: state(
+            value: dataset,
+            error: SegmentError(kind: .http, message: "offline")
+        )))
+        let failed = projection(sync: sync(benchmark: state(value: dataset)), lifecycle: .failed)
+
+        #expect(fresh.intelligenceEfficiency.count == 1)
+        #expect(fresh.localDeclineSignals(history: history).count == 1)
+        for suppressed in [stale, lkg, failed] {
+            #expect(suppressed.intelligenceEfficiency.isEmpty)
+            #expect(suppressed.localDeclineSignals(history: history).isEmpty)
+        }
+    }
+
     @Test("trend axis pads edge timestamps so localized labels remain readable")
     func trendAxisPadsEdgeTimestamps() {
         let dates = [
@@ -500,6 +742,30 @@ struct WorkspaceProjectionTests {
     ) -> ModelBenchmark {
         let id = ModelID(sourceID: .claudeCodeRadar, upstreamKey: key)
         return ModelBenchmark(id: id, descriptor: .init(id: id, upstreamName: name, displayName: name), qualityScore: quality, passedTasks: passed, validTasks: valid, invalidTasks: nil, benchmarkCostUSD: cost, inputTokens: nil, outputTokens: nil, cacheReadTokens: nil, cacheCreationTokens: nil, totalTokens: tokens, elapsedSeconds: elapsed, agentSteps: steps, cacheHitPercent: cache)
+    }
+
+    private func model(
+        _ id: ModelID,
+        _ name: String,
+        quality: Decimal?
+    ) -> ModelBenchmark {
+        ModelBenchmark(
+            id: id,
+            descriptor: .init(id: id, upstreamName: name, displayName: name),
+            qualityScore: quality,
+            passedTasks: 1,
+            validTasks: 1,
+            invalidTasks: nil,
+            benchmarkCostUSD: nil,
+            inputTokens: nil,
+            outputTokens: nil,
+            cacheReadTokens: nil,
+            cacheCreationTokens: nil,
+            totalTokens: nil,
+            elapsedSeconds: nil,
+            agentSteps: nil,
+            cacheHitPercent: nil
+        )
     }
 
 
