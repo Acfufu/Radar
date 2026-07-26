@@ -48,6 +48,15 @@ enum ContentFingerprint {
         return try make(normalized, datasetType: .sourceStatus, seriesRevision: seriesRevision)
     }
 
+    static func renderedWarning(_ snapshot: CodexRenderedWarningSnapshot) throws -> String {
+        try CodexRenderedWarningSemanticFingerprint.make(
+            sourceTimeLabel: snapshot.sourceTimeLabel,
+            cards: snapshot.cards,
+            finalOrigin: snapshot.finalOrigin,
+            parserRevision: snapshot.parserRevision
+        )
+    }
+
     private static func make<Value: Encodable>(
         _ value: Value,
         datasetType: RadarDatasetType,

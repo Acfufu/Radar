@@ -26,12 +26,7 @@ struct AppEnvironment: Sendable {
     func makeModelContainer() throws -> ModelContainer {
         try FileManager.default.createDirectory(at: dataRoot, withIntermediateDirectories: true)
         let configuration = ModelConfiguration(url: dataRoot.appending(path: "Radar.store"))
-        return try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: configuration
-        )
+        return try RadarModelSchema.makeContainer(configuration: configuration)
     }
 
     var fixtureURL: URL? {

@@ -71,11 +71,8 @@ struct SWEBenchParserTests {
         let root = FileManager.default.temporaryDirectory
             .appending(path: "SWEBench-Sync-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: root) }
-        let container = try ModelContainer(
-            for: BenchmarkSnapshotEntity.self,
-            CommunitySnapshotEntity.self,
-            SourceStatusSnapshotEntity.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try RadarModelSchema.makeContainer(
+            configuration: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let repository = RadarRepository(
             container: container,
