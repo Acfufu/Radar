@@ -43,10 +43,29 @@ struct Phase4SourceContractTests {
     @Test("export is wired as a one-way save surface without an import handler")
     func exportIsOneWay() throws {
         let view = try text("Sources/ClaudeRadar/Features/Export/ExportView.swift")
+        let manifest = try text("Sources/ClaudeRadar/Data/Export/ExportManifest.swift")
         #expect(view.contains("NSSavePanel"))
         #expect(view.contains("runtime.export"))
+        #expect(view.contains("Codex Radar 官网降智预警"))
+        #expect(manifest.contains("case renderedWarnings = \"rendered-warnings\""))
         #expect(!view.lowercased().contains("fileimporter("))
         #expect(!view.lowercased().contains("openpanel"))
+    }
+
+    @Test("Codex rendered page, privacy, attribution, and independent local fit stay explicit")
+    func renderedWarningSourceAndPrivacyContract() throws {
+        let contract = try text("docs/source-contract.md")
+        let notices = try text("docs/third-party-notices.md")
+        #expect(contract.contains("https://codexradar.com/"))
+        #expect(contract.contains("codex-radar-rendered-dom-v1"))
+        #expect(contract.contains("数据来自 Codex 雷达 codexradar.com"))
+        #expect(contract.contains("DOM observation is not official API authorization"))
+        #expect(contract.contains("WKWebsiteDataStore.nonPersistent()"))
+        #expect(contract.contains("Radar does not author, intercept, inspect, parse, replay, or persist those requests or responses"))
+        #expect(contract.contains("never persists or exports HTML, body text, script source, cookies, browser storage/profile data, response bodies, authorization material, or endpoint/interception data"))
+        #expect(contract.contains("`Codex Radar 官网降智预警` and `本地 IQ 拟合` are independent results"))
+        #expect(notices.contains("not official API authorization or a license grant"))
+        #expect(notices.contains("persists or exports only bounded normalized warning fields"))
     }
 
     private func text(_ relative: String) throws -> String {

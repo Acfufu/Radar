@@ -25,6 +25,8 @@ extension RadarRepository: RadarExportDataSource {
             return try context.fetchCount(communityDescriptor(range: range, sourceID: sourceID))
         case .sourceStatus:
             return try context.fetchCount(sourceStatusDescriptor(range: range, sourceID: sourceID))
+        case .renderedWarnings:
+            return try context.fetchCount(renderedWarningDescriptor(range: range, sourceID: sourceID))
         case .rawSamples:
             return 0
         }
@@ -66,6 +68,17 @@ extension RadarRepository: RadarExportDataSource {
             descriptor.fetchOffset = offset
             descriptor.fetchLimit = limit
             return try context.fetch(descriptor).map(sourceStatusRecord)
+        case .renderedWarnings:
+            return try context.fetch(renderedWarningDescriptor(range: range, sourceID: sourceID))
+                .sorted {
+                    if $0.chronologyAt != $1.chronologyAt {
+                        return $0.chronologyAt < $1.chronologyAt
+                    }
+                    return $0.contentFingerprint < $1.contentFingerprint
+                }
+                .dropFirst(offset)
+                .prefix(limit)
+                .map(renderedWarningRecord)
         case .rawSamples:
             return []
         }
@@ -125,6 +138,27 @@ extension RadarRepository: RadarExportDataSource {
         )
     }
 
+    private func renderedWarningDescriptor(
+        range: ExportDateRange,
+        sourceID: RadarSourceID?
+    ) -> FetchDescriptor<CodexRenderedWarningSnapshotEntity> {
+        let lower = range.start ?? .distantPast
+        let upper = range.end ?? .distantFuture
+        let includesAllSources = sourceID == nil
+        let source = sourceID?.rawValue ?? ""
+        return FetchDescriptor(
+            predicate: #Predicate { entity in
+                (includesAllSources || entity.sourceID == source)
+                    && entity.capturedAt >= lower
+                    && entity.capturedAt <= upper
+            },
+            sortBy: [
+                SortDescriptor(\CodexRenderedWarningSnapshotEntity.chronologyAt, order: .forward),
+                SortDescriptor(\CodexRenderedWarningSnapshotEntity.contentFingerprint, order: .forward),
+            ]
+        )
+    }
+
     private func modelRecord(_ entity: BenchmarkSnapshotEntity) throws -> ExportRecord {
         let dataset = try verifiedBenchmark(entity)
         return ExportRecord(fields: baseFields(entity).merging([
@@ -176,6 +210,31 @@ extension RadarRepository: RadarExportDataSource {
                 ])
             }),
         ]) { _, new in new })
+    }
+
+    private func renderedWarningRecord(
+        _ entity: CodexRenderedWarningSnapshotEntity
+    ) throws -> ExportRecord {
+        let snapshot = try verifiedRenderedWarning(entity)
+        return ExportRecord(fields: [
+            "id": .string(snapshot.semanticFingerprint),
+            "sourceID": .string(snapshot.sourceID.rawValue),
+            "parserRevision": .string(snapshot.parserRevision),
+            "finalOrigin": .string(snapshot.finalOrigin),
+            "sourceTimeLabel": .string(snapshot.sourceTimeLabel),
+            "capturedAt": date(snapshot.capturedAt),
+            "cards": .array(snapshot.cards.map { card in
+                .object([
+                    "displayName": .string(card.displayName),
+                    "family": .string(card.family),
+                    "effort": .string(card.effort),
+                    "sourceOrder": .int(Int64(card.sourceOrder)),
+                    "iq": .double(card.iq),
+                    "drop24h": .double(card.drop24h),
+                    "drop48h": card.drop48h.map(ExportJSONValue.double) ?? .null,
+                ])
+            }),
+        ])
     }
 
     private func baseFields(_ entity: BenchmarkSnapshotEntity) -> [String: ExportJSONValue] {

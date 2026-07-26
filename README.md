@@ -24,7 +24,7 @@ Claude Radar is a menu-bar and workspace app for three independent public source
 | Source room | Native information | Analysis boundary |
 | --- | --- | --- |
 | Claude Code Radar | Benchmark, community, and source-status snapshots | Models, histories, trends, derived metrics, and Pareto comparisons remain in this source. |
-| Codex Radar | Public summary and community snapshots | The protected full Codex API is excluded: Radar does not request, emulate, retry, or bypass it. |
+| Codex Radar | Public summary, community snapshots, and warning values already rendered on the public homepage | Official rendered warnings and local IQ fitting stay independent. The protected full Codex API is excluded: Radar does not request, emulate, retry, or bypass it. |
 | SWE-bench Verified | Published `mini-SWE-agent` v2 leaderboard results | `% Resolved`, 500-task counts, cost efficiency, source-local Pareto, and provenance; Radar never runs the evaluator or submits results. |
 
 The information overview keeps these rooms separate. Trends never bridge incompatible source revisions, and a failed refresh keeps the last valid data labeled rather than replacing it with a failure.
@@ -46,6 +46,8 @@ Radar stores normalized source snapshots in a local SwiftData store, keeps bound
 ```
 
 Removing the app does not automatically remove this data. The Settings controls keep **Clear normalized history** and **Clear raw diagnostic samples** separate; review an export before sharing it because raw samples and ZIPs can contain upstream-provided content.
+
+The Codex rendered-page reader uses nonpersistent WebKit. Page-owned JavaScript and subresources may render the public page, but Radar does not intercept or retain their responses; only bounded normalized warning fields enter history or the `rendered-warnings` export. No page HTML, scripts, cookies, browser storage/profile, response bodies, credentials, or endpoint material is retained.
 
 ## Get a published snapshot
 

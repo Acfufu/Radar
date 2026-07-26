@@ -4,7 +4,7 @@
 
 - Source-backed core: local QA candidate.
 - Claude Code Radar online source: **ENABLED**. On 2026-07-16, the project owner authorized automatic synchronization of its public GET endpoints, local history caching, and in-app re-display.
-- Codex Radar online source: **ENABLED**. On 2026-07-16, the project owner authorized the public summary and community endpoints for automatic synchronization, local history caching, and in-app re-display; the protected full API remains out of scope.
+- Codex Radar online source: **ENABLED**. On 2026-07-16, the project owner authorized the public summary and community endpoints for automatic synchronization, local history caching, and in-app re-display. The approved noncommercial rendered-page path separately reads only warning values visible on the public homepage; it is not official API authorization, and the protected full API remains out of scope.
 - SWE-bench Verified online source: **ENABLED**. Radar reads the official published leaderboard, projects only the mini-SWE-agent v2 cohort, and never runs or submits an evaluation.
 - External Developer ID distribution: **BLOCKED** unless the release evidence contains a Developer ID Application signature plus successful notarization, stapling, validation, and Gatekeeper receipts. An ad-hoc signature is local QA only.
 
@@ -28,8 +28,8 @@ Release assembly must contain only `ClaudeRadar.icns` under Resources and no fix
 
 ## Data controls
 
-- **Clear normalized history** removes normalized benchmark, community, source-status history and sync metadata. It does not remove `RawSamples`.
-- **Clear raw diagnostic samples** removes `RawSamples`. It does not remove normalized history.
+- **Clear normalized history** removes normalized benchmark, community, source-status, rendered-warning history, and sync metadata. It does not remove `RawSamples`.
+- **Clear raw diagnostic samples** removes `RawSamples`. It does not remove normalized history, including rendered-warning snapshots.
 - **Show data directory** reveals the injected/current Application Support root in Finder.
 
 All release QA uses an isolated root. Never exercise clear or uninstall validation against the real user path.
@@ -46,6 +46,8 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 - Full Swift tests, Debug and Release builds, explicit-Xcode Release build.
 - Plist lint and inventory showing the app icon as the only Release resource.
 - Isolated three-source online launch, shared sync-metadata inspection, and source-room checks proving that cached data remains isolated.
+- Isolated noncommercial Codex page rendering that produces fresh official cards or an explicit rendered empty state. Challenge, schema drift, or page unavailability is **BLOCKED** live readiness, not Pass.
+- Export inspection proving `rendered-warnings` contains only normalized source/provenance/card fields and no HTML, script, cookies, browser storage/profile, response body, authorization, or endpoint/interception material.
 - SWE-bench live acceptance proving the mini-SWE-agent v2 cohort count, `% Resolved` mapping, 500-task denominator, source-local Pareto analysis, inspector, and permanent read-only/provenance copy.
 - `codesign --verify --deep --strict`, signing details, entitlements, dependencies, and nested-code inventory.
 - Credential classification from `security find-identity -v -p codesigning` and `ClaudeRadarNotary` availability, with secrets excluded.

@@ -134,6 +134,7 @@ struct ExportView: View {
         case .benchmarkRuns: "Benchmark 运行"
         case .communityRatings: "社区评分"
         case .sourceStatus: "来源状态"
+        case .renderedWarnings: "Codex Radar 官网降智预警"
         case .rawSamples: "原始样本"
         }
     }

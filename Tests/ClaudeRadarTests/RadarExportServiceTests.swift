@@ -353,7 +353,7 @@ struct RadarExportServiceTests {
         await #expect(throws: ExportError.invalidDestination) {
             try await service.export(request: .init(destination: traversal, datasets: [.models]))
         }
-        #expect(ExportDataset.allCases.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "raw-samples"])
+        #expect(ExportDataset.allCases.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "rendered-warnings", "raw-samples"])
     }
 
     @Test("zip process cancellation terminates and clears its active process")
@@ -415,6 +415,124 @@ struct RadarExportServiceTests {
             request: .init(destination: root.appending(path: "raw.zip"), datasets: [], includesRawSamples: true)
         )
         #expect(await spy.readCount == 1)
+    }
+
+    @Test("Codex rendered warnings export through the production route as deterministic normalized-only records")
+    func renderedWarningsProductionExportContract() async throws {
+        let root = try temporaryDirectory()
+        let fixture = try exportRepository(root: root, count: 0)
+        let first = try exportWarning(
+            sourceTimeLabel: "Updated first",
+            capturedAt: Date(timeIntervalSince1970: 15),
+            iq: 80,
+            drop48h: nil
+        )
+        let second = try exportWarning(
+            sourceTimeLabel: "Updated second",
+            capturedAt: Date(timeIntervalSince1970: 15),
+            iq: 90,
+            drop48h: 4
+        )
+        let excludedByDate = try exportWarning(
+            sourceTimeLabel: "Too old",
+            capturedAt: Date(timeIntervalSince1970: 5),
+            iq: 70,
+            drop48h: 5
+        )
+        let excludedBySource = try exportWarning(
+            sourceID: .claudeCodeRadar,
+            sourceTimeLabel: "Wrong source",
+            capturedAt: Date(timeIntervalSince1970: 15),
+            iq: 60,
+            drop48h: 6
+        )
+        for snapshot in [second, excludedBySource, excludedByDate, first] {
+            _ = try await fixture.repository.insertRenderedWarning(snapshot)
+        }
+        let rawStore = RawSampleStore(dataRoot: root)
+        try await rawStore.save(
+            Data("<html><script>outerHTML cookie localStorage sessionStorage Authorization WKWebView</script></html>".utf8),
+            sourceID: .codexRadar,
+            outcome: .success,
+            at: Date(timeIntervalSince1970: 15)
+        )
+        let destination = root.appending(path: "rendered-warnings.zip")
+        let source = RadarExportSource(
+            repository: fixture.repository,
+            rawSampleStore: rawStore,
+            sourceID: .codexRadar
+        )
+
+        let result = try await RadarExportService(source: source).export(
+            request: .init(
+                destination: destination,
+                datasets: [.renderedWarnings],
+                range: .init(
+                    start: Date(timeIntervalSince1970: 10),
+                    end: Date(timeIntervalSince1970: 20)
+                )
+            ),
+            exportedAt: Date(timeIntervalSince1970: 30)
+        )
+
+        #expect(result.manifest.datasets == [
+            .init(name: "rendered-warnings", schemaVersion: 1, recordCount: 2, pageCount: 1),
+        ])
+        #expect(result.manifest.sources == [RadarSourceID.codexRadar.rawValue])
+        let tree = try unzip(destination, into: root.appending(path: "rendered-warning-tree"))
+        let page = try JSONDecoder.export.decode(
+            PageEnvelope.self,
+            from: Data(contentsOf: tree.appending(path: "rendered-warnings/page-000001.json"))
+        )
+        let expected = [first, second].sorted {
+            $0.semanticFingerprint < $1.semanticFingerprint
+        }
+        #expect(page.records.compactMap { $0.fields["id"] } == expected.map {
+            .string($0.semanticFingerprint)
+        })
+        #expect(page.records.allSatisfy {
+            Set($0.fields.keys) == [
+                "id",
+                "sourceID",
+                "parserRevision",
+                "finalOrigin",
+                "sourceTimeLabel",
+                "capturedAt",
+                "cards",
+            ]
+        })
+        let recordsByID = Dictionary(uniqueKeysWithValues: page.records.compactMap { record -> (String, ExportRecord)? in
+            guard case let .string(id) = record.fields["id"] else { return nil }
+            return (id, record)
+        })
+        let firstRecord = try #require(recordsByID[first.semanticFingerprint])
+        guard case let .array(cards) = firstRecord.fields["cards"],
+              case let .object(card) = try #require(cards.first) else {
+            Issue.record("Expected normalized warning cards")
+            return
+        }
+        #expect(card == [
+            "displayName": .string("GPT-5.6"),
+            "family": .string("GPT"),
+            "effort": .string("High"),
+            "sourceOrder": .int(0),
+            "iq": .int(80),
+            "drop24h": .int(2),
+            "drop48h": .null,
+        ])
+        let serialized = try serializedFiles(in: tree)
+        for forbidden in [
+            "html",
+            "outerHTML",
+            "cookie",
+            "localStorage",
+            "sessionStorage",
+            "Authorization",
+            "WKWebView",
+            "script",
+        ] {
+            #expect(!serialized.contains(forbidden))
+        }
     }
 }
 
@@ -573,6 +691,53 @@ private func treeHash(_ root: URL) throws -> String {
         data.append(try Data(contentsOf: url))
     }
     return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+}
+
+private func serializedFiles(in root: URL) throws -> String {
+    try FileManager.default.subpathsOfDirectory(atPath: root.path)
+        .sorted()
+        .reduce(into: "") { contents, path in
+            let url = root.appending(path: path)
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+                  !isDirectory.boolValue else { return }
+            contents += String(decoding: try Data(contentsOf: url), as: UTF8.self)
+        }
+}
+
+private func exportWarning(
+    sourceID: RadarSourceID = .codexRadar,
+    sourceTimeLabel: String,
+    capturedAt: Date,
+    iq: Double,
+    drop48h: Double?
+) throws -> CodexRenderedWarningSnapshot {
+    let cards = [CodexRenderedWarningCard(
+        displayName: "GPT-5.6",
+        family: "GPT",
+        effort: "High",
+        sourceOrder: 0,
+        iq: iq,
+        drop24h: 2,
+        drop48h: drop48h
+    )]
+    let parserRevision = "codex-radar-rendered-dom-v1"
+    let finalOrigin = "https://codexradar.com"
+    let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
+        sourceTimeLabel: sourceTimeLabel,
+        cards: cards,
+        finalOrigin: finalOrigin,
+        parserRevision: parserRevision
+    )
+    return CodexRenderedWarningSnapshot(
+        sourceID: sourceID,
+        parserRevision: parserRevision,
+        finalOrigin: finalOrigin,
+        sourceTimeLabel: sourceTimeLabel,
+        capturedAt: capturedAt,
+        cards: cards,
+        semanticFingerprint: fingerprint
+    )
 }
 
 private func exportBenchmark(index: Int, fetchedAt: Date, sourceUpdatedAt: Date? = nil) -> BenchmarkDataset {
