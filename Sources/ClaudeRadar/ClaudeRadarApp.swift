@@ -55,15 +55,9 @@ struct ClaudeRadarApp: App {
         appDelegate.model = model
     }
 
+    @SceneBuilder
     var body: some Scene {
-        Window("Claude Radar", id: "workspace") {
-            RadarWorkspaceView(model: workspaceModel)
-                .radarAppStyle()
-                .frame(minWidth: 820, minHeight: 508)
-                .preferredColorScheme(appearance.colorScheme)
-        }
-        .defaultSize(width: 1080, height: 720)
-        .commands { AppCommands(model: workspaceModel) }
+        workspaceScene
 
         MenuBarExtra("Claude Radar", systemImage: "scope") {
             MenuBarView(model: workspaceModel)
@@ -77,6 +71,25 @@ struct ClaudeRadarApp: App {
                 .radarAppStyle()
                 .preferredColorScheme(appearance.colorScheme)
         }
+    }
+
+    private var workspaceScene: some Scene {
+        if #available(macOS 15.0, *) {
+            return workspaceWindow.defaultLaunchBehavior(.presented)
+        } else {
+            return workspaceWindow
+        }
+    }
+
+    private var workspaceWindow: some Scene {
+        Window("Claude Radar", id: "workspace") {
+            RadarWorkspaceView(model: workspaceModel)
+                .radarAppStyle()
+                .frame(minWidth: 820, minHeight: 508)
+                .preferredColorScheme(appearance.colorScheme)
+        }
+        .defaultSize(width: 1080, height: 720)
+        .commands { AppCommands(model: workspaceModel) }
     }
 }
 
