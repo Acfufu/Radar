@@ -1,170 +1,95 @@
-<!-- markdownlint-disable -->
-
 <div align="center">
 
 <img alt="Claude Radar 应用图标" src="Assets/ClaudeRadar.png" width="128" height="128">
 
 # Claude Radar
 
-<div>
-  <img alt="平台：macOS 26 或更高版本" src="https://img.shields.io/badge/macOS-26%2B-111111?logo=apple">
-  <img alt="Swift 6.2" src="https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white">
-  <a href="https://github.com/Acfufu/Radar/releases/latest"><img alt="最新版本：0.2.0" src="https://img.shields.io/badge/release-v0.2.0-4C8BF5"></a>
-  <img alt="状态：本地 QA 预览" src="https://img.shields.io/badge/status-local_QA_preview-D97706">
-</div>
+**一个原生 macOS 工作台：阅读公开模型 Benchmark 快照，但不假装不同来源能共用同一套分数。**
 
-<br>
+[![macOS 26+](https://img.shields.io/badge/macOS-26%2B-111111?logo=apple)](Package.swift)
+[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](Package.swift)
+[![已发布快照 v0.2.0](https://img.shields.io/badge/published_snapshot-v0.2.0-4C8BF5)](https://github.com/Acfufu/Radar/releases/tag/v0.2.0)
 
 简体中文 | [English](README.md)
 
-将公开模型 Benchmark 快照转化为可执行对比、推荐、监控与可复现导出的原生 macOS 工作台。
-
-Claude Radar 将 Claude Code Radar、Codex Radar 与 SWE-bench Verified 的快照整理为菜单栏摘要、全局信息总览和三个彼此独立的来源空间。每个空间保留来源自身的指标名与分析方式，不把不同口径强行压成一个分数。当前仓库是一个**接入公开来源的本地 QA 预览版**：Release 构建会自动同步三个公开 Adapter，并保留按来源隔离的历史供后续展示。
-
-> 产品边界：Claude Radar 只读取、整理、缓存、分析和导出第三方已发布信息；不运行或提交 Benchmark，不生成源数据，也不回写上游系统。
-
 </div>
 
-<!-- markdownlint-restore -->
+Claude Radar 是一个菜单栏与工作区应用，包含三个彼此独立的公开来源空间：**Claude Code Radar**、**Codex Radar** 与 **SWE-bench Verified**。先在“**信息总览**”并排查看来源，再进入某个空间阅读它自己的指标语言、历史、分析与导出范围。它明确**不提供统一排名、综合分数或跨来源推荐**。
 
-## 下载与安装
+> [!IMPORTANT]
+> Radar 只读取、校验、保存、分析、展示和导出已公开的信息；不运行 Benchmark、不提交结果，也不回写任何上游系统。
 
-Claude Radar 需要 macOS 26 或更高版本。推荐从 [GitHub 最新发行版](https://github.com/Acfufu/Radar/releases/latest) 下载已进行 ad-hoc 签名的应用压缩包。
+## 可查看的内容
+
+| 来源空间 | 原生信息 | 分析边界 |
+| --- | --- | --- |
+| Claude Code Radar | Benchmark、社区与来源状态快照 | 模型、历史、趋势、派生指标与 Pareto 比较始终留在该来源内。 |
+| Codex Radar | 公开摘要与社区快照 | 受保护的完整 Codex API 被排除：Radar 不会请求、模拟、重试或绕过它。 |
+| SWE-bench Verified | 已发布的 `mini-SWE-agent` v2 榜单结果 | `% Resolved`、500 题计数、成本效率、来源内 Pareto 与口径出处；Radar 不运行评测器，也不提交结果。 |
+
+信息总览会保持这些空间彼此分离。趋势图不会跨不兼容的来源 revision 连接；刷新失败时，会保留并标记上一次有效数据，而不是用失败结果覆盖它。
+
+## 原生工作流
+
+1. 从菜单栏打开工作区，先进入“**信息总览**”。
+2. 进入一个来源空间，查看它的模型或榜单、按来源隔离的历史与趋势，以及来源状态或 SWE-bench 方法说明。
+3. 使用来源内指标与 Pareto 视图，只比较口径兼容的行。
+4. 将选中来源的数据导出为 JSON ZIP，或在“设置”中分别清除规范化历史和原始诊断样本。
+
+Radar 在本地 SwiftData store 中保存规范化来源快照，单独保留有上限的原始诊断样本，并在本地生成导出文件。默认数据根目录为：
+
+```text
+~/Library/Application Support/ClaudeRadar/
+├── Radar.store          # 规范化 SwiftData 历史
+├── SyncMetadata.json    # 按来源隔离的同步元数据
+└── RawSamples/          # 有上限的原始诊断样本
+```
+
+删除应用不会自动删除这些数据。“设置”中的“**清除规范化历史**”与“**清除原始诊断样本**”是两个独立操作；导出前请检查内容，因为原始样本和 ZIP 可能包含上游返回的信息。
+
+## 获取已发布快照
+
+[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) 是已发布的 `bf05ad7` 快照。它提供的是 ad-hoc 签名的本地 QA 压缩包，并非 Developer ID 签名或已公证的发行版。
 
 ```bash
+curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip"
+curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip.sha256"
 shasum -a 256 -c ClaudeRadar-0.2.0-macos.zip.sha256
 ditto -x -k ClaudeRadar-0.2.0-macos.zip .
 open ClaudeRadar.app
 ```
 
-校验文件会与 ZIP 一同发布。应用只使用本地 ad-hoc 签名，尚未完成公证；如果 macOS 阻止首次启动，请在 Finder 中右键应用并选择“打开”，阅读系统提示后再继续。
+如果 macOS 阻止首次启动，请在 Finder 中使用“**打开**”并阅读系统提示。当前 `dev` 开发工作比该快照更新，尚未发布，不能把它当成 v0.2.0 下载内容。
 
-<details>
-<summary>使用 Xcode 26 与 Swift 6.2 从源码构建</summary>
+## 构建当前源码
+
+Radar 需要 **macOS 26+**。Package 使用 Swift 6；当 Xcode 位于 `/Applications/Xcode.app` 时，仓库脚本会选用它。
 
 ```bash
 git clone "https://github.com/Acfufu/Radar.git"
 cd Radar
-./Scripts/build-app.sh release
-open .build/app/ClaudeRadar.app
-```
-
-生成的应用位于 `.build/app/ClaudeRadar.app`。
-
-</details>
-
-## 亮点功能
-
-- 以当前峰值 IQ 为主信号，同时呈现按来源隔离的 24 小时趋势、模型家族健康、推理层级热力图与公开订阅上下文。
-- 可按最高质量、性价比、最低额度成本或最快完成生成推荐，并通过 IQ/耗时对比图及实测指标解释结果。
-- 对比当前最强的五个模型与上一个兼容快照，同时展示每题成本和平均耗时。
-- 实时显示数据源健康、最近同步时间、刷新间隔、历史快照数量与下一次自动检查。
-- 支持模型指标搜索、排序、动态列展示和单模型详情查看。
-- 展示质量、成本、Token 与耗时的历史趋势，并避免连接来源 revision 不一致的数据。
-- 独立维护 Benchmark、社区评分和来源状态；单个分段失败不会抹除其他可用数据。
-- 提供全局运行信息总览，但不生成统一分数、综合排名或跨来源推荐。
-- Claude Code Radar、Codex Radar 与 SWE-bench Verified 使用独立的来源空间、历史、分析和导出范围。
-- 新增只读的 SWE-bench Verified mini-SWE-agent v2 榜单，展示 `% Resolved`、精确解决任务数、成本效率、来源内 Pareto 与口径出处。
-- 在本地保留规范化历史与受限的原始诊断样本，并提供明确的数据清理入口。
-- 将选定数据集导出为带 manifest 的分页 JSON ZIP，支持日期范围和可选原始样本。
-- 主工作区关闭后仍可驻留菜单栏，可由用户设置为登录时启动，并支持跟随系统、亮色或暗色外观。
-
-## 使用说明
-
-Release 构建会自动启动三个公开来源的运行时。切换来源空间只改变展示，不会停止后台同步。若要改用脱敏开发 fixture 体验界面：
-
-```bash
+DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" xcrun swift test
 ./Scripts/build-app.sh debug
-RADAR_FIXTURE_MODE="ui" \
-RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
-.build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
+RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
+  .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
 ```
 
-侧边栏默认进入“信息总览”，并列出三个独立来源空间。Claude 与 Codex 保留各自的“概览”“模型”“趋势”和“来源状态”；SWE-bench 提供“榜单”、存在兼容历史时才出现的“趋势”，以及“来源与口径”。导出仍按来源隔离。菜单栏中的瞄准镜图标会显示精简质量摘要，也可用于重新打开工作区。
+可观察到的 Debug fixture 结果是：原生工作区打开到“信息总览”，其中有三个独立来源卡片。生成的应用位于 `.build/app/ClaudeRadar.app`。
 
-在“设置 → 通用 → 外观”中可选择“跟随系统”“亮色”或“暗色”；该偏好会统一应用于主工作区、菜单栏面板和设置窗口。
+如需运行 Release 构建，执行 `./Scripts/build-app.sh release`，再打开同一 bundle。Debug 的 `ui` fixture 使用脱敏本地数据，不会同步；Release 会启用三个已记录的公开来源 Adapter；Debug 的 `RADAR_FIXTURE_MODE="online"` 会在隔离的 `RADAR_DATA_ROOT` 中运行这些公开 Adapter。两种模式都不承诺离线或无网络行为。
 
-如需运行时 QA 使用的确定性同步序列，请将 `RADAR_FIXTURE_MODE="ui"` 改为 `RADAR_FIXTURE_MODE="sequence"`，并指定一个全新的 `RADAR_DATA_ROOT`。
+## 数据流动与验证边界
 
-若要使用脱敏 fixture 验证 Codex Radar Adapter 和来源切换器：
+- 已发布的公开响应会先校验，再保存到本地。来源身份、历史、趋势、导出、排名和分析始终按来源隔离。
+- Release 只包含应用图标，不包含 fixture 或 Debug QA 资源；已批准的公开来源会在启动和设定刷新周期内同步。
+- 规范化历史、原始诊断样本、偏好设置和导出档案都留在 Mac 上，除非你主动移动或分享。
+- Codex Radar 的公开摘要与社区接口在范围内；需要凭证的完整 API 不在范围内。
+- 当前源码与 v0.2.0 快照是不同的发布状态。请从源码构建当前开发工作，不要把归档下载当作当前版本。
 
-```bash
-RADAR_FIXTURE_MODE="codex" \
-RADAR_DATA_ROOT="/tmp/CodexRadar-Demo" \
-.build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
-```
+来源契约和运维细节见[来源契约](docs/source-contract.md)、[发布检查表](docs/release-checklist.md)与[实现状态](docs/implementation-status.md)。
 
-## 数据与导出
+## 归属与许可证
 
-Claude Radar 默认将本地数据保存在：
+Radar 与 Claude Code Radar、Codex Radar、SWE-bench 或 Princeton University 没有隶属或背书关系。精确的上游归属和复用边界见[第三方声明](docs/third-party-notices.md)。
 
-```text
-~/Library/Application Support/ClaudeRadar/
-├── Radar.store
-├── SyncMetadata.json
-└── RawSamples/
-```
-
-导出内容可包含模型、Benchmark 运行、社区评分、来源状态，以及用户主动选择的当前保留原始样本。每个 ZIP 都包含分页 JSON 文件和 `manifest.json`；分页大小与日期范围可在“导出”页配置。
-
-设置中提供“清除规范化历史”和“清除原始诊断样本”两个独立操作。仅删除应用不会自动删除这两类数据。
-
-## 隐私与权限
-
-- Release 构建会在启动时及设定的刷新周期内同步三个来源的已记录公开接口。
-- Debug fixture 模式只使用人工脱敏的本地数据；显式 `online` QA 模式会在隔离数据目录中运行三个生产公开 Adapter。
-- 规范化历史、原始样本、偏好设置和导出文件会留在本机，除非用户自行移动或分享。
-- 原始样本和导出包可能包含来源返回的内容。分享前请检查；不需要时应保持原始样本导出关闭。
-- 只有用户开启“登录时启动”后，应用才会使用 macOS Service Management 注册登录项。
-
-## 兼容性与限制
-
-- 仅支持 macOS 26 或更高版本；没有 Windows、Linux、iOS 或 Web 版本。
-- `0.2.0` 是本地 QA 预览版，并非已公证的公开发行版本。
-- 公开响应可能变化或临时不可用；刷新失败时，应用会保留并明确标记最近一次有效的按来源缓存数据。
-- Release 构建会排除 fixture JSON 和 Debug QA 资源。Codex 集成只使用公开摘要与社区评分接口，不访问受保护的完整 API。
-- 社区评分与配额估算只是来源上下文，不会参与 Benchmark 质量、派生指标或 Pareto 计算。
-
-## 目录结构
-
-```text
-Assets/                 App 图标源文件与打包图标
-Config/                 macOS Bundle 元数据
-Scripts/                Debug 与 Release App 组装脚本
-Sources/ClaudeRadar/    App、来源 Adapter、持久化、同步与 UI
-Tests/ClaudeRadarTests/ Swift Testing 测试
-docs/                   来源契约与发布证据
-script/                 本地运行、调试、日志与验证入口
-```
-
-## 开发说明
-
-使用仓库脚本与 Swift Package Manager 构建、测试：
-
-```bash
-DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" swift test
-./Scripts/build-app.sh debug
-./script/build_and_run.sh --verify
-```
-
-常用命令：
-
-```bash
-./script/build_and_run.sh run
-./script/build_and_run.sh --debug
-./script/build_and_run.sh --logs
-```
-
-Swift package 不含第三方包依赖。架构与发布证据见 [`docs/implementation-status.md`](docs/implementation-status.md)、[`docs/source-contract.md`](docs/source-contract.md)、[`docs/release-checklist.md`](docs/release-checklist.md) 和当前的 [`概览设计 QA`](docs/design-qa.md)。
-
-## 安全
-
-Claude Radar 会在持久化前验证来源数据，将诊断样本限制在应用专属数据目录，并先在临时目录组装导出内容，再安装最终 ZIP。请将本地数据目录与导出包视为可能包含敏感信息的内容。执行破坏性数据清理 QA 时不要使用真实的 Application Support 目录，应在 Debug 构建中指定隔离的 `RADAR_DATA_ROOT`。
-
-## 第三方数据
-
-Claude Radar 与 Claude Code Radar、Codex Radar、SWE-bench 均不存在隶属或背书关系。归属信息与当前数据复用边界见 [`docs/third-party-notices.md`](docs/third-party-notices.md)。
-
-## 许可证状态
-
-当前尚未指定任何许可证。除非仓库所有者明确授权，否则不得对本仓库代码进行任何复用或再分发。
+仓库中没有许可证文件。除非仓库所有者明确授权，否则不授予复用或再分发本仓库的许可。
