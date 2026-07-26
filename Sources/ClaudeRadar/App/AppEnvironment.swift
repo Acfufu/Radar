@@ -53,6 +53,13 @@ struct AppEnvironment: Sendable {
         let variables = ProcessInfo.processInfo.environment
         let requestedMode = variables["RADAR_FIXTURE_MODE"]
         let mode = requestedMode.flatMap(FixtureMode.init(rawValue:)) ?? .disabled
+        if mode == .ui, variables["RADAR_UI_SOURCE"] != nil {
+            setenv(
+                "RADAR_UI_SOURCE",
+                debugInitialSourceID(fixtureMode: mode, variables: variables).rawValue,
+                1
+            )
+        }
         let dataRoot = variables["RADAR_DATA_ROOT"].map {
             URL(filePath: $0, directoryHint: .isDirectory)
         } ?? defaultRoot
@@ -75,7 +82,10 @@ struct AppEnvironment: Sendable {
 
     var initialSourceID: RadarSourceID {
         #if DEBUG
-        fixtureMode == .codex || fixtureMode == .online ? .codexRadar : .claudeCodeRadar
+        Self.debugInitialSourceID(
+            fixtureMode: fixtureMode,
+            variables: ProcessInfo.processInfo.environment
+        )
         #else
         .codexRadar
         #endif
@@ -98,4 +108,27 @@ struct AppEnvironment: Sendable {
     func supportLevel(for sourceID: RadarSourceID) -> SupportLevel {
         synchronizationEnabled(for: sourceID) ? .authorized : .disabled
     }
+
+    #if DEBUG
+    static func debugInitialSourceID(
+        fixtureMode: FixtureMode,
+        variables: [String: String]
+    ) -> RadarSourceID {
+        guard fixtureMode == .ui else {
+            return fixtureMode == .codex || fixtureMode == .online
+                ? .codexRadar
+                : .claudeCodeRadar
+        }
+        return switch variables["RADAR_UI_SOURCE"] {
+        case "codexRadar", RadarSourceID.codexRadar.rawValue:
+            .codexRadar
+        case "sweBenchVerified", RadarSourceID.sweBenchVerified.rawValue:
+            .sweBenchVerified
+        case "claudeCodeRadar", RadarSourceID.claudeCodeRadar.rawValue:
+            .claudeCodeRadar
+        default:
+            .claudeCodeRadar
+        }
+    }
+    #endif
 }
