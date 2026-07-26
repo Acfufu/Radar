@@ -18,18 +18,16 @@ struct CodexRenderedWarningProjectionTests {
         #expect(presentation(state: segment(error: error))?.state == .errorWithoutLastKnownGood)
     }
 
-    @Test("official projection is Codex-only and remains ahead of the independent local surface")
-    func sourceGatingAndSurfaceOrder() {
+    @Test("official projection is Codex-only")
+    func sourceGating() {
         let warningState = segment(value: warning())
 
         for sourceID in [RadarSourceID.claudeCodeRadar, .sweBenchVerified] {
             let projection = workspace(sourceID: sourceID, warningState: warningState)
             #expect(projection.renderedWarningPresentation == nil)
-            #expect(projection.overviewSurfaceOrder == [.localInsights])
         }
 
         let codex = workspace(sourceID: .codexRadar, warningState: warningState)
-        #expect(codex.overviewSurfaceOrder == [.officialRenderedWarnings, .localInsights])
         #expect(codex.renderedWarningPresentation != nil)
     }
 
@@ -42,8 +40,6 @@ struct CodexRenderedWarningProjectionTests {
 
         #expect(projection.rows.isEmpty)
         #expect(projection.renderedWarningPresentation?.state == .freshCards)
-        #expect(projection.overviewSurfaceOrder.first == .officialRenderedWarnings)
-        #expect(projection.overviewSurfaceOrder.last == .localInsights)
     }
 
     @Test("official cards do not replace or join the independent local fit")
@@ -62,7 +58,6 @@ struct CodexRenderedWarningProjectionTests {
 
         #expect(projection.renderedWarningPresentation?.cards.first?.displayName == "GPT-5 High")
         #expect(projection.localDeclineSignals(history: history).map(\.modelName) == ["Local-only model"])
-        #expect(projection.overviewSurfaceOrder == [.officialRenderedWarnings, .localInsights])
     }
 
     @Test("cards preserve upstream order, family effort values, and missing 48h")
@@ -120,6 +115,12 @@ struct CodexRenderedWarningProjectionTests {
         #expect(projected?.capturedAtAccessibilityIdentifier == "codex-rendered-warning-captured-at")
         #expect(projected?.sourceTimeAccessibilityLabel == "官网时间：3 小时前")
         #expect(projected?.capturedAtAccessibilityLabel.contains(capturedAt.ISO8601Format()) == true)
+        let cardLabel = projected!.cardAccessibilityLabel(projected!.cards[0])
+        #expect(cardLabel.contains(projected!.stateMessage))
+        #expect(cardLabel.contains("schema drift"))
+        #expect(cardLabel.contains(projected!.sourceTimeAccessibilityLabel))
+        #expect(cardLabel.contains(projected!.capturedAtAccessibilityLabel))
+        #expect(cardLabel.contains(projected!.attribution))
     }
 
     @Test("section state and cards expose stable accessibility semantics")
@@ -134,6 +135,11 @@ struct CodexRenderedWarningProjectionTests {
         #expect(projected?.stateAccessibilityLabel.isEmpty == false)
         #expect(projected?.cardAccessibilityLabel(card).contains("IQ 80") == true)
         #expect(projected?.cardAccessibilityLabel(card).contains("24 小时下降 3") == true)
+        #expect(projected?.cardAccessibilityLabel(card).contains(projected!.stateMessage) == true)
+        #expect(projected?.cardAccessibilityLabel(card).contains("官网时间：刚刚") == true)
+        #expect(projected?.cardAccessibilityLabel(card).contains(
+            "本地采集时间：\(projected!.capturedAt!.ISO8601Format())"
+        ) == true)
         #expect(projected?.cardAccessibilityLabel(card).contains("codexradar.com") == true)
     }
 

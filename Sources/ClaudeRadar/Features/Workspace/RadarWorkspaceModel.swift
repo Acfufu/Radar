@@ -191,11 +191,6 @@ struct RadarDeclineSignal: Identifiable, Equatable, Sendable {
     var id: ModelID { modelID }
 }
 
-enum OverviewSurface: Equatable, Sendable {
-    case officialRenderedWarnings
-    case localInsights
-}
-
 struct CodexRenderedWarningPresentation: Equatable, Sendable {
     enum State: String, CaseIterable, Equatable, Sendable {
         case loading
@@ -291,6 +286,7 @@ struct CodexRenderedWarningPresentation: Equatable, Sendable {
 
     func cardAccessibilityLabel(_ card: CodexRenderedWarningCard) -> String {
         var parts = [
+            stateAccessibilityLabel,
             card.displayName,
             "家族 \(card.family)",
             "推理强度 \(card.effort)",
@@ -299,6 +295,12 @@ struct CodexRenderedWarningPresentation: Equatable, Sendable {
         ]
         if let drop48h = card.drop48h {
             parts.append("48 小时下降 \(Self.metric(drop48h))")
+        }
+        if sourceTimeLabel != nil {
+            parts.append(sourceTimeAccessibilityLabel)
+        }
+        if capturedAt != nil {
+            parts.append(capturedAtAccessibilityLabel)
         }
         parts.append(attribution)
         return parts.joined(separator: "，")
@@ -341,11 +343,6 @@ struct WorkspaceProjection: Sendable {
         )
     }
 
-    var overviewSurfaceOrder: [OverviewSurface] {
-        renderedWarningPresentation == nil
-            ? [.localInsights]
-            : [.officialRenderedWarnings, .localInsights]
-    }
     var benchmarkState: WorkspaceState { state(sync?.benchmark, lifecycle: lifecycle) }
     var benchmarkPresentation: BenchmarkPresentation {
         let health = benchmarkState
