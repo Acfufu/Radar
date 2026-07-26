@@ -10,6 +10,7 @@ enum CodexRenderedWarningDOMParserError: Error, Equatable, Sendable {
     case missingGrid
     case missingLiveTime
     case invalidSourceTime
+    case contentPending
     case invalidCardCount
     case explicitEmptyHasCards
     case invalidCard(cardIndex: Int)
@@ -65,7 +66,10 @@ struct CodexRenderedWarningDOMParser: Sendable {
             }
             cards = []
         case .ready:
-            guard (1...4).contains(dto.cards.count) else {
+            guard !dto.cards.isEmpty else {
+                throw CodexRenderedWarningDOMParserError.contentPending
+            }
+            guard dto.cards.count <= 4 else {
                 throw CodexRenderedWarningDOMParserError.invalidCardCount
             }
             cards = try validatedCards(dto.cards)

@@ -133,6 +133,11 @@ struct CodexRenderedWarningStabilizer: Sendable {
         do {
             snapshot = try parser.parse(data, capturedAt: capturedAt)
         } catch let error as CodexRenderedWarningDOMParserError {
+            if error == .contentPending {
+                candidateFingerprint = nil
+                candidateSince = nil
+                return .poll(after: pollInterval)
+            }
             isComplete = true
             return .failure(.validation(error))
         } catch {
