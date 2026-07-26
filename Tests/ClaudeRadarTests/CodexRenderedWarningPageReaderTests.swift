@@ -95,6 +95,94 @@ struct CodexRenderedWarningPageReaderTests {
         #expect(snapshot.sourceTimeLabel == "7/26 22:49")
     }
 
+    @MainActor
+    @Test("navigation may finish before the current live grid asynchronously renders alerts")
+    func observedLiveShellHydratesAfterNavigation() async throws {
+        let html = """
+        <!doctype html>
+        <html>
+          <body>
+            <div class="radar-insights" data-radar-insights hidden>
+              <section class="radar-insights-panel degradation-alerts"
+                       data-radar-degradation hidden aria-label="降智预警">
+                <div class="radar-insights-intro">
+                  <span class="radar-insights-live"
+                        data-radar-degradation-live>实时</span>
+                </div>
+                <div class="degradation-grid"
+                     data-radar-degradation-grid></div>
+              </section>
+            </div>
+          </body>
+        </html>
+        """
+        let webView = WKWebView(
+            frame: .zero,
+            configuration: CodexRenderedWarningPageReader.makeConfiguration()
+        )
+        let observer = WebKitPageLoadObserver()
+        webView.navigationDelegate = observer
+        defer {
+            webView.stopLoading()
+            webView.navigationDelegate = nil
+        }
+        try await observer.load(
+            html,
+            baseURL: CodexRenderedWarningPageReader.fixedURL,
+            in: webView
+        )
+
+        var harness = DeterministicWebKitHarness()
+        #expect(harness.didFinish(at: .zero) == .poll(after: .zero))
+        #expect(
+            harness.sample(
+                try await extractedData(from: webView),
+                at: .milliseconds(10)
+            ) == .poll(after: .milliseconds(250))
+        )
+
+        try await webView.evaluateJavaScript(
+            """
+            (() => {
+              const section = document.querySelector("[data-radar-degradation]");
+              const grid = document.querySelector("[data-radar-degradation-grid]");
+              const live = document.querySelector("[data-radar-degradation-live]");
+              grid.innerHTML = `
+                <article class="degradation-card" data-severity="warning"
+                         title="Terra xhigh · IQ 76.0">
+                  <div class="degradation-card-main">
+                    <h3>Terra xhigh</h3>
+                    <div class="degradation-card-score"><strong>76.0</strong><span>IQ</span></div>
+                    <div class="degradation-deltas"><span>24h均 ↓7.4</span><span>48h均 ↓11.2</span></div>
+                  </div>
+                </article>
+                <article class="degradation-card" data-severity="warning"
+                         title="Luna xhigh · IQ 70.0">
+                  <div class="degradation-card-main">
+                    <h3>Luna xhigh</h3>
+                    <div class="degradation-card-score"><strong>70.0</strong><span>IQ</span></div>
+                    <div class="degradation-deltas"><span>24h均 ↓6.7</span><span>48h均 ↓10.8</span></div>
+                  </div>
+                </article>`;
+              live.textContent = "7/27 02:35";
+              section.hidden = false;
+            })();
+            """
+        )
+        let hydrated = try await extractedData(from: webView)
+        #expect(
+            harness.sample(hydrated, at: .milliseconds(260))
+                == .poll(after: .milliseconds(250))
+        )
+        let snapshot = try #require(
+            harness.sample(hydrated, at: .milliseconds(760)).snapshot
+        )
+        #expect(snapshot.cards.map(\.displayName) == ["Terra xhigh", "Luna xhigh"])
+        #expect(snapshot.cards.map(\.iq) == [76.0, 70.0])
+        #expect(snapshot.cards.map(\.drop24h) == [7.4, 6.7])
+        #expect(snapshot.cards.map(\.drop48h) == [11.2, 10.8])
+    }
+
     @Test("navigation policy admits only initial and same-origin main-frame other navigation")
     func navigationPolicy() {
         let allowed = [
@@ -301,6 +389,11 @@ struct CodexRenderedWarningPageReaderTests {
             baseURL: CodexRenderedWarningPageReader.fixedURL,
             in: webView
         )
+        return try await extractedData(from: webView)
+    }
+
+    @MainActor
+    private func extractedData(from webView: WKWebView) async throws -> Data {
         let value = try await webView.evaluateJavaScript(
             CodexRenderedWarningPageReader.extractionScript
         )
