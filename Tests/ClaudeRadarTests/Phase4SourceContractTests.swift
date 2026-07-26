@@ -37,6 +37,7 @@ struct Phase4SourceContractTests {
         #expect(app.contains("var body: some Scene {"))
         #expect(app.contains("private var workspaceScene: some Scene"))
         #expect(app.contains("if #available(macOS 15.0, *)"))
+        #expect(app.contains(".restorationBehavior(.disabled)"))
         #expect(app.contains(".defaultLaunchBehavior(.presented)"))
         #expect(app.contains("} else {"))
         #expect(app.components(separatedBy: "Window(\"Claude Radar\", id: \"workspace\")").count == 2)
