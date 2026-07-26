@@ -1,0 +1,25 @@
+{
+  "revision": "codex-radar-rendered-dom-v1",
+  "finalOrigin": "https://codexradar.com",
+  "rootPresent": true,
+  "gridPresent": true,
+  "liveTimePresent": true,
+  "sourceTimeLabel": "Updated now",
+  "pageState": "ready",
+  "cards": [
+    {
+      "sourceOrder": 0,
+      "displayName": "GPT-5.6 Sol · Max",
+      "family": "gpt-5.6-sol",
+      "effort": "max",
+      "metrics": [{"kind": "iq", "value": 128}, {"kind": "drop24h", "value": 2}]
+    },
+    {
+      "sourceOrder": 1,
+      "displayName": "Renamed card",
+      "family": "GPT-5.6-SOL",
+      "effort": "MAX",
+      "metrics": [{"kind": "iq", "value": 127}, {"kind": "drop24h", "value": 3}]
+    }
+  ]
+}

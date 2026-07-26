@@ -1,0 +1,10 @@
+{
+  "revision": "codex-radar-rendered-dom-v1",
+  "finalOrigin": "https://mirror.example",
+  "rootPresent": true,
+  "gridPresent": true,
+  "liveTimePresent": true,
+  "sourceTimeLabel": "Updated now",
+  "pageState": "empty",
+  "cards": []
+}
