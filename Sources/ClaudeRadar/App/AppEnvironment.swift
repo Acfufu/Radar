@@ -53,13 +53,6 @@ struct AppEnvironment: Sendable {
         let variables = ProcessInfo.processInfo.environment
         let requestedMode = variables["RADAR_FIXTURE_MODE"]
         let mode = requestedMode.flatMap(FixtureMode.init(rawValue:)) ?? .disabled
-        if mode == .ui, variables["RADAR_UI_SOURCE"] != nil {
-            setenv(
-                "RADAR_UI_SOURCE",
-                debugInitialSourceID(fixtureMode: mode, variables: variables).rawValue,
-                1
-            )
-        }
         let dataRoot = variables["RADAR_DATA_ROOT"].map {
             URL(filePath: $0, directoryHint: .isDirectory)
         } ?? defaultRoot
