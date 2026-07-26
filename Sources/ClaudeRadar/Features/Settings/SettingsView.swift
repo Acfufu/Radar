@@ -52,7 +52,7 @@ struct SettingsView: View {
             .background(palette.canvas.color)
             .tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 500, height: 300)
+        .frame(width: 500, height: 212)
         .background(palette.canvas.color)
         .tint(palette.accent.color)
         .onAppear { launchAtLogin = SMAppService.mainApp.status == .enabled }

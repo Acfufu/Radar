@@ -31,7 +31,7 @@ struct MenuBarView: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("质量摘要").font(.caption).foregroundStyle(palette.secondaryText.color)
-                ForEach(topThree) { row in HStack { Text(short(row.name)); Spacer(); Text(RadarFormat.decimal(row.benchmark.qualityScore)).monospacedDigit() } }
+                ForEach(topThree) { row in HStack { Text(row.name).fixedSize(horizontal: false, vertical: true); Spacer(); Text(RadarFormat.decimal(row.benchmark.qualityScore)).monospacedDigit() } }
                 if topThree.isEmpty { Text("暂无模型数据").foregroundStyle(palette.secondaryText.color) }
             }
             .radarPanel()
@@ -62,7 +62,6 @@ struct MenuBarView: View {
         if let usedPercent = quota.usedPercent { return "\(quota.windowLabel) \(RadarFormat.decimal(usedPercent, suffix: "%"))" }
         return quota.estimatedValueUSD.map { "\(quota.windowLabel) $\(RadarFormat.decimal($0))" } ?? quota.windowLabel
     }
-    private func short(_ text: String) -> String { text.count <= 30 ? text : String(text.prefix(27)) + "…" }
     private var sourceBinding: Binding<RadarSourceID> {
         Binding(get: { model.selectedSourceID }, set: { model.selectSource($0) })
     }
