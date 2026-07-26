@@ -97,7 +97,7 @@ The two-stage information-architecture and SWE-bench integration are implemented
 - A 304 updates attempted/success timestamps and validators without inserting history. Any valid or 304 segment clears elapsed backoff; failed new payloads only update that segment's error metadata and never replace LKG.
 
 ## Tests
-- Current full explicit-Xcode Swift gate: 147 tests in 19 suites passed.
+- Current full explicit-Xcode Swift gate: 153 tests in 20 suites passed.
 - Current SWE-bench Release gate: executable SHA-256 `fc01c99de4f586e690f6ec0a07963162d4a87424f4f7ef02fa06e1245aed043e`; package, plist, and strict codesign checks pass, and `ClaudeRadar.icns` is the only packaged Resource. The artifact remains ad-hoc local QA only.
 - Current real-site Debug gate: the official 7,323,841-byte leaderboard with SHA-256 `c3bf3a74d7d67ba7e2777e197f96894601917e8e186a078133897ed3e81566e5` projected 14 source rows into 13 unique mini-SWE-agent v2 configurations, with a top `% Resolved` of 76.8%, a fixed 500-task denominator, and a lowest displayed cost per resolved task of $0.08. The global overview, leaderboard, chart, full table, inspector, and provenance page passed packaged-app visual inspection under an isolated root.
 - Historical pre-remediation verdicts: [F1 plan compliance](../.omo/evidence/final/F1-plan-compliance.md), [F2 code quality](../.omo/evidence/final/F2-code-quality.md), [F3 packaged-app QA](../.omo/evidence/final/F3-real-app-qa.md), and [F4 scope fidelity](../.omo/evidence/final/F4-scope-fidelity.md) all ended `APPROVE` for the prior executable.
