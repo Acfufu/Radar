@@ -57,12 +57,21 @@ struct ClaudeRadarApp: App {
 
     @SceneBuilder
     var body: some Scene {
-        workspaceScene
+        Window("Claude Radar", id: "workspace") {
+            RadarWorkspaceView(model: workspaceModel)
+                .radarAppStyle()
+                .frame(minWidth: 820, minHeight: 508)
+                .preferredColorScheme(appearance.colorScheme)
+        }
+        .defaultSize(width: 1080, height: 720)
+        .commands { AppCommands(model: workspaceModel) }
 
-        MenuBarExtra("Claude Radar", systemImage: "scope") {
+        MenuBarExtra {
             MenuBarView(model: workspaceModel)
                 .radarAppStyle()
                 .preferredColorScheme(appearance.colorScheme)
+        } label: {
+            MenuBarLaunchLabel()
         }
             .menuBarExtraStyle(.window)
 
@@ -72,26 +81,14 @@ struct ClaudeRadarApp: App {
                 .preferredColorScheme(appearance.colorScheme)
         }
     }
+}
 
-    private var workspaceScene: some Scene {
-        if #available(macOS 15.0, *) {
-            return workspaceWindow
-                .restorationBehavior(.disabled)
-                .defaultLaunchBehavior(.presented)
-        } else {
-            return workspaceWindow
-        }
-    }
+private struct MenuBarLaunchLabel: View {
+    @Environment(\.openWindow) private var openWindow
 
-    private var workspaceWindow: some Scene {
-        Window("Claude Radar", id: "workspace") {
-            RadarWorkspaceView(model: workspaceModel)
-                .radarAppStyle()
-                .frame(minWidth: 820, minHeight: 508)
-                .preferredColorScheme(appearance.colorScheme)
-        }
-        .defaultSize(width: 1080, height: 720)
-        .commands { AppCommands(model: workspaceModel) }
+    var body: some View {
+        Label("Claude Radar", systemImage: "scope")
+            .task { openWindow(id: "workspace") }
     }
 }
 
