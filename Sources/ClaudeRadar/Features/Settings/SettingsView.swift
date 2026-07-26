@@ -44,7 +44,7 @@ struct SettingsView: View {
                 LabeledContent("Radar", value: appVersion)
                 Link("Claude Code Radar 来源主页", destination: URL(string: "https://claudecoderadar.com/?lang=en")!)
                 Link("Codex Radar 来源主页", destination: URL(string: "https://codexradar.com/")!)
-                Text("项目已允许两个公开来源自动同步、缓存规范化历史与再展示。Codex 仅使用公开摘要和社区评分，不访问受保护的完整 API。")
+                Text("项目已允许三个公开来源自动同步、缓存规范化历史与再展示：Claude Code Radar、Codex Radar 与 SWE-bench。SWE-bench 仅作为公开基准归因展示；Codex 仅使用公开摘要和社区评分，不访问受保护的完整 API。")
                     .fixedSize(horizontal: false, vertical: true)
             }
             .formStyle(.grouped)
