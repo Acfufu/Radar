@@ -145,11 +145,16 @@ final class CodexRenderedWarningSnapshotEntity {
     }
 
     convenience init(snapshot: CodexRenderedWarningSnapshot) throws {
-        let fingerprint = try ContentFingerprint.renderedWarning(snapshot)
+        let encodedSnapshot = try JSONEncoder.radar.encode(snapshot)
+        let persistedSnapshot = try JSONDecoder.radar.decode(
+            CodexRenderedWarningSnapshot.self,
+            from: encodedSnapshot
+        )
+        let fingerprint = try ContentFingerprint.renderedWarning(persistedSnapshot)
         self.init(
-            snapshot: snapshot,
+            snapshot: persistedSnapshot,
             fingerprint: fingerprint,
-            encodedSnapshot: try JSONEncoder.radar.encode(snapshot)
+            encodedSnapshot: encodedSnapshot
         )
     }
 }

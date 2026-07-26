@@ -34,6 +34,35 @@ struct CodexRenderedWarningRepositoryTests {
         #expect(benchmarkMetadata.lastError?.kind == .network)
     }
 
+    @Test("fractional live capture time survives persistence and publishes LKG")
+    func fractionalCaptureTimePersistence() async throws {
+        let fixture = try repositoryFixture()
+        let liveCapturedAt = Date(
+            timeIntervalSince1970: 1_785_092_000 + 5.0 / 1_000_003.0
+        )
+        let snapshot = try warning(capturedAt: liveCapturedAt)
+        let persistedSnapshot = try JSONDecoder.radar.decode(
+            CodexRenderedWarningSnapshot.self,
+            from: JSONEncoder.radar.encode(snapshot)
+        )
+
+        #expect(persistedSnapshot.capturedAt != liveCapturedAt)
+        let entity = try CodexRenderedWarningSnapshotEntity(snapshot: snapshot)
+        #expect(entity.capturedAt == persistedSnapshot.capturedAt)
+        #expect(entity.chronologyAt == persistedSnapshot.capturedAt)
+
+        _ = try await fixture.repository.insertRenderedWarning(snapshot)
+
+        let state = try await fixture.repository.renderedWarningState(sourceID: .codexRadar)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedWarnings,
+            sourceID: .codexRadar
+        ) == 1)
+        #expect(state.value == persistedSnapshot)
+        #expect(state.lastSuccessfulAt == persistedSnapshot.capturedAt)
+        #expect(state.error == nil)
+    }
+
     @Test("corrupt newest warning falls back to LKG and history orders chronology then fingerprint")
     func corruptNewestFallbackAndHistoryOrdering() async throws {
         let fixture = try repositoryFixture()

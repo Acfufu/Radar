@@ -93,15 +93,20 @@ actor RadarRepository {
         guard fingerprint == snapshot.semanticFingerprint else {
             throw RepositoryIntegrityError.mismatchedSnapshot
         }
+        let encodedSnapshot = try JSONEncoder.radar.encode(snapshot)
+        let persistedSnapshot = try JSONDecoder.radar.decode(
+            CodexRenderedWarningSnapshot.self,
+            from: encodedSnapshot
+        )
         let context = ModelContext(container)
         let existing = try context.fetch(FetchDescriptor<CodexRenderedWarningSnapshotEntity>()).contains {
             $0.sourceID == snapshot.sourceID.rawValue && $0.contentFingerprint == fingerprint
         }
         if !existing {
             context.insert(CodexRenderedWarningSnapshotEntity(
-                snapshot: snapshot,
+                snapshot: persistedSnapshot,
                 fingerprint: fingerprint,
-                encodedSnapshot: try JSONEncoder.radar.encode(snapshot)
+                encodedSnapshot: encodedSnapshot
             ))
             context.processPendingChanges()
             try pruneRenderedWarnings(
@@ -114,7 +119,7 @@ actor RadarRepository {
         try await recordSuccess(
             sourceID: snapshot.sourceID,
             datasetType: .renderedWarnings,
-            at: snapshot.capturedAt
+            at: persistedSnapshot.capturedAt
         )
         return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
     }
