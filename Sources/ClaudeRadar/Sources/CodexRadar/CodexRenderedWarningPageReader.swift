@@ -208,13 +208,17 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
         return matches && matches.length ? Number(matches[matches.length - 1]) : null;
       };
       const metric = (article, kind) => {
-        const nodes = Array.from(article.querySelectorAll("[data-radar-metric], [aria-label]"));
         const patterns = {
           iq: /(^|[^a-z])iq([^a-z]|$)|智商/i,
           drop24h: /24\s*(?:h|小时)/i,
           drop48h: /48\s*(?:h|小时)/i
         };
-        const node = nodes.find((candidate) => {
+        const observedNode = kind === "iq"
+          ? article.querySelector(".degradation-card-score strong")
+          : Array.from(article.querySelectorAll(".degradation-deltas > span"))
+              .find((candidate) => patterns[kind].test(clean(candidate.textContent)));
+        const nodes = Array.from(article.querySelectorAll("[data-radar-metric], [aria-label]"));
+        const node = observedNode || nodes.find((candidate) => {
           const label = [
             candidate.getAttribute("data-radar-metric"),
             candidate.getAttribute("aria-label"),
@@ -235,15 +239,20 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
         const heading = article.querySelector("h3");
         const displayName = clean(heading ? heading.textContent : "");
         const parts = displayName.split(/\s*[·•]\s*/);
+        const words = displayName.split(/\s+/);
+        const fallbackFamily = words.length > 1
+          ? words.slice(0, -1).join("-")
+          : displayName;
+        const fallbackEffort = words.length > 1 ? words[words.length - 1] : "";
         const family = token(
           article.getAttribute("data-model-family")
           || (heading && heading.getAttribute("data-model-family"))
-          || parts[0]
+          || (parts.length > 1 ? parts[0] : fallbackFamily)
         );
         const effort = token(
           article.getAttribute("data-model-effort")
           || (heading && heading.getAttribute("data-model-effort"))
-          || (parts.length > 1 ? parts[parts.length - 1] : "")
+          || (parts.length > 1 ? parts[parts.length - 1] : fallbackEffort)
         );
         const values = [
           { kind: "iq", value: metric(article, "iq") },
