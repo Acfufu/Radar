@@ -27,10 +27,10 @@ struct SettingsView: View {
             .tabItem { Label("通用", systemImage: "gear") }
             Form {
                 Button("清除规范化历史", role: .destructive) {
-                    Task { dataActionMessage = await runtime.clearHistory() ? "规范化历史已清除；原始诊断样本保留。" : "无法清除规范化历史。" }
+                    Task { dataActionMessage = await runtime.clearHistory() ? "规范化历史（含官网预警及同步元数据）已清除；原始诊断样本保留。" : "无法清除规范化历史。" }
                 }
                 Button("清除原始诊断样本", role: .destructive) {
-                    Task { dataActionMessage = await runtime.clearRawSamples() ? "原始诊断样本已清除；规范化历史保留。" : "无法清除原始诊断样本。" }
+                    Task { dataActionMessage = await runtime.clearRawSamples() ? "原始诊断样本已清除；规范化历史（含官网预警）保留。" : "无法清除原始诊断样本。" }
                 }
                 Button("在 Finder 中显示数据目录") { NSWorkspace.shared.activateFileViewerSelecting([runtime.environment.dataRoot]) }
                 Text(runtime.environment.dataRoot.path).font(.caption).foregroundStyle(palette.secondaryText.color).textSelection(.enabled)
@@ -44,7 +44,7 @@ struct SettingsView: View {
                 LabeledContent("Radar", value: appVersion)
                 Link("Claude Code Radar 来源主页", destination: URL(string: "https://claudecoderadar.com/?lang=en")!)
                 Link("Codex Radar 来源主页", destination: URL(string: "https://codexradar.com/")!)
-                Text("项目已允许三个公开来源自动同步、缓存规范化历史与再展示：Claude Code Radar、Codex Radar 与 SWE-bench。SWE-bench 仅作为公开基准归因展示；Codex 仅使用公开摘要和社区评分，不访问受保护的完整 API。")
+                Text("项目已允许三个公开来源自动同步、缓存规范化历史与再展示。Codex Radar 还通过非持久 WebKit 读取公开首页已渲染的官网预警；页面自有渲染请求由页面发起，Radar 不拦截或保存响应，只保存与导出规范化字段。官网预警与本地 IQ 拟合口径独立，受保护的完整 API 始终不在范围内。")
                     .fixedSize(horizontal: false, vertical: true)
             }
             .formStyle(.grouped)

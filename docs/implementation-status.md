@@ -1,10 +1,13 @@
 # Implementation Status
 
 ## Current Phase
-The two-stage information-architecture and SWE-bench integration are implemented. Radar now has a global information overview plus three independent read-only source rooms; Developer ID distribution remains external work.
+The two-stage information architecture, SWE-bench integration, and Codex rendered-warning source path are implemented. Fresh exact-tree packaged, isolated live-page, upgrade, and Release evidence for the rendered-warning work remains pending; every older receipt below is historical until that readiness pass is refreshed. Developer ID distribution remains external work.
 
 ## Completed
 - Preserved the permanent product boundary: Radar only reads, organizes, caches, analyzes, displays, and exports information already published by upstream sources. It does not run or submit benchmarks, generate source data, or write back upstream.
+- Added the approved noncommercial Codex public-page reader through nonpersistent WebKit. It observes only rendered warning fields, never authors or intercepts page responses, and persists no HTML, scripts, cookies, browser storage/profile, response bodies, credentials, or endpoint material.
+- Added independent official rendered-warning history and a normalized-only `rendered-warnings` export dataset with deterministic chronology/fingerprint ordering, source/date filtering, explicit optional 48-hour nulls, and source-safe provenance. Normalized-history clearing includes warnings and their metadata while raw clearing remains independent.
+- Kept `Codex Radar 官网降智预警` and `本地 IQ 拟合` independent; neither result is joined to or presented as the other.
 - Replaced the hidden source-picker model with a global information overview, visible source rooms, source-native destination lists, and a persistent statement that independent source metrics do not form a unified ranking.
 - Added the explicit `swe-bench-verified` runtime and official leaderboard adapter for the SWE-bench Verified mini-SWE-agent v2 cohort without adding a provider/plugin or generic ETL framework.
 - Added fail-closed SWE-bench parsing, exact `% Resolved × 500` task mapping, deterministic compatible-duplicate collapse, conflicting-duplicate rejection, source-specific 16 MiB/text-plain HTTP policy, benchmark-only synchronization, LKG/history, and source-scoped export reuse.
@@ -73,7 +76,7 @@ The two-stage information-architecture and SWE-bench integration are implemented
 - Historical 2026-07-15 Release evidence predates dual-source authorization and icon restoration; current build evidence is recorded under Tests below.
 
 ## In Progress
-- None.
+- Refresh exact-tree packaged-app, isolated live-page, upgrade/offline-LKG, and Release evidence for the rendered-warning integration.
 
 ## Blocked
 - Developer ID signing, notarization, stapling, and Gatekeeper distribution validation are BLOCKED: the keychain has no Developer ID Application identity and `ClaudeRadarNotary` is unavailable. The artifact is explicitly `adhoc,runtime` local QA only.
@@ -97,6 +100,7 @@ The two-stage information-architecture and SWE-bench integration are implemented
 - A 304 updates attempted/success timestamps and validators without inserting history. Any valid or 304 segment clears elapsed backoff; failed new payloads only update that segment's error metadata and never replace LKG.
 
 ## Tests
+- All receipts below that predate the rendered-warning integration are historical checkpoints and do not establish current live or packaged readiness.
 - Current full explicit-Xcode Swift gate: 153 tests in 20 suites passed.
 - Current SWE-bench Release gate: executable SHA-256 `fc01c99de4f586e690f6ec0a07963162d4a87424f4f7ef02fa06e1245aed043e`; package, plist, and strict codesign checks pass, and `ClaudeRadar.icns` is the only packaged Resource. The artifact remains ad-hoc local QA only.
 - Current real-site Debug gate: the official 7,323,841-byte leaderboard with SHA-256 `c3bf3a74d7d67ba7e2777e197f96894601917e8e186a078133897ed3e81566e5` projected 14 source rows into 13 unique mini-SWE-agent v2 configurations, with a top `% Resolved` of 76.8%, a fixed 500-task denominator, and a lowest displayed cost per resolved task of $0.08. The global overview, leaderboard, chart, full table, inspector, and provenance page passed packaged-app visual inspection under an isolated root.

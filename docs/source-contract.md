@@ -24,7 +24,7 @@ Release startup, Debug `online` QA, and every future source addition share one l
 - App startup: `RadarWorkspaceModel.start() async` starts every runtime in its source-keyed runtime map.
 - Runtime construction: `RadarAppRuntime(environment:sourceID:metadataStore:...)`; the app root passes the same `SyncMetadataStore` actor to all production runtimes.
 - Metadata storage: `SyncMetadataStore(root:)` writes `<dataRoot>/SyncMetadata.json` with keys `<sourceID>|<datasetType>`.
-- Normalized storage: the three SwiftData snapshot tables keep `sourceID`, `seriesRevision`, source/fetch timestamps, fingerprint, and encoded dataset.
+- Normalized storage: four SwiftData snapshot tables keep source-scoped benchmark, community, source-status, and rendered-warning values with their contract revisions, timestamps, fingerprints, and normalized encoded records.
 
 ### 3. Contracts
 
@@ -43,6 +43,7 @@ Release startup, Debug `online` QA, and every future source addition share one l
 | Synchronization is disabled for QA restart | Make no request and load every available source-scoped cached projection. |
 | Two runtimes update metadata concurrently | Serialize through the shared actor; no last-writer loss is allowed. |
 | Protected Codex full API is unavailable or requires credentials | Do not request, emulate, retry, or bypass it. |
+| Public Codex page renders valid warning cards or an explicit empty state | Persist only the bounded normalized warning snapshot; keep its state and history independent from local IQ fitting. |
 | SWE-bench has no community or quota/status segment | Persist benchmark data without manufacturing segment failures. |
 
 ### 5. Good / Base / Bad Cases
@@ -213,3 +214,14 @@ Benchmark and embedded quota status share one `current.json` acquisition but pro
 | `codex-radar-community-valid.json` | Source-scoped 1...10 community values with an explicit null rating | 313 | `d4dd5e2214aea8e04c4fcc514d99551c0b910e2c09de2bb955da6dcd1ebe8406` |
 
 These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.
+
+### Public rendered-warning page
+
+- Page: `https://codexradar.com/`; parser revision: `codex-radar-rendered-dom-v1`; exact attribution: `数据来自 Codex 雷达 codexradar.com`.
+- The project owner approved this noncommercial path for observing warning values already visible after the public page renders. DOM observation is not official API authorization, a license grant, or permission to access protected responses.
+- A hidden native WebKit view uses `WKWebsiteDataStore.nonPersistent()`. Page-owned JavaScript and subresource traffic may render the page, but Radar does not author, intercept, inspect, parse, replay, or persist those requests or responses.
+- The fixed extraction script returns a bounded JSON-safe projection of visible card fields. Radar never persists or exports HTML, body text, script source, cookies, browser storage/profile data, response bodies, authorization material, or endpoint/interception data.
+- Each normalized snapshot contains source ID, parser revision, final origin, visible source-time label, local capture time, semantic fingerprint, and upstream-ordered cards with display name, family, effort, source order, IQ, 24-hour drop, and optional 48-hour drop. No official 12-hour value is invented.
+- Official state remains one of loading, fresh cards, fresh explicit empty, stale last-known-good, last-known-good plus error, or error without cache. A challenge, schema drift, or unavailable page is a live-readiness blocker, never a successful empty result.
+- `Codex Radar 官网降智预警` and `本地 IQ 拟合` are independent results with different provenance. Radar does not join them or claim that local fitting reproduces the official warning.
+- The `rendered-warnings` export dataset is normalized-only and source/date scoped. `清除规范化历史` removes warning snapshots and their sync metadata; raw diagnostic clearing remains independent.

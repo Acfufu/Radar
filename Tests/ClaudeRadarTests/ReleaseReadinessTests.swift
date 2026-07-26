@@ -79,15 +79,23 @@ struct ReleaseReadinessTests {
         #expect(checklist.contains("~/Library/Application Support/ClaudeRadar"))
         #expect(checklist.contains("Claude Code Radar online source: **ENABLED**"))
         #expect(checklist.contains("Codex Radar online source: **ENABLED**"))
+        #expect(checklist.contains("approved noncommercial rendered-page path"))
         #expect(checklist.contains("protected full API remains out of scope"))
+        #expect(checklist.contains("rendered-warning history, and sync metadata"))
+        #expect(checklist.contains("**BLOCKED** live readiness, not Pass"))
         #expect(checklist.contains("BLOCKED"))
         let notices = try text("docs/third-party-notices.md")
         #expect(notices.contains("https://claudecoderadar.com/?lang=en"))
         #expect(notices.contains("2026-07-16"))
         #expect(notices.contains("automatic synchronization, local history caching, and re-display"))
+        #expect(notices.contains("rendered-DOM path is not official API authorization"))
+        #expect(notices.contains("uses nonpersistent WebKit"))
+        #expect(notices.contains("official rendered warning and Radar's local IQ fitting remain independent"))
         #expect(notices.contains("does not call or bypass the protected full API"))
         let settings = try text("Sources/ClaudeRadar/Features/Settings/SettingsView.swift")
         #expect(settings.contains("已启用自动同步"))
+        #expect(settings.contains("规范化历史（含官网预警及同步元数据）已清除"))
+        #expect(settings.contains("官网预警与本地 IQ 拟合口径独立"))
         #expect(settings.contains("受保护的完整 API"))
     }
 
@@ -95,15 +103,23 @@ struct ReleaseReadinessTests {
     private func verifyHistoryClearPreservesRaw() async throws {
         let dataRoot = temporaryRoot("clear-history")
         defer { try? FileManager.default.removeItem(at: dataRoot) }
-        _ = try await repository(at: dataRoot).insertBenchmark(benchmark())
+        let seededRepository = try repository(at: dataRoot)
+        _ = try await seededRepository.insertBenchmark(benchmark())
+        _ = try await seededRepository.insertRenderedWarning(warning())
         let rawStore = RawSampleStore(dataRoot: dataRoot)
-        try await rawStore.save(Data("raw".utf8), sourceID: .claudeCodeRadar, outcome: .success, at: .now)
-        let runtime = RadarAppRuntime(environment: .init(dataRoot: dataRoot, fixtureMode: .disabled, onlineSourceEnabled: false))
+        try await rawStore.save(Data("raw".utf8), sourceID: .codexRadar, outcome: .success, at: .now)
+        let runtime = RadarAppRuntime(
+            environment: .init(dataRoot: dataRoot, fixtureMode: .disabled, onlineSourceEnabled: false),
+            sourceID: .codexRadar
+        )
         await runtime.start()
         #expect(await runtime.clearHistory())
         await runtime.stop()
-        #expect(try await repository(at: dataRoot).benchmarkHistory(sourceID: .claudeCodeRadar).isEmpty)
-        #expect(!(try await rawStore.samples(sourceID: .claudeCodeRadar)).isEmpty)
+        let clearedRepository = try repository(at: dataRoot)
+        #expect(try await clearedRepository.benchmarkHistory(sourceID: .claudeCodeRadar).isEmpty)
+        #expect(try await clearedRepository.renderedWarningHistory(sourceID: .codexRadar).isEmpty)
+        #expect(try await clearedRepository.metadata(sourceID: .codexRadar, datasetType: .renderedWarnings) == .empty)
+        #expect(!(try await rawStore.samples(sourceID: .codexRadar)).isEmpty)
     }
 
     @MainActor
@@ -129,6 +145,35 @@ struct ReleaseReadinessTests {
         let id = ModelID(sourceID: .claudeCodeRadar, upstreamKey: "release-upgrade")
         let model = ModelBenchmark(id: id, descriptor: .init(id: id, upstreamName: "Release Upgrade Model", displayName: "Release Upgrade Model"), qualityScore: 88, passedTasks: 8, validTasks: 10, invalidTasks: 2, benchmarkCostUSD: 2, inputTokens: nil, outputTokens: nil, cacheReadTokens: nil, cacheCreationTokens: nil, totalTokens: nil, elapsedSeconds: 12, agentSteps: nil, cacheHitPercent: nil)
         return .init(sourceID: .claudeCodeRadar, sourceUpdatedAt: .init(timeIntervalSince1970: 1_700_000_000), fetchedAt: .init(timeIntervalSince1970: 1_700_000_001), benchmarkName: "Release Upgrade", benchmarkVersion: "1", seriesRevision: "claude-radar-v1", models: [model])
+    }
+
+    private func warning() throws -> CodexRenderedWarningSnapshot {
+        let cards = [CodexRenderedWarningCard(
+            displayName: "GPT-5.6",
+            family: "GPT",
+            effort: "High",
+            sourceOrder: 0,
+            iq: 88,
+            drop24h: 2,
+            drop48h: nil
+        )]
+        let parserRevision = "codex-radar-rendered-dom-v1"
+        let finalOrigin = "https://codexradar.com"
+        let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
+            sourceTimeLabel: "Updated now",
+            cards: cards,
+            finalOrigin: finalOrigin,
+            parserRevision: parserRevision
+        )
+        return .init(
+            sourceID: .codexRadar,
+            parserRevision: parserRevision,
+            finalOrigin: finalOrigin,
+            sourceTimeLabel: "Updated now",
+            capturedAt: Date(timeIntervalSince1970: 1_700_000_002),
+            cards: cards,
+            semanticFingerprint: fingerprint
+        )
     }
 
     private func temporaryRoot(_ name: String) -> URL {
