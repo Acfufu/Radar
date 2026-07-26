@@ -30,6 +30,19 @@ struct Phase4SourceContractTests {
         #expect(workspace.contains("source.attributionText"))
     }
 
+    @Test("workspace is presented on fresh macOS 15 launches with macOS 14 compatibility")
+    func workspaceLaunchBehavior() throws {
+        let app = try text("Sources/ClaudeRadar/ClaudeRadarApp.swift")
+        #expect(app.contains("@SceneBuilder"))
+        #expect(app.contains("var body: some Scene {"))
+        #expect(app.contains("private var workspaceScene: some Scene"))
+        #expect(app.contains("if #available(macOS 15.0, *)"))
+        #expect(app.contains(".defaultLaunchBehavior(.presented)"))
+        #expect(app.contains("} else {"))
+        #expect(app.components(separatedBy: "Window(\"Claude Radar\", id: \"workspace\")").count == 2)
+        #expect(app.contains(".commands { AppCommands(model: workspaceModel) }"))
+    }
+
     @Test("fixture sequence and UI seed implementations are debug-only")
     func releaseIsolation() throws {
         let fixture = try text("Sources/ClaudeRadar/App/FixtureSequenceTransport.swift")
