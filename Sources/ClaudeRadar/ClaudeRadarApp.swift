@@ -58,7 +58,7 @@ struct ClaudeRadarApp: App {
         Window("Claude Radar", id: "workspace") {
             RadarWorkspaceView(model: workspaceModel)
                 .radarAppStyle()
-                .frame(minWidth: 820, minHeight: 560)
+                .frame(minWidth: 820, minHeight: 508)
                 .preferredColorScheme(appearance.colorScheme)
         }
         .defaultSize(width: 1080, height: 720)
