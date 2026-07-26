@@ -28,6 +28,73 @@ struct CodexRenderedWarningPageReaderTests {
         #expect(!script.contains("webkit.messageHandlers"))
     }
 
+    @MainActor
+    @Test("fixed script extracts the exact observed rendered card DOM through WebKit")
+    func observedRenderedDOMExtraction() async throws {
+        let html = """
+        <!doctype html>
+        <html>
+          <body>
+            <section data-radar-degradation aria-label="降智预警">
+              <div data-radar-degradation-grid>
+                <article class="degradation-card" data-severity="warning"
+                         title="Sol xhigh · IQ 91.0">
+                  <h3>Sol xhigh</h3>
+                  <div class="degradation-card-score"><strong>91.0</strong> IQ</div>
+                  <div class="degradation-deltas">
+                    <span>24h ↓9.4</span>
+                    <span>48h ↓9.4</span>
+                  </div>
+                </article>
+              </div>
+              <time data-radar-degradation-live>7/26 22:49</time>
+            </section>
+          </body>
+        </html>
+        """
+        let data = try await extractedData(from: html)
+        let snapshot = try CodexRenderedWarningDOMParser().parse(
+            data,
+            capturedAt: capturedAt
+        )
+
+        #expect(snapshot.cards.count == 1)
+        let card = try #require(snapshot.cards.first)
+        #expect(card.displayName == "Sol xhigh")
+        #expect(card.family == "sol")
+        #expect(card.effort == "xhigh")
+        #expect(card.iq == 91.0)
+        #expect(card.drop24h == 9.4)
+        #expect(card.drop48h == 9.4)
+        #expect(snapshot.sourceTimeLabel == "7/26 22:49")
+    }
+
+    @MainActor
+    @Test("fixed script extracts an explicit-empty rendered DOM through WebKit")
+    func observedExplicitEmptyDOMExtraction() async throws {
+        let html = """
+        <!doctype html>
+        <html>
+          <body>
+            <section data-radar-degradation aria-label="降智预警">
+              <div data-radar-degradation-grid>
+                <p data-radar-degradation-empty>暂无预警</p>
+              </div>
+              <time data-radar-degradation-live>7/26 22:49</time>
+            </section>
+          </body>
+        </html>
+        """
+        let data = try await extractedData(from: html)
+        let snapshot = try CodexRenderedWarningDOMParser().parse(
+            data,
+            capturedAt: capturedAt
+        )
+
+        #expect(snapshot.cards.isEmpty)
+        #expect(snapshot.sourceTimeLabel == "7/26 22:49")
+    }
+
     @Test("navigation policy admits only initial and same-origin main-frame other navigation")
     func navigationPolicy() {
         let allowed = [
@@ -216,6 +283,31 @@ struct CodexRenderedWarningPageReaderTests {
         )
     }
 
+    @MainActor
+    private func extractedData(from html: String) async throws -> Data {
+        let webView = WKWebView(
+            frame: .zero,
+            configuration: CodexRenderedWarningPageReader.makeConfiguration()
+        )
+        let observer = WebKitPageLoadObserver()
+        webView.navigationDelegate = observer
+        defer {
+            webView.stopLoading()
+            webView.navigationDelegate = nil
+        }
+
+        try await observer.load(
+            html,
+            baseURL: CodexRenderedWarningPageReader.fixedURL,
+            in: webView
+        )
+        let value = try await webView.evaluateJavaScript(
+            CodexRenderedWarningPageReader.extractionScript
+        )
+        let json = try #require(value as? String)
+        return Data(json.utf8)
+    }
+
     private struct DeterministicWebKitHarness {
         private var stabilizer: CodexRenderedWarningStabilizer
         private(set) var publishedSnapshots = 0
@@ -277,6 +369,41 @@ struct CodexRenderedWarningPageReaderTests {
         private var capturedAt: Date {
             Date(timeIntervalSince1970: 1_785_033_000)
         }
+    }
+}
+
+@MainActor
+private final class WebKitPageLoadObserver: NSObject, WKNavigationDelegate {
+    private var continuation: CheckedContinuation<Void, any Error>?
+
+    func load(_ html: String, baseURL: URL, in webView: WKWebView) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+            webView.loadHTMLString(html, baseURL: baseURL)
+        }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        continuation?.resume()
+        continuation = nil
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        didFail navigation: WKNavigation!,
+        withError error: any Error
+    ) {
+        continuation?.resume(throwing: error)
+        continuation = nil
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        didFailProvisionalNavigation navigation: WKNavigation!,
+        withError error: any Error
+    ) {
+        continuation?.resume(throwing: error)
+        continuation = nil
     }
 }
 
