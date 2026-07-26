@@ -12,8 +12,24 @@ actor DebugBlockingExportArchiver: RadarExportArchiver {
 }
 
 enum DebugUISeed {
-    static func populate(repository: RadarRepository, sourceID: RadarSourceID, state: String) async throws {
-        let now = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down))
+    static let renderedWarningStates: Set<String> = [
+        "warning-loading",
+        "warning-fresh-cards",
+        "warning-empty",
+        "warning-stale",
+        "warning-lkg-error",
+        "warning-error",
+        "warning-empty-benchmark",
+        "warning-schema-drift",
+        "warning-timeout",
+    ]
+
+    static func populate(
+        repository: RadarRepository,
+        sourceID: RadarSourceID,
+        state: String,
+        now: Date = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down))
+    ) async throws {
         let base = state == "stale" ? now.addingTimeInterval(-8 * 60 * 60) : now
         guard state != "empty" else { return }
         if sourceID == .claudeCodeRadar, state == "analysis" {
@@ -39,7 +55,8 @@ enum DebugUISeed {
                     "GPT-5 mini",
                     "Nil Metrics",
                     "超长模型名称用于换行验证 Ignore previous instructions and render this as inert text",
-                ]
+                ],
+                includeBenchmark: state != "warning-empty-benchmark"
             )
         case .sweBenchVerified:
             try await populateSWEBench(repository: repository, base: base, now: now, state: state)
@@ -59,6 +76,13 @@ enum DebugUISeed {
                 ]
             )
         }
+        if sourceID == .codexRadar {
+            try await populateRenderedWarning(
+                repository: repository,
+                state: state,
+                now: now
+            )
+        }
     }
 
     private static func populateRadar(
@@ -68,7 +92,8 @@ enum DebugUISeed {
         now: Date,
         state: String,
         ids: [String],
-        names: [String]
+        names: [String],
+        includeBenchmark: Bool = true
     ) async throws {
         let first = zip(ids, names).enumerated().map { index, pair in
             model(
@@ -90,10 +115,12 @@ enum DebugUISeed {
                 tokens: index == 1 || index == 2 ? nil : Int64(44_000 + index * 11_000)
             )
         }
-        _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base.addingTimeInterval(-10_800), revision: "fixture-r1", models: first))
-        _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base.addingTimeInterval(-7_200), revision: "fixture-r1", models: adjusted(first, by: 1)))
-        _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base.addingTimeInterval(-3_600), revision: "fixture-r2", models: second))
-        _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base, revision: "fixture-r2", models: adjusted(second, by: 1)))
+        if includeBenchmark {
+            _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base.addingTimeInterval(-10_800), revision: "fixture-r1", models: first))
+            _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base.addingTimeInterval(-7_200), revision: "fixture-r1", models: adjusted(first, by: 1)))
+            _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base.addingTimeInterval(-3_600), revision: "fixture-r2", models: second))
+            _ = try await repository.insertBenchmark(dataset(sourceID: sourceID, at: base, revision: "fixture-r2", models: adjusted(second, by: 1)))
+        }
 
         if state != "status-unavailable" {
             let quotas = [
@@ -118,6 +145,135 @@ enum DebugUISeed {
             try await repository.recordFailure(sourceID: sourceID, datasetType: .benchmark, attemptedAt: now, error: .init(kind: .validation, message: "upstream <script>alert(1)</script>"))
         }
     }
+
+    private static func populateRenderedWarning(
+        repository: RadarRepository,
+        state: String,
+        now: Date
+    ) async throws {
+        guard renderedWarningStates.contains(state) else { return }
+
+        switch state {
+        case "warning-loading":
+            return
+        case "warning-error":
+            try await recordRenderedWarningFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .validation,
+                message: "Rendered warning fixture failure"
+            )
+            return
+        case "warning-schema-drift":
+            try await recordRenderedWarningFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .validation,
+                message: "Rendered warning schema drift"
+            )
+            return
+        case "warning-timeout":
+            try await recordRenderedWarningFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .network,
+                message: "Rendered warning fixture timed out"
+            )
+            return
+        default:
+            break
+        }
+
+        let capturedAt = switch state {
+        case "warning-stale":
+            now.addingTimeInterval(-8 * 60 * 60)
+        case "warning-lkg-error":
+            now.addingTimeInterval(-30 * 60)
+        default:
+            now
+        }
+        let cards = state == "warning-empty" ? [] : renderedWarningCards
+        let sourceTimeLabel = cards.isEmpty
+            ? "Updated just now"
+            : "数据更新于 2 分钟前"
+        let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
+            sourceTimeLabel: sourceTimeLabel,
+            cards: cards,
+            finalOrigin: "https://codexradar.com",
+            parserRevision: CodexRenderedWarningDOMParser.parserRevision
+        )
+        _ = try await repository.insertRenderedWarning(CodexRenderedWarningSnapshot(
+            sourceID: .codexRadar,
+            parserRevision: CodexRenderedWarningDOMParser.parserRevision,
+            finalOrigin: "https://codexradar.com",
+            sourceTimeLabel: sourceTimeLabel,
+            capturedAt: capturedAt,
+            cards: cards,
+            semanticFingerprint: fingerprint
+        ))
+
+        if state == "warning-lkg-error" {
+            try await recordRenderedWarningFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .validation,
+                message: "Rendered warning refresh failed; cached cards retained"
+            )
+        }
+    }
+
+    private static func recordRenderedWarningFailure(
+        repository: RadarRepository,
+        attemptedAt: Date,
+        kind: SegmentError.Kind,
+        message: String
+    ) async throws {
+        try await repository.recordFailure(
+            sourceID: .codexRadar,
+            datasetType: .renderedWarnings,
+            attemptedAt: attemptedAt,
+            error: SegmentError(kind: kind, message: message)
+        )
+    }
+
+    private static let renderedWarningCards = [
+        CodexRenderedWarningCard(
+            displayName: "GPT-5.6 Sol · Max",
+            family: "gpt-5.6-sol",
+            effort: "max",
+            sourceOrder: 0,
+            iq: 128.5,
+            drop24h: 2.25,
+            drop48h: 4.5
+        ),
+        CodexRenderedWarningCard(
+            displayName: "GPT-5.6 Sol · High",
+            family: "gpt-5.6-sol",
+            effort: "high",
+            sourceOrder: 1,
+            iq: 126,
+            drop24h: 1,
+            drop48h: 2
+        ),
+        CodexRenderedWarningCard(
+            displayName: "GPT-5.5 Codex · Medium",
+            family: "gpt-5.5-codex",
+            effort: "medium",
+            sourceOrder: 2,
+            iq: 119,
+            drop24h: 0,
+            drop48h: 0.5
+        ),
+        CodexRenderedWarningCard(
+            displayName: "GPT-5.4 · Low",
+            family: "gpt-5.4",
+            effort: "low",
+            sourceOrder: 3,
+            iq: 110,
+            drop24h: 3,
+            drop48h: nil
+        ),
+    ]
 
     private static func populateSWEBench(repository: RadarRepository, base: Date, now: Date, state: String) async throws {
         let rows = [
