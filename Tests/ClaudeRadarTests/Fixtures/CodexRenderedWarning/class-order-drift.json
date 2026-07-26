@@ -1,0 +1,25 @@
+{
+  "cards": [
+    {
+      "metrics": [{"value": 110, "kind": "iq"}, {"value": 3, "kind": "drop24h"}],
+      "effort": "low",
+      "sourceOrder": 0,
+      "family": "gpt-5.4",
+      "displayName": "GPT-5.4 · Low"
+    },
+    {
+      "family": "gpt-5.6-sol",
+      "displayName": "GPT-5.6 Sol · Max",
+      "sourceOrder": 1,
+      "metrics": [{"kind": "drop24h", "value": 2}, {"kind": "iq", "value": 128}],
+      "effort": "max"
+    }
+  ],
+  "pageState": "ready",
+  "sourceTimeLabel": "Updated now",
+  "liveTimePresent": true,
+  "gridPresent": true,
+  "rootPresent": true,
+  "finalOrigin": "https://codexradar.com",
+  "revision": "codex-radar-rendered-dom-v1"
+}

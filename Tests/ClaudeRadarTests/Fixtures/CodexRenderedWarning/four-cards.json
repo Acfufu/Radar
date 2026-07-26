@@ -1,0 +1,54 @@
+{
+  "revision": "codex-radar-rendered-dom-v1",
+  "finalOrigin": "https://codexradar.com",
+  "rootPresent": true,
+  "gridPresent": true,
+  "liveTimePresent": true,
+  "sourceTimeLabel": "数据更新于 2 分钟前",
+  "pageState": "ready",
+  "cards": [
+    {
+      "sourceOrder": 0,
+      "displayName": "GPT-5.6 Sol · Max",
+      "family": "gpt-5.6-sol",
+      "effort": "max",
+      "metrics": [
+        {"kind": "iq", "value": 128.5},
+        {"kind": "drop24h", "value": 2.25},
+        {"kind": "drop48h", "value": 4.5}
+      ]
+    },
+    {
+      "sourceOrder": 1,
+      "displayName": "GPT-5.6 Sol · High",
+      "family": "gpt-5.6-sol",
+      "effort": "high",
+      "metrics": [
+        {"kind": "iq", "value": 126},
+        {"kind": "drop24h", "value": 1},
+        {"kind": "drop48h", "value": 2}
+      ]
+    },
+    {
+      "sourceOrder": 2,
+      "displayName": "GPT-5.5 Codex · Medium",
+      "family": "gpt-5.5-codex",
+      "effort": "medium",
+      "metrics": [
+        {"kind": "iq", "value": 119},
+        {"kind": "drop24h", "value": 0},
+        {"kind": "drop48h", "value": 0.5}
+      ]
+    },
+    {
+      "sourceOrder": 3,
+      "displayName": "GPT-5.4 · Low",
+      "family": "gpt-5.4",
+      "effort": "low",
+      "metrics": [
+        {"kind": "iq", "value": 110},
+        {"kind": "drop24h", "value": 3}
+      ]
+    }
+  ]
+}
