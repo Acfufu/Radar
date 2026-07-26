@@ -9,7 +9,7 @@
 <div>
   <img alt="Platform: macOS 26 or later" src="https://img.shields.io/badge/macOS-26%2B-111111?logo=apple">
   <img alt="Swift 6.2" src="https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white">
-  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-4C8BF5">
+  <a href="https://github.com/Acfufu/Radar/releases/latest"><img alt="Latest release: 0.2.0" src="https://img.shields.io/badge/release-v0.2.0-4C8BF5"></a>
   <img alt="Status: local QA preview" src="https://img.shields.io/badge/status-local_QA_preview-D97706">
 </div>
 
@@ -27,9 +27,20 @@ Claude Radar turns Claude Code Radar, Codex Radar, and SWE-bench Verified snapsh
 
 <!-- markdownlint-restore -->
 
-## Install
+## Download And Install
 
-Claude Radar currently ships from source and requires macOS 26 or later with Xcode 26 and Swift 6.2.
+Claude Radar requires macOS 26 or later. The recommended download is the ad-hoc signed app archive from the [latest GitHub Release](https://github.com/Acfufu/Radar/releases/latest).
+
+```bash
+shasum -a 256 -c ClaudeRadar-0.2.0-macos.zip.sha256
+ditto -x -k ClaudeRadar-0.2.0-macos.zip .
+open ClaudeRadar.app
+```
+
+The checksum file is published beside the ZIP. The app uses an ad-hoc local signature and is not notarized; if macOS blocks the first launch, use Finder's **Open** command from the app's context menu and review the warning before continuing.
+
+<details>
+<summary>Build from source with Xcode 26 and Swift 6.2</summary>
 
 ```bash
 git clone "https://github.com/Acfufu/Radar.git"
@@ -38,7 +49,9 @@ cd Radar
 open .build/app/ClaudeRadar.app
 ```
 
-The generated app is ad-hoc signed for local use. It is not notarized for external distribution.
+The generated bundle is `.build/app/ClaudeRadar.app`.
+
+</details>
 
 ## Highlights
 
