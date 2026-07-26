@@ -118,3 +118,66 @@ enum DerivedMetrics {
         return .unavailable(.missingRequiredFields(fields: missingFields))
     }
 }
+
+struct IntelligenceEfficiencyPoint: Identifiable, Equatable, Sendable {
+    let id: ModelID
+    let modelName: String
+    let quality: Double
+    let averageCostUSD: Double
+    let averageMinutes: Double
+    let rawCombinedCost: Double
+    let combinedCostIndex: Double
+}
+
+enum IntelligenceEfficiency {
+    private static let combinedCostWeight = log(2.5) / log(1.35)
+
+    static func points(models: [ModelBenchmark]) -> [IntelligenceEfficiencyPoint] {
+        let rawPoints = models.compactMap { model -> IntelligenceEfficiencyPoint? in
+            guard let quality = model.qualityScore,
+                  let cost = model.benchmarkCostUSD,
+                  let elapsedSeconds = model.elapsedSeconds,
+                  let validTasks = model.validTasks,
+                  cost > 0,
+                  elapsedSeconds > 0,
+                  validTasks > 0 else { return nil }
+            let qualityValue = NSDecimalNumber(decimal: quality).doubleValue
+            let averageCost = NSDecimalNumber(decimal: cost / Decimal(validTasks)).doubleValue
+            let averageMinutes = elapsedSeconds / Double(validTasks) / 60
+            let rawCombinedCost = averageCost
+                * pow(averageMinutes / 10, combinedCostWeight)
+                * 100
+            guard qualityValue.isFinite,
+                  qualityValue > 0,
+                  averageCost.isFinite,
+                  averageMinutes.isFinite,
+                  rawCombinedCost.isFinite,
+                  rawCombinedCost > 0 else { return nil }
+            return .init(
+                id: model.id,
+                modelName: model.descriptor.displayName,
+                quality: qualityValue,
+                averageCostUSD: averageCost,
+                averageMinutes: averageMinutes,
+                rawCombinedCost: rawCombinedCost,
+                combinedCostIndex: 0
+            )
+        }
+        guard let maximum = rawPoints.map(\.rawCombinedCost).max(), maximum > 0 else { return [] }
+        return rawPoints.map {
+            .init(
+                id: $0.id,
+                modelName: $0.modelName,
+                quality: $0.quality,
+                averageCostUSD: $0.averageCostUSD,
+                averageMinutes: $0.averageMinutes,
+                rawCombinedCost: $0.rawCombinedCost,
+                combinedCostIndex: $0.rawCombinedCost / maximum * 100
+            )
+        }
+        .sorted {
+            let order = $0.modelName.localizedStandardCompare($1.modelName)
+            return order == .orderedSame ? $0.id.upstreamKey < $1.id.upstreamKey : order == .orderedAscending
+        }
+    }
+}

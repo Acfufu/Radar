@@ -60,6 +60,42 @@ struct ParetoComparisonView: View {
                 }
                 .foregroundStyle(result.classification == .dataInsufficient ? .secondary : .primary)
             }
+            if !efficiencyPoints.isEmpty {
+                Divider()
+                Text("成本-质量散点 · Radar 本地估算")
+                    .font(.title3.bold())
+                Text("横轴按每有效题平均费用与平均耗时折算并在当前数据集内归一为 100；纵轴为来源 IQ。越靠左上越高效。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                Chart(efficiencyPoints) { point in
+                    PointMark(
+                        x: .value("相对综合成本指数", point.combinedCostIndex),
+                        y: .value("IQ", point.quality)
+                    )
+                    .foregroundStyle(by: .value("模型", point.modelName))
+                    .annotation(position: .top) {
+                        Text(point.modelName)
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: 160)
+                    }
+                }
+                .chartLegend(position: .bottom)
+                .chartXAxis {
+                    AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                }
+                .chartYAxis {
+                    AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                }
+                .chartPlotStyle { $0.background(palette.section.color) }
+                .frame(minHeight: 260)
+                Text("公式：每有效题平均费用 × (每有效题平均分钟 / 10)^(ln 2.5 / ln 1.35)；仅使用当前来源与 seriesRevision，不跨来源比较。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
             Text("仅当前数据集 · \(projection.sync?.benchmark.value?.seriesRevision ?? "—") · 不含社区评分与来源额度")
                 .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
         }
@@ -67,6 +103,7 @@ struct ParetoComparisonView: View {
     }
 
     private var results: [ParetoResult] { projection.pareto(preset) }
+    private var efficiencyPoints: [IntelligenceEfficiencyPoint] { projection.intelligenceEfficiency }
     private func model(for id: ModelID) -> ModelBenchmark? {
         projection.sync?.benchmark.value?.models.first { $0.id == id }
     }

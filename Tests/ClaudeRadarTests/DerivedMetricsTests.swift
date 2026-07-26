@@ -47,16 +47,116 @@ struct DerivedMetricsTests {
         #expect(RadarFormat.derived(zeroResults[0].value) == "无法计算：分母 passedTasks 为 0")
     }
 
+    @Test("local intelligence efficiency uses per-valid-task averages and current-dataset normalization")
+    func intelligenceEfficiency() {
+        let priceWeighted = benchmark(
+            key: "price",
+            quality: 100,
+            passed: 1,
+            valid: 2,
+            cost: 5,
+            tokens: nil,
+            seconds: 1_200
+        )
+        let timeWeighted = benchmark(
+            key: "time",
+            quality: 80,
+            passed: 1,
+            valid: 1,
+            cost: 1,
+            tokens: nil,
+            seconds: 810
+        )
+
+        let points = IntelligenceEfficiency.points(models: [priceWeighted, timeWeighted])
+
+        #expect(points.count == 2)
+        #expect(points.allSatisfy { abs($0.combinedCostIndex - 100) < 0.000_000_1 })
+        #expect(points.first { $0.id.upstreamKey == "price" }?.averageCostUSD == 2.5)
+        #expect(points.first { $0.id.upstreamKey == "price" }?.averageMinutes == 10)
+        #expect(points.first { $0.id.upstreamKey == "time" }?.averageMinutes == 13.5)
+    }
+
+    @Test("local intelligence efficiency omits nil zero and negative inputs")
+    func intelligenceEfficiencyUnavailable() {
+        let missing = benchmark(
+            key: "missing",
+            quality: 80,
+            passed: 1,
+            valid: 1,
+            cost: nil,
+            tokens: nil,
+            seconds: nil
+        )
+        let zero = benchmark(
+            key: "zero",
+            quality: 80,
+            passed: 1,
+            valid: 0,
+            cost: 1,
+            tokens: nil,
+            seconds: 1
+        )
+        let negativeQuality = benchmark(
+            key: "negative-quality",
+            quality: -1,
+            passed: 1,
+            valid: 1,
+            cost: 1,
+            tokens: nil,
+            seconds: 1
+        )
+        let negativeCost = benchmark(
+            key: "negative-cost",
+            quality: 80,
+            passed: 1,
+            valid: 1,
+            cost: -1,
+            tokens: nil,
+            seconds: 1
+        )
+        let negativeTime = benchmark(
+            key: "negative-time",
+            quality: 80,
+            passed: 1,
+            valid: 1,
+            cost: 1,
+            tokens: nil,
+            seconds: -1
+        )
+        let missingValidTasks = benchmark(
+            key: "missing-valid",
+            quality: 80,
+            passed: 1,
+            valid: nil,
+            cost: 1,
+            tokens: nil,
+            seconds: 1,
+            defaultValidTasksToPassed: false
+        )
+
+        #expect(IntelligenceEfficiency.points(
+            models: [missing, zero, negativeQuality, negativeCost, negativeTime, missingValidTasks]
+        ).isEmpty)
+    }
+
     private func benchmark(
-        quality: Decimal?, passed: Int?, cost: Decimal?, tokens: Int64?, seconds: Double?
+        key: String = "fixture",
+        quality: Decimal?,
+        passed: Int?,
+        valid: Int? = nil,
+        cost: Decimal?,
+        tokens: Int64?,
+        seconds: Double?,
+        defaultValidTasksToPassed: Bool = true
     ) -> ModelBenchmark {
-        let id = ModelID(sourceID: .claudeCodeRadar, upstreamKey: "fixture")
+        let id = ModelID(sourceID: .claudeCodeRadar, upstreamKey: key)
         return .init(
             id: id,
             descriptor: .init(id: id, upstreamName: "Fixture", displayName: "Fixture"),
             qualityScore: quality,
             passedTasks: passed,
-            validTasks: passed,
+            validTasks: defaultValidTasksToPassed ? (valid ?? passed) : valid,
             invalidTasks: 0,
             benchmarkCostUSD: cost,
             inputTokens: nil,

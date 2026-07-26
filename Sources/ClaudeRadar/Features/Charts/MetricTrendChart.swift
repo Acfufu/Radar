@@ -6,21 +6,21 @@ struct MetricTrendChart: View {
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
     @State private var metric: TrendMetric = .quality
-    @State private var timeRange: TrendTimeRange = .all
+    @State private var timeRange: TrendTimeRange = .lastTwoDays
     @State private var selectionState = TrendSelectionState()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(
-                    title: "趋势",
-                    subtitle: "\(projection.source.displayName) · 每条线限定同一配置与同一 seriesRevision"
+                    title: "历史指标比较",
+                    subtitle: "\(projection.source.displayName) · Radar 本地快照，不插值；每条线限定同一配置与同一 seriesRevision"
                 )
                 HStack {
                     Picker("指标", selection: $metric) {
                         ForEach(TrendMetric.allCases, id: \.self) { Text(metricTitle($0)).tag($0) }
                     }
-                        .frame(width: 180)
+                        .frame(width: 190)
                     Picker("时间范围", selection: $timeRange) { ForEach(TrendTimeRange.allCases) { Text($0.rawValue).tag($0) } }
                         .frame(width: 190)
                     Spacer()
@@ -35,16 +35,25 @@ struct MetricTrendChart: View {
                     ScrollView(.horizontal) { HStack { ForEach(projection.rows) { row in Toggle(row.name, isOn: binding(row.id)).toggleStyle(.button) } } }
                         .radarPanel()
                     VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
-                        scaledTrendChart
-                            .chartLegend(position: .bottom)
-                            .chartXAxis {
-                                AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
-                            }
-                            .chartYAxis {
-                                AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
-                            }
-                            .chartPlotStyle { $0.background(palette.section.color) }
-                            .frame(minHeight: 320)
+                        if series.isEmpty {
+                            ContentUnavailableView(
+                                "该指标暂无历史数据",
+                                systemImage: "chart.xyaxis.line",
+                                description: Text("缺失值保持为空，不会补零或插值。")
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 320)
+                        } else {
+                            scaledTrendChart
+                                .chartLegend(position: .bottom)
+                                .chartXAxis {
+                                    AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                                }
+                                .chartYAxis {
+                                    AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
+                                }
+                                .chartPlotStyle { $0.background(palette.section.color) }
+                                .frame(minHeight: 320)
+                        }
                         Text("系列分组：" + series.map { "\($0.modelName) · \($0.seriesRevision)" }.joined(separator: "，"))
                             .font(.caption)
                             .foregroundStyle(palette.secondaryText.color)
@@ -69,7 +78,11 @@ struct MetricTrendChart: View {
     private var trendChart: some View {
         Chart(series) { group in
             ForEach(group.points) { point in
-                LineMark(x: .value("时间", point.date), y: .value(metricTitle(metric), point.value), series: .value("系列", group.id))
+                LineMark(
+                    x: .value("时间", point.date),
+                    y: .value(metricTitle(metric), point.value),
+                    series: .value("系列", "\(group.id)|\(point.segmentIndex)")
+                )
                     .foregroundStyle(by: .value("模型", group.modelName))
                     .symbol(by: .value("Revision", group.seriesRevision))
             }

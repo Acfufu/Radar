@@ -117,12 +117,18 @@ enum ModelSort: String, CaseIterable, Sendable {
 }
 
 enum TrendMetric: String, CaseIterable, Sendable {
-    case quality = "质量", cost = "成本", tokens = "Token", elapsed = "耗时"
+    case quality = "IQ"
+    case cost = "费用"
+    case elapsed = "耗时"
+    case agentSteps = "Agent steps"
+    case cache = "Cache 命中率"
+    case tokens = "总 Tokens"
 }
 
 enum TrendTimeRange: String, CaseIterable, Identifiable, Sendable {
     case all = "全部"
     case lastDay = "24 小时"
+    case lastTwoDays = "48 小时"
     case lastSevenDays = "7 天"
     case lastThirtyDays = "30 天"
 
@@ -131,6 +137,7 @@ enum TrendTimeRange: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .all: nil
         case .lastDay: 24 * 60 * 60
+        case .lastTwoDays: 48 * 60 * 60
         case .lastSevenDays: 7 * 24 * 60 * 60
         case .lastThirtyDays: 30 * 24 * 60 * 60
         }
@@ -156,6 +163,7 @@ struct TrendPoint: Identifiable, Sendable {
     let id: String
     let date: Date
     let value: Double
+    let segmentIndex: Int
 }
 
 struct TrendSeries: Identifiable, Sendable {
@@ -171,6 +179,16 @@ struct CostEfficiencyLeader: Equatable, Sendable {
     let modelName: String
     let costPerPassedTask: Decimal
     let formula: DerivedMetricFormula
+}
+
+struct RadarDeclineSignal: Identifiable, Equatable, Sendable {
+    let modelID: ModelID
+    let modelName: String
+    let currentIQ: Decimal
+    let drop12Hours: Decimal
+    let drop24Hours: Decimal
+    let drop48Hours: Decimal?
+    var id: ModelID { modelID }
 }
 
 struct BenchmarkPresentation: Equatable, Sendable {
@@ -262,6 +280,16 @@ struct WorkspaceProjection: Sendable {
             return $0.modelID.upstreamKey < $1.modelID.upstreamKey
         }
     }
+    var intelligenceEfficiency: [IntelligenceEfficiencyPoint] {
+        guard benchmarkState == .fresh, let dataset = sync?.benchmark.value else { return [] }
+        return IntelligenceEfficiency.points(
+            models: dataset.models.filter { $0.id.sourceID == dataset.sourceID }
+        )
+    }
+    func localDeclineSignals(history: [BenchmarkDataset], limit: Int = 4) -> [RadarDeclineSignal] {
+        guard benchmarkState == .fresh else { return [] }
+        return RadarDeclineAnalysis.signals(history: history, sourceID: source.id, limit: limit)
+    }
     func pareto(_ preset: ParetoPreset) -> [ParetoResult] {
         guard let dataset = sync?.benchmark.value else { return [] }
         return ParetoAnalysis.analyze(dataset: dataset, preset: preset)
@@ -308,7 +336,11 @@ struct WorkspaceProjection: Sendable {
         timeRange: TrendTimeRange = .all
     ) -> [TrendSeries] {
         struct Key: Hashable { let id: ModelID; let revision: String }
-        struct Group { var names: Set<String> = []; var points: [TrendPoint] = [] }
+        struct Group {
+            var names: Set<String> = []
+            var points: [TrendPoint] = []
+            var segmentIndex = 0
+        }
         var grouped: [Key: Group] = [:]
         let orderedHistory = history.sorted {
             ($0.sourceUpdatedAt ?? $0.fetchedAt) < ($1.sourceUpdatedAt ?? $1.fetchedAt)
@@ -322,13 +354,20 @@ struct WorkspaceProjection: Sendable {
             filteredHistory = orderedHistory
         }
         for (snapshotIndex, snapshot) in filteredHistory.enumerated() {
-            for model in snapshot.models where selected.contains(model.id) {
-                guard let value = metricValue(model, metric: metric) else { continue }
+            for model in snapshot.models
+            where selected.contains(model.id) && model.id.sourceID == snapshot.sourceID {
                 let key = Key(id: model.id, revision: snapshot.seriesRevision)
+                grouped[key, default: Group()].names.insert(model.descriptor.displayName)
+                guard let value = metricValue(model, metric: metric) else {
+                    grouped[key, default: Group()].segmentIndex += 1
+                    continue
+                }
                 let date = snapshot.sourceUpdatedAt ?? snapshot.fetchedAt
                 let pointID = "\(snapshot.sourceID.rawValue)|\(key.id.upstreamKey)|\(key.revision)|\(date.timeIntervalSince1970)|\(snapshotIndex)"
-                grouped[key, default: Group()].names.insert(model.descriptor.displayName)
-                grouped[key, default: Group()].points.append(.init(id: pointID, date: date, value: value))
+                let segmentIndex = grouped[key, default: Group()].segmentIndex
+                grouped[key, default: Group()].points.append(
+                    .init(id: pointID, date: date, value: value, segmentIndex: segmentIndex)
+                )
             }
         }
         return grouped.map {
@@ -370,7 +409,127 @@ struct WorkspaceProjection: Sendable {
         return lhs < rhs ? -1 : 1
     }
     private static func metricValue(_ model: ModelBenchmark, metric: TrendMetric) -> Double? {
-        switch metric { case .quality: model.qualityScore.map { NSDecimalNumber(decimal: $0).doubleValue }; case .cost: model.benchmarkCostUSD.map { NSDecimalNumber(decimal: $0).doubleValue }; case .tokens: model.totalTokens.map(Double.init); case .elapsed: model.elapsedSeconds }
+        switch metric {
+        case .quality: model.qualityScore.map { NSDecimalNumber(decimal: $0).doubleValue }
+        case .cost: model.benchmarkCostUSD.map { NSDecimalNumber(decimal: $0).doubleValue }
+        case .elapsed: model.elapsedSeconds
+        case .agentSteps: model.agentSteps.map(Double.init)
+        case .cache: model.cacheHitPercent.map { NSDecimalNumber(decimal: $0).doubleValue }
+        case .tokens: model.totalTokens.map(Double.init)
+        }
+    }
+}
+
+enum RadarDeclineAnalysis {
+    private static let baselineTolerance: TimeInterval = 6 * 60 * 60
+    private enum QualityResolution {
+        case missing
+        case value(Decimal)
+        case conflict
+    }
+
+    static func signals(
+        history: [BenchmarkDataset],
+        sourceID: RadarSourceID,
+        limit: Int = 4
+    ) -> [RadarDeclineSignal] {
+        guard limit > 0 else { return [] }
+        let snapshots = history
+            .filter { $0.sourceID == sourceID }
+            .sorted { semanticTime($0) < semanticTime($1) }
+        guard let latestDate = snapshots.last.map(semanticTime) else { return [] }
+        let latestSnapshots = snapshots.filter { semanticTime($0) == latestDate }
+        let revisions = Set(latestSnapshots.map(\.seriesRevision))
+        guard revisions.count == 1, let latestRevision = revisions.first else { return [] }
+        let revisionSnapshots = snapshots.filter { $0.seriesRevision == latestRevision }
+        let currentIDs = Set(latestSnapshots.flatMap(\.models).map(\.id))
+
+        return currentIDs.compactMap { modelID -> RadarDeclineSignal? in
+            guard modelID.sourceID == sourceID else { return nil }
+            guard case .value(let currentIQ) = qualityResolution(
+                for: modelID,
+                in: latestSnapshots
+            ) else { return nil }
+            let modelName = latestSnapshots
+                .flatMap(\.models)
+                .filter { $0.id == modelID }
+                .map(\.descriptor.displayName)
+                .min() ?? modelID.upstreamKey
+            let groupedSnapshots = Dictionary(grouping: revisionSnapshots, by: semanticTime)
+            var hasConflict = false
+            let points = groupedSnapshots
+                .compactMap { date, snapshots -> (Date, Decimal)? in
+                    switch qualityResolution(for: modelID, in: snapshots) {
+                    case .missing:
+                        return nil
+                    case .value(let quality):
+                        return (date, quality)
+                    case .conflict:
+                        hasConflict = true
+                        return nil
+                    }
+                }
+                .sorted { $0.0 < $1.0 }
+            guard !hasConflict,
+                  points.count >= 3,
+                  let twelveHourIQ = baseline(in: points, before: latestDate.addingTimeInterval(-12 * 60 * 60)),
+                  let twentyFourHourIQ = baseline(in: points, before: latestDate.addingTimeInterval(-24 * 60 * 60))
+            else { return nil }
+            let drop12 = twelveHourIQ - currentIQ
+            let drop24 = twentyFourHourIQ - currentIQ
+            guard drop24 >= 2, drop12 > 0 else { return nil }
+            let drop48 = baseline(
+                in: points,
+                before: latestDate.addingTimeInterval(-48 * 60 * 60)
+            ).map { $0 - currentIQ }
+            return .init(
+                modelID: modelID,
+                modelName: modelName,
+                currentIQ: currentIQ,
+                drop12Hours: drop12,
+                drop24Hours: drop24,
+                drop48Hours: drop48
+            )
+        }
+        .sorted {
+            if $0.drop24Hours != $1.drop24Hours { return $0.drop24Hours > $1.drop24Hours }
+            if $0.drop12Hours != $1.drop12Hours { return $0.drop12Hours > $1.drop12Hours }
+            let order = $0.modelName.localizedStandardCompare($1.modelName)
+            return order == .orderedSame
+                ? $0.modelID.upstreamKey < $1.modelID.upstreamKey
+                : order == .orderedAscending
+        }
+        .prefix(limit)
+        .map { $0 }
+    }
+
+    private static func baseline(
+        in points: [(Date, Decimal)],
+        before cutoff: Date
+    ) -> Decimal? {
+        guard let point = points.last(where: { $0.0 <= cutoff }),
+              cutoff.timeIntervalSince(point.0) <= baselineTolerance
+        else { return nil }
+        return point.1
+    }
+
+    private static func qualityResolution(
+        for modelID: ModelID,
+        in snapshots: [BenchmarkDataset]
+    ) -> QualityResolution {
+        let values: [Decimal?] = snapshots.map { snapshot in
+            snapshot.models.first(where: { $0.id == modelID })?.qualityScore
+        }
+        guard values.contains(where: { $0 != nil }) else { return .missing }
+        guard !values.contains(where: { $0 == nil }),
+              Set(values).count == 1,
+              let value = values[0]
+        else { return .conflict }
+        return .value(value)
+    }
+
+    private static func semanticTime(_ snapshot: BenchmarkDataset) -> Date {
+        snapshot.sourceUpdatedAt ?? snapshot.fetchedAt
     }
 }
 
