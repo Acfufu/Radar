@@ -75,7 +75,9 @@ struct ClaudeRadarApp: App {
 
     private var workspaceScene: some Scene {
         if #available(macOS 15.0, *) {
-            return workspaceWindow.defaultLaunchBehavior(.presented)
+            return workspaceWindow
+                .restorationBehavior(.disabled)
+                .defaultLaunchBehavior(.presented)
         } else {
             return workspaceWindow
         }
