@@ -13,7 +13,11 @@ let package = Package(
             name: "ClaudeRadar",
             resources: [.process("Resources")]
         ),
-        .testTarget(name: "ClaudeRadarTests", dependencies: ["ClaudeRadar"]),
+        .testTarget(
+            name: "ClaudeRadarTests",
+            dependencies: ["ClaudeRadar"],
+            exclude: ["Fixtures/CodexRenderedWarning"]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
