@@ -40,6 +40,12 @@ Source inventory reconciles all 19 Feature `View` declarations: `MetricTrendChar
 | States | Populated, empty, disabled, stale, LKG, validation, and error use `StateBanner`; fixture source records include long CJK and prompt-like text as inert content. |
 | Interaction | Focus/AX, search/table/inspector routes, and source destination views use native controls. NSSavePanel and command menus remain native boundaries. |
 
+## Codex rendered IQ surface
+
+The Overview's `24 小时 IQ 趋势` card is a source-native, read-only surface for the approved rendered DOM observation at `https://deng.codexradar.com/`. The default `官网 24h` view is the exact 24-point official series (one aggregate plus 1...7 model choices), drawn with straight `LineMark`/`PointMark` segments over the ordinal `0...23` domain. It displays the exact attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar` as a link to `https://deng.codexradar.com/` and states that it is independent from `本地 IQ 拟合`.
+
+Challenge, schema/origin drift, unavailable page, and timeout states are visibly error/blocked states; they must not be styled as fresh or inferred empty data. `本地拟合` remains a separate local benchmark calculation and does not alter the official chart.
+
 ## Reproduction and cleanup
 
 Build with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./Scripts/build-app.sh debug`; bind the executable with `shasum -a 256 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar`; then launch the reproducible populated matrix with `/usr/bin/env HOME=<task10Root>/home CFFIXED_USER_HOME=<task10Root>/home RADAR_DATA_ROOT=<task10Root>/data RADAR_FIXTURE_MODE=ui RADAR_UI_STATE=fresh RADAR_UI_SOURCE=claudeCodeRadar /usr/bin/open -n .build/app/ClaudeRadar.app --args`. These are Debug-supported values: `.ui` triggers `DebugUISeed`, `fresh` is its default populated state, and `claudeCodeRadar` selects the seeded source. Use `screencapture -l <CGWindowID>` only after CG/AX confirms the target PID/bounds. Close only that PID, its popup/Settings window, task browser profile, and task temporary root; restore appearance/contrast/keyboard settings.

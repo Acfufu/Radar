@@ -225,3 +225,26 @@ These are small hand-authored projections of the public shapes, not copied live 
 - Official state remains one of loading, fresh cards, fresh explicit empty, stale last-known-good, last-known-good plus error, or error without cache. A challenge, schema drift, or unavailable page is a live-readiness blocker, never a successful empty result.
 - `Codex Radar 官网降智预警` and `本地 IQ 拟合` are independent results with different provenance. Radar does not join them or claim that local fitting reproduces the official warning.
 - The `rendered-warnings` export dataset is normalized-only and source/date scoped. `清除规范化历史` removes warning snapshots and their sync metadata; raw diagnostic clearing remains independent.
+
+## Codex rendered 24-hour IQ history contract
+
+The approved Todo 10 path observes only the browser-visible DOM at `https://deng.codexradar.com/`. It is a noncommercial, anonymous observation of values the public page has already rendered. It is not API access, endpoint discovery, a response reader, a license grant, or permission to access protected data.
+
+- WebKit uses `WKWebsiteDataStore.nonPersistent()` for every read. No login, cookie, browser profile, local storage, or other persistent website data is supplied or retained.
+- The page may perform its own JavaScript and subresource traffic. Radar does not call an API, author requests, intercept endpoints, inspect response bodies, use `fetch`, `XMLHttpRequest`, or `PerformanceObserver`, or persist HTML, scripts, body text, cookies, browser storage/profile data, response bodies, credentials, or endpoint/interception material.
+- Main-frame navigation and response acceptance are exact-origin HTTPS checks for `https://deng.codexradar.com`; off-host navigation, downloads, popups, and non-displayable responses are cancelled.
+- A fixed extraction script selects the visible `#iq-body`/`#iqbody` root, selects the visible 24-hour range, and reads only visible cards whose accessible trend name identifies a recent 24-hour IQ trend. It emits a bounded JSON bridge projection, never page markup.
+- The normalized result is exactly one `aggregate` series plus 1...7 `model:<safe-token>` series (2...8 series total). Every series has exactly 24 ordered points (`sourceOrder` `0...23`), a non-empty visible source-time label, and a finite IQ in `0...150`. Missing, duplicate, reordered, partial, or extra points reject the whole snapshot.
+- Parser revision is `codex-radar-rendered-iq-history-v1`; the final origin must be `https://deng.codexradar.com`. The semantic fingerprint covers source, revision, origin, series, and points, but not local `capturedAt`, so a repeated observation is deduplicated.
+
+### Persistence, export, and local-fit boundary
+
+- `rendered-iq-history` is a normalized SwiftData dataset. Each snapshot stores only source ID, parser revision, final origin, capture time, semantic fingerprint, and the ordered series/point values. Per source and parser revision, retention keeps the newest 256 valid snapshots and removes corrupt/obsolete rows during insertion; raw diagnostic retention is a separate store and policy.
+- Export uses dataset name `rendered-iq-history` with schema version `1`. A record contains `id`, `sourceID`, `parserRevision`, `finalOrigin`, `capturedAt`, and `series`; each series contains `sourceOrder`, `seriesKey`, `displayName`, and 24 points with `sourceOrder`, `sourceTimeLabel`, and `iq`. Export contains no HTML, script, cookie, profile, body, credential, API, or interception fields.
+- `清除规范化历史` removes rendered IQ-history snapshots and their sync metadata together with the other normalized datasets. `清除原始诊断样本` remains independent and does not restore or remove normalized IQ history.
+- `官网 24h` is the official rendered curve. `本地拟合` is a separate local calculation over the current source's benchmark/history snapshots: it requires the same source and revision, reports a signal only when 24-hour decline is at least 2 IQ and 12-hour decline remains downward, and never claims to reproduce or validate the official curve. Insufficient points do not get interpolated.
+
+### Readiness and attribution
+
+- Official state is fresh only after the DOM projection passes every check. A challenge/consent page, schema or origin drift, wrong range, navigation failure, JavaScript/bridge failure, or navigation/total timeout is a validation/unavailable error. With a prior valid snapshot the UI may show last-known-good; without one, live readiness is **BLOCKED**, never a successful empty or current PASS.
+- The rendered history UI displays the exact attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar` as a backlink to `https://deng.codexradar.com/`. It also states that the official curve and `本地 IQ 拟合` are independent.

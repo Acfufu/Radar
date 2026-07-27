@@ -16,6 +16,8 @@ On 2026-07-16, the project owner authorized this app's automatic synchronization
 
 The page may make its own JavaScript and subresource requests while rendering. Radar uses nonpersistent WebKit, does not author or intercept those responses, and persists or exports only bounded normalized warning fields. It retains no page HTML, script source, cookies, browser storage/profile, response bodies, credentials, or endpoint/interception material. The official rendered warning and Radar's local IQ fitting remain independent. Codex Radar's public summary separately states that full JSON API access requires authorization; the app does not call or bypass the protected full API.
 
+The same boundary applies to the approved rendered 24-hour IQ history at [deng.codexradar.com](https://deng.codexradar.com/): anonymous, noncommercial, browser-visible DOM observation only, through `WKWebsiteDataStore.nonPersistent()`. The reader does not call or intercept APIs/endpoints or responses and retains no HTML, cookies, profile/storage data, scripts, body text, response bodies, credentials, or interception material. It accepts exactly one aggregate plus one to seven model series, each with exactly 24 visible points, under parser revision `codex-radar-rendered-iq-history-v1`. The normalized `rendered-iq-history` export is schema version 1; official history and the app's `本地 IQ 拟合` are independent. The exact displayed attribution is `数据来自分布式雷达 deng.codexradar.com · powered by codexradar`, linked back to `https://deng.codexradar.com/`.
+
 This notice is attribution and a release-boundary disclosure. It is not a claim of affiliation, endorsement, or permission from Codex Radar.
 
 ## SWE-bench
