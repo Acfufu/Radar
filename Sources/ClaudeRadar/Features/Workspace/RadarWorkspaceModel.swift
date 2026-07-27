@@ -311,6 +311,154 @@ struct CodexRenderedWarningPresentation: Equatable, Sendable {
     }
 }
 
+enum CodexRenderedIQHistoryChartSource: String, CaseIterable, Identifiable, Sendable {
+    case official24h = "官网 24h"
+    case localFit = "本地拟合"
+
+    var id: Self { self }
+}
+
+struct CodexRenderedIQHistoryPresentation: Equatable, Sendable {
+    enum State: String, CaseIterable, Equatable, Sendable {
+        case loading
+        case fresh
+        case staleLastKnownGood = "stale-last-known-good"
+        case lastKnownGoodWithError = "last-known-good-with-error"
+        case schemaDriftWithoutLastKnownGood = "schema-drift-without-last-known-good"
+        case challengeWithoutLastKnownGood = "challenge-without-last-known-good"
+        case unavailableWithoutLastKnownGood = "unavailable-without-last-known-good"
+    }
+
+    enum Selection: Hashable, Sendable {
+        case aggregate
+        case model(String)
+    }
+
+    struct Point: Identifiable, Equatable, Sendable {
+        let ordinal: Int
+        let sourceTimeLabel: String
+        let iq: Double
+        var id: Int { ordinal }
+    }
+
+    struct Series: Identifiable, Equatable, Sendable {
+        let sourceOrder: Int
+        let seriesKey: String
+        let displayName: String
+        let points: [Point]
+        var id: String { seriesKey }
+    }
+
+    let state: State
+    let selection: Selection
+    let series: [Series]
+    let selectedSeries: Series?
+    let lastSuccessfulAt: Date?
+    let capturedAt: Date?
+    let errorMessage: String?
+
+    let attribution = "数据来自分布式雷达 deng.codexradar.com · powered by codexradar"
+    let backlink = "https://deng.codexradar.com/"
+    let sectionAccessibilityIdentifier = "codex-rendered-iq-history-section"
+
+    init?(
+        sourceID: RadarSourceID,
+        state: SegmentState<CodexRenderedIQHistorySnapshot>?,
+        selection: Selection = .aggregate
+    ) {
+        guard sourceID == .codexRadar else { return nil }
+
+        let snapshot = state?.value
+        self.state = Self.presentationState(state)
+        self.series = snapshot?.series.map {
+            Series(
+                sourceOrder: $0.sourceOrder,
+                seriesKey: $0.seriesKey,
+                displayName: $0.displayName,
+                points: $0.points.map {
+                    Point(ordinal: $0.sourceOrder, sourceTimeLabel: $0.sourceTimeLabel, iq: $0.iq)
+                }
+            )
+        } ?? []
+        self.selection = Self.reconciled(selection, in: series)
+        self.selectedSeries = Self.selectedSeries(selection: self.selection, in: series)
+        self.lastSuccessfulAt = state?.lastSuccessfulAt
+        self.capturedAt = snapshot?.capturedAt
+        self.errorMessage = state?.error.map { safe($0.message) }
+    }
+
+    var modelChoices: [Series] {
+        series.filter { $0.seriesKey != "aggregate" }
+    }
+
+    var stateMessage: String {
+        switch state {
+        case .loading: "正在读取 Codex Radar 官网 24 小时 IQ 曲线"
+        case .fresh: "官网 24 小时 IQ 曲线已更新"
+        case .staleLastKnownGood: "正在显示可能已过期的最近有效官网 24 小时 IQ 曲线"
+        case .lastKnownGoodWithError: "官网 24 小时 IQ 曲线刷新失败，正在显示最近有效数据"
+        case .schemaDriftWithoutLastKnownGood: "官网 24 小时 IQ 曲线格式已变化，暂不可用"
+        case .challengeWithoutLastKnownGood: "官网 24 小时 IQ 曲线访问受限，暂不可用"
+        case .unavailableWithoutLastKnownGood: "官网 24 小时 IQ 曲线暂不可用"
+        }
+    }
+
+    var stateAccessibilityIdentifier: String {
+        "codex-rendered-iq-history-state-\(state.rawValue)"
+    }
+
+    var stateAccessibilityLabel: String {
+        [stateMessage, errorMessage].compactMap { $0 }.joined(separator: "：")
+    }
+
+    var selectedSeriesAccessibilityIdentifier: String {
+        "codex-rendered-iq-history-series-\(selectedSeries?.seriesKey ?? "none")"
+    }
+
+    var selectedSeriesAccessibilityLabel: String {
+        guard let selectedSeries else { return "\(stateAccessibilityLabel)，\(attribution)" }
+        let labels = selectedSeries.points.map(\.sourceTimeLabel).joined(separator: "、")
+        return "\(stateAccessibilityLabel)，\(selectedSeries.displayName)，\(selectedSeries.points.count) 个点，\(labels)，\(attribution)"
+    }
+
+    private static func presentationState(
+        _ state: SegmentState<CodexRenderedIQHistorySnapshot>?
+    ) -> State {
+        guard let state else { return .loading }
+        if state.value != nil {
+            if state.error != nil { return .lastKnownGoodWithError }
+            return state.isStale ? .staleLastKnownGood : .fresh
+        }
+        guard let error = state.error else { return .loading }
+        let message = error.message.lowercased()
+        if error.kind == .validation, message.contains("challenge") || message.contains("consent") {
+            return .challengeWithoutLastKnownGood
+        }
+        if error.kind == .validation {
+            return .schemaDriftWithoutLastKnownGood
+        }
+        return .unavailableWithoutLastKnownGood
+    }
+
+    private static func reconciled(_ selection: Selection, in series: [Series]) -> Selection {
+        switch selection {
+        case .aggregate:
+            return .aggregate
+        case .model(let key):
+            return series.contains { $0.seriesKey == key } ? .model(key) : .aggregate
+        }
+    }
+
+    private static func selectedSeries(selection: Selection, in series: [Series]) -> Series? {
+        switch selection {
+        case .aggregate:
+            return series.first { $0.seriesKey == "aggregate" }
+        case .model(let key):
+            return series.first { $0.seriesKey == key }
+        }
+    }
+}
+
 struct BenchmarkPresentation: Equatable, Sendable {
     let supportState: WorkspaceState?
     let healthState: WorkspaceState?
@@ -323,6 +471,7 @@ struct WorkspaceProjection: Sendable {
     let supportLevel: SupportLevel
     let source: RadarSourceDescriptor
     let renderedWarningPresentation: CodexRenderedWarningPresentation?
+    let renderedIQHistoryPresentation: CodexRenderedIQHistoryPresentation?
 
     init(
         sync: RadarSyncProjection?,
@@ -330,7 +479,8 @@ struct WorkspaceProjection: Sendable {
         supportLevel: SupportLevel,
         source: RadarSourceDescriptor = ClaudeRadarConfiguration.descriptor,
         renderedWarningState: SegmentState<CodexRenderedWarningSnapshot>? = nil,
-        renderedWarningHistory: [CodexRenderedWarningSnapshot] = []
+        renderedWarningHistory: [CodexRenderedWarningSnapshot] = [],
+        renderedIQHistoryState: SegmentState<CodexRenderedIQHistorySnapshot>? = nil
     ) {
         self.sync = sync
         self.lifecycle = lifecycle
@@ -340,6 +490,10 @@ struct WorkspaceProjection: Sendable {
             sourceID: source.id,
             state: renderedWarningState,
             history: renderedWarningHistory
+        )
+        renderedIQHistoryPresentation = CodexRenderedIQHistoryPresentation(
+            sourceID: source.id,
+            state: renderedIQHistoryState
         )
     }
 
