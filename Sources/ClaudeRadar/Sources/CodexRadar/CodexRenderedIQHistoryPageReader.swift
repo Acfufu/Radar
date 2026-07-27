@@ -197,7 +197,9 @@ final class CodexRenderedIQHistoryPageReader: CodexRenderedIQHistoryReading {
       const selected = Array.from(
         document.querySelectorAll(".iq-range button[data-iq-hours]")
       ).find((button) => button.getAttribute("aria-pressed") === "true");
-      const root = document.querySelector("#iqbody.iq, #iqbody, .iq");
+      const root = document.querySelector(
+        "#iq-body.iq, #iq-body, #iqbody.iq, #iqbody"
+      );
       const blocked = document.documentElement.querySelector(
         "[data-radar-challenge], [data-radar-consent], #challenge-form, [class*='cf-challenge'], [aria-label*='consent' i]"
       );
