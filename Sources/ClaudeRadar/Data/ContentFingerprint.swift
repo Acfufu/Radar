@@ -57,6 +57,15 @@ enum ContentFingerprint {
         )
     }
 
+    static func renderedIQHistory(_ snapshot: CodexRenderedIQHistorySnapshot) throws -> String {
+        try CodexRenderedIQHistorySemanticFingerprint.make(
+            sourceID: snapshot.sourceID,
+            series: snapshot.series,
+            finalOrigin: snapshot.finalOrigin,
+            parserRevision: snapshot.parserRevision
+        )
+    }
+
     private static func make<Value: Encodable>(
         _ value: Value,
         datasetType: RadarDatasetType,
