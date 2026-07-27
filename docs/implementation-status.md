@@ -7,6 +7,7 @@ The two-stage information architecture, SWE-bench integration, and Codex rendere
 - Preserved the permanent product boundary: Radar only reads, organizes, caches, analyzes, displays, and exports information already published by upstream sources. It does not run or submit benchmarks, generate source data, or write back upstream.
 - Added the approved noncommercial Codex public-page reader through nonpersistent WebKit. It observes only rendered warning fields, never authors or intercepts page responses, and persists no HTML, scripts, cookies, browser storage/profile, response bodies, credentials, or endpoint material.
 - Added independent official rendered-warning history and a normalized-only `rendered-warnings` export dataset with deterministic chronology/fingerprint ordering, source/date filtering, explicit optional 48-hour nulls, and source-safe provenance. Normalized-history clearing includes warnings and their metadata while raw clearing remains independent.
+- Added the approved noncommercial rendered 24-hour IQ history path at `https://deng.codexradar.com/`: anonymous nonpersistent WebKit DOM observation, exact-origin/navigation policy, one aggregate plus 1...7 model series with exactly 24 points each, parser revision `codex-radar-rendered-iq-history-v1`, normalized persistence/256-row retention, schema-1 export, independent clear behavior, and explicit challenge/drift/timeout blocking. The official curve and local IQ fitting remain separate and use distinct provenance/attribution.
 - Kept `Codex Radar 官网降智预警` and `本地 IQ 拟合` independent; neither result is joined to or presented as the other.
 - Replaced the hidden source-picker model with a global information overview, visible source rooms, source-native destination lists, and a persistent statement that independent source metrics do not form a unified ranking.
 - Added the explicit `swe-bench-verified` runtime and official leaderboard adapter for the SWE-bench Verified mini-SWE-agent v2 cohort without adding a provider/plugin or generic ETL framework.
@@ -77,6 +78,7 @@ The two-stage information architecture, SWE-bench integration, and Codex rendere
 
 ## In Progress
 - Refresh exact-tree packaged-app, isolated live-page, upgrade/offline-LKG, and Release evidence for the rendered-warning integration.
+- Refresh exact-tree packaged-app and isolated live-page evidence for the rendered 24-hour IQ history. Until a fresh read proves the exact aggregate/model/point counts and nonpersistent boundary, live readiness remains **BLOCKED**; challenge, schema drift, navigation failure, or timeout is not a successful empty result.
 
 ## Blocked
 - Developer ID signing, notarization, stapling, and Gatekeeper distribution validation are BLOCKED: the keychain has no Developer ID Application identity and `ClaudeRadarNotary` is unavailable. The artifact is explicitly `adhoc,runtime` local QA only.
