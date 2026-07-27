@@ -1,0 +1,390 @@
+{
+  "revision": "codex-radar-rendered-iq-history-v1",
+  "finalOrigin": "https://deng.codexradar.com",
+  "rootPresent": true,
+  "selectedRange": "48h",
+  "pageState": "ready",
+  "series": [
+    {
+      "sourceOrder": 0,
+      "seriesKey": "aggregate",
+      "displayName": "官网综合",
+      "points": [
+        {
+          "sourceOrder": 0,
+          "sourceTimeLabel": "07/27 00:00",
+          "iq": 106
+        },
+        {
+          "sourceOrder": 1,
+          "sourceTimeLabel": "07/27 01:00",
+          "iq": 106.5
+        },
+        {
+          "sourceOrder": 2,
+          "sourceTimeLabel": "07/27 02:00",
+          "iq": 107
+        },
+        {
+          "sourceOrder": 3,
+          "sourceTimeLabel": "07/27 03:00",
+          "iq": 107.5
+        },
+        {
+          "sourceOrder": 4,
+          "sourceTimeLabel": "07/27 04:00",
+          "iq": 108
+        },
+        {
+          "sourceOrder": 5,
+          "sourceTimeLabel": "07/27 05:00",
+          "iq": 108.5
+        },
+        {
+          "sourceOrder": 6,
+          "sourceTimeLabel": "07/27 06:00",
+          "iq": 109
+        },
+        {
+          "sourceOrder": 7,
+          "sourceTimeLabel": "07/27 07:00",
+          "iq": 109.5
+        },
+        {
+          "sourceOrder": 8,
+          "sourceTimeLabel": "07/27 08:00",
+          "iq": 110
+        },
+        {
+          "sourceOrder": 9,
+          "sourceTimeLabel": "07/27 09:00",
+          "iq": 110.5
+        },
+        {
+          "sourceOrder": 10,
+          "sourceTimeLabel": "07/27 10:00",
+          "iq": 111
+        },
+        {
+          "sourceOrder": 11,
+          "sourceTimeLabel": "07/27 11:00",
+          "iq": 111.5
+        },
+        {
+          "sourceOrder": 12,
+          "sourceTimeLabel": "07/27 12:00",
+          "iq": 112
+        },
+        {
+          "sourceOrder": 13,
+          "sourceTimeLabel": "07/27 13:00",
+          "iq": 112.5
+        },
+        {
+          "sourceOrder": 14,
+          "sourceTimeLabel": "07/27 14:00",
+          "iq": 113
+        },
+        {
+          "sourceOrder": 15,
+          "sourceTimeLabel": "07/27 15:00",
+          "iq": 113.5
+        },
+        {
+          "sourceOrder": 16,
+          "sourceTimeLabel": "07/27 16:00",
+          "iq": 114
+        },
+        {
+          "sourceOrder": 17,
+          "sourceTimeLabel": "07/27 17:00",
+          "iq": 114.5
+        },
+        {
+          "sourceOrder": 18,
+          "sourceTimeLabel": "07/27 18:00",
+          "iq": 115
+        },
+        {
+          "sourceOrder": 19,
+          "sourceTimeLabel": "07/27 19:00",
+          "iq": 115.5
+        },
+        {
+          "sourceOrder": 20,
+          "sourceTimeLabel": "07/27 20:00",
+          "iq": 116
+        },
+        {
+          "sourceOrder": 21,
+          "sourceTimeLabel": "07/27 21:00",
+          "iq": 116.5
+        },
+        {
+          "sourceOrder": 22,
+          "sourceTimeLabel": "07/27 22:00",
+          "iq": 117
+        },
+        {
+          "sourceOrder": 23,
+          "sourceTimeLabel": "07/27 23:00",
+          "iq": 117.5
+        }
+      ]
+    },
+    {
+      "sourceOrder": 1,
+      "seriesKey": "model:gpt-5.6-sol",
+      "displayName": "GPT-5.6 Sol",
+      "points": [
+        {
+          "sourceOrder": 0,
+          "sourceTimeLabel": "07/27 00:00",
+          "iq": 112
+        },
+        {
+          "sourceOrder": 1,
+          "sourceTimeLabel": "07/27 01:00",
+          "iq": 112.5
+        },
+        {
+          "sourceOrder": 2,
+          "sourceTimeLabel": "07/27 02:00",
+          "iq": 113
+        },
+        {
+          "sourceOrder": 3,
+          "sourceTimeLabel": "07/27 03:00",
+          "iq": 113.5
+        },
+        {
+          "sourceOrder": 4,
+          "sourceTimeLabel": "07/27 04:00",
+          "iq": 114
+        },
+        {
+          "sourceOrder": 5,
+          "sourceTimeLabel": "07/27 05:00",
+          "iq": 114.5
+        },
+        {
+          "sourceOrder": 6,
+          "sourceTimeLabel": "07/27 06:00",
+          "iq": 115
+        },
+        {
+          "sourceOrder": 7,
+          "sourceTimeLabel": "07/27 07:00",
+          "iq": 115.5
+        },
+        {
+          "sourceOrder": 8,
+          "sourceTimeLabel": "07/27 08:00",
+          "iq": 116
+        },
+        {
+          "sourceOrder": 9,
+          "sourceTimeLabel": "07/27 09:00",
+          "iq": 116.5
+        },
+        {
+          "sourceOrder": 10,
+          "sourceTimeLabel": "07/27 10:00",
+          "iq": 117
+        },
+        {
+          "sourceOrder": 11,
+          "sourceTimeLabel": "07/27 11:00",
+          "iq": 117.5
+        },
+        {
+          "sourceOrder": 12,
+          "sourceTimeLabel": "07/27 12:00",
+          "iq": 118
+        },
+        {
+          "sourceOrder": 13,
+          "sourceTimeLabel": "07/27 13:00",
+          "iq": 118.5
+        },
+        {
+          "sourceOrder": 14,
+          "sourceTimeLabel": "07/27 14:00",
+          "iq": 119
+        },
+        {
+          "sourceOrder": 15,
+          "sourceTimeLabel": "07/27 15:00",
+          "iq": 119.5
+        },
+        {
+          "sourceOrder": 16,
+          "sourceTimeLabel": "07/27 16:00",
+          "iq": 120
+        },
+        {
+          "sourceOrder": 17,
+          "sourceTimeLabel": "07/27 17:00",
+          "iq": 120.5
+        },
+        {
+          "sourceOrder": 18,
+          "sourceTimeLabel": "07/27 18:00",
+          "iq": 121
+        },
+        {
+          "sourceOrder": 19,
+          "sourceTimeLabel": "07/27 19:00",
+          "iq": 121.5
+        },
+        {
+          "sourceOrder": 20,
+          "sourceTimeLabel": "07/27 20:00",
+          "iq": 122
+        },
+        {
+          "sourceOrder": 21,
+          "sourceTimeLabel": "07/27 21:00",
+          "iq": 122.5
+        },
+        {
+          "sourceOrder": 22,
+          "sourceTimeLabel": "07/27 22:00",
+          "iq": 123
+        },
+        {
+          "sourceOrder": 23,
+          "sourceTimeLabel": "07/27 23:00",
+          "iq": 123.5
+        }
+      ]
+    },
+    {
+      "sourceOrder": 2,
+      "seriesKey": "model:gpt-5.5-codex",
+      "displayName": "GPT-5.5 Codex",
+      "points": [
+        {
+          "sourceOrder": 0,
+          "sourceTimeLabel": "07/27 00:00",
+          "iq": 104
+        },
+        {
+          "sourceOrder": 1,
+          "sourceTimeLabel": "07/27 01:00",
+          "iq": 104.5
+        },
+        {
+          "sourceOrder": 2,
+          "sourceTimeLabel": "07/27 02:00",
+          "iq": 105
+        },
+        {
+          "sourceOrder": 3,
+          "sourceTimeLabel": "07/27 03:00",
+          "iq": 105.5
+        },
+        {
+          "sourceOrder": 4,
+          "sourceTimeLabel": "07/27 04:00",
+          "iq": 106
+        },
+        {
+          "sourceOrder": 5,
+          "sourceTimeLabel": "07/27 05:00",
+          "iq": 106.5
+        },
+        {
+          "sourceOrder": 6,
+          "sourceTimeLabel": "07/27 06:00",
+          "iq": 107
+        },
+        {
+          "sourceOrder": 7,
+          "sourceTimeLabel": "07/27 07:00",
+          "iq": 107.5
+        },
+        {
+          "sourceOrder": 8,
+          "sourceTimeLabel": "07/27 08:00",
+          "iq": 108
+        },
+        {
+          "sourceOrder": 9,
+          "sourceTimeLabel": "07/27 09:00",
+          "iq": 108.5
+        },
+        {
+          "sourceOrder": 10,
+          "sourceTimeLabel": "07/27 10:00",
+          "iq": 109
+        },
+        {
+          "sourceOrder": 11,
+          "sourceTimeLabel": "07/27 11:00",
+          "iq": 109.5
+        },
+        {
+          "sourceOrder": 12,
+          "sourceTimeLabel": "07/27 12:00",
+          "iq": 110
+        },
+        {
+          "sourceOrder": 13,
+          "sourceTimeLabel": "07/27 13:00",
+          "iq": 110.5
+        },
+        {
+          "sourceOrder": 14,
+          "sourceTimeLabel": "07/27 14:00",
+          "iq": 111
+        },
+        {
+          "sourceOrder": 15,
+          "sourceTimeLabel": "07/27 15:00",
+          "iq": 111.5
+        },
+        {
+          "sourceOrder": 16,
+          "sourceTimeLabel": "07/27 16:00",
+          "iq": 112
+        },
+        {
+          "sourceOrder": 17,
+          "sourceTimeLabel": "07/27 17:00",
+          "iq": 112.5
+        },
+        {
+          "sourceOrder": 18,
+          "sourceTimeLabel": "07/27 18:00",
+          "iq": 113
+        },
+        {
+          "sourceOrder": 19,
+          "sourceTimeLabel": "07/27 19:00",
+          "iq": 113.5
+        },
+        {
+          "sourceOrder": 20,
+          "sourceTimeLabel": "07/27 20:00",
+          "iq": 114
+        },
+        {
+          "sourceOrder": 21,
+          "sourceTimeLabel": "07/27 21:00",
+          "iq": 114.5
+        },
+        {
+          "sourceOrder": 22,
+          "sourceTimeLabel": "07/27 22:00",
+          "iq": 115
+        },
+        {
+          "sourceOrder": 23,
+          "sourceTimeLabel": "07/27 23:00",
+          "iq": 115.5
+        }
+      ]
+    }
+  ]
+}
