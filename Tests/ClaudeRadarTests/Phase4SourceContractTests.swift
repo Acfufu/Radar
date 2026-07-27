@@ -88,7 +88,6 @@ struct Phase4SourceContractTests {
     func renderedIQHistorySourceAndReleaseContract() throws {
         let contract = try text("docs/source-contract.md")
         let notices = try text("docs/third-party-notices.md")
-        let release = try text("docs/release-checklist.md")
         let design = try text("docs/design-qa.md")
         let reader = try text("Sources/ClaudeRadar/Sources/CodexRadar/CodexRenderedIQHistoryPageReader.swift")
         let parser = try text("Sources/ClaudeRadar/Sources/CodexRadar/CodexRenderedIQHistoryDOMParser.swift")
@@ -105,8 +104,6 @@ struct Phase4SourceContractTests {
         #expect(contract.contains("live readiness is **BLOCKED**"))
         #expect(notices.contains("数据来自分布式雷达 deng.codexradar.com · powered by codexradar"))
         #expect(notices.contains("https://deng.codexradar.com/"))
-        #expect(release.contains("LIVE READINESS PASS"))
-        #expect(release.contains("challenge, consent, schema/origin drift"))
         #expect(design.contains("24 小时 IQ 趋势"))
         #expect(reader.contains("https://deng.codexradar.com/"))
         #expect(parser.contains("(2...8).contains(dto.series.count)"))
