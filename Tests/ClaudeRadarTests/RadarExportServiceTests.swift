@@ -353,7 +353,7 @@ struct RadarExportServiceTests {
         await #expect(throws: ExportError.invalidDestination) {
             try await service.export(request: .init(destination: traversal, datasets: [.models]))
         }
-        #expect(ExportDataset.allCases.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "rendered-warnings", "raw-samples"])
+        #expect(ExportDataset.allCases.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "rendered-warnings", "rendered-iq-history", "raw-samples"])
     }
 
     @Test("zip process cancellation terminates and clears its active process")
@@ -533,6 +533,150 @@ struct RadarExportServiceTests {
         ] {
             #expect(!serialized.contains(forbidden))
         }
+    }
+
+    @Test("Codex rendered IQ history exports selected normalized snapshots with schema v1 controls")
+    func renderedIQHistoryProductionExportContract() async throws {
+        let root = try temporaryDirectory()
+        let fixture = try exportRepository(root: root, count: 0)
+        let first = try exportIQHistory(marker: "first", capturedAt: Date(timeIntervalSince1970: 15))
+        let firstRepeated = try exportIQHistory(marker: "first", capturedAt: Date(timeIntervalSince1970: 19))
+        let second = try exportIQHistory(marker: "second", capturedAt: Date(timeIntervalSince1970: 16))
+        let excludedByDate = try exportIQHistory(marker: "old", capturedAt: Date(timeIntervalSince1970: 5))
+        let excludedBySource = try exportIQHistory(
+            sourceID: .claudeCodeRadar,
+            marker: "wrong-source",
+            capturedAt: Date(timeIntervalSince1970: 15)
+        )
+        for snapshot in [second, excludedBySource, excludedByDate, first, firstRepeated] {
+            _ = try await fixture.repository.insertRenderedIQHistory(snapshot)
+        }
+        let destination = root.appending(path: "rendered-iq-history.zip")
+        let result = try await RadarExportService(source: RadarExportSource(
+            repository: fixture.repository,
+            rawSampleStore: RawSampleStore(dataRoot: root),
+            sourceID: .codexRadar
+        )).export(
+            request: .init(
+                destination: destination,
+                datasets: [.renderedIQHistory],
+                range: .init(
+                    start: Date(timeIntervalSince1970: 10),
+                    end: Date(timeIntervalSince1970: 20)
+                ),
+                pageSize: 100
+            ),
+            exportedAt: Date(timeIntervalSince1970: 30)
+        )
+
+        #expect(result.manifest.datasets == [
+            .init(name: "rendered-iq-history", schemaVersion: 1, recordCount: 2, pageCount: 1),
+        ])
+        #expect(result.manifest.sources == [RadarSourceID.codexRadar.rawValue])
+        let tree = try unzip(destination, into: root.appending(path: "rendered-iq-history-tree"))
+        let page = try JSONDecoder.export.decode(
+            PageEnvelope.self,
+            from: Data(contentsOf: tree.appending(path: "rendered-iq-history/page-000001.json"))
+        )
+        #expect(page.dataset == "rendered-iq-history")
+        #expect(page.schemaVersion == 1)
+        #expect(page.records.compactMap { $0.fields["id"] } == [
+            .string(first.semanticFingerprint),
+            .string(second.semanticFingerprint),
+        ])
+        #expect(page.records.allSatisfy {
+            Set($0.fields.keys) == [
+                "id",
+                "sourceID",
+                "parserRevision",
+                "finalOrigin",
+                "capturedAt",
+                "series",
+            ]
+        })
+        let firstRecord = try #require(page.records.first)
+        #expect(firstRecord.fields["sourceID"] == .string(RadarSourceID.codexRadar.rawValue))
+        #expect(firstRecord.fields["parserRevision"] == .string(first.parserRevision))
+        #expect(firstRecord.fields["finalOrigin"] == .string(first.finalOrigin))
+        #expect(firstRecord.fields["capturedAt"] == .string("1970-01-01T00:00:15Z"))
+        guard case let .array(series) = try #require(firstRecord.fields["series"]),
+              case let .object(firstSeries) = try #require(series.first),
+              case let .array(points) = try #require(firstSeries["points"]),
+              case let .object(firstPoint) = try #require(points.first) else {
+            Issue.record("Expected normalized rendered IQ history")
+            return
+        }
+        #expect(Set(firstSeries.keys) == ["displayName", "points", "seriesKey", "sourceOrder"])
+        #expect(Set(firstPoint.keys) == ["iq", "sourceOrder", "sourceTimeLabel"])
+        #expect(points.count == 24)
+        #expect(firstPoint == [
+            "sourceOrder": .int(0),
+            "sourceTimeLabel": .string("07/27 00:00"),
+            "iq": .double(99.5),
+        ])
+        let serialized = try serializedFiles(in: tree)
+        for forbidden in ["Date", "html", "endpoint", "cookie", "WKWebView"] {
+            #expect(!serialized.contains(forbidden))
+        }
+    }
+
+    @Test("rendered IQ history pagination, empty selection, and corruption preserve export controls")
+    func renderedIQHistoryExportControls() async throws {
+        let root = try temporaryDirectory()
+        let fixture = try exportRepository(root: root, count: 0)
+        for index in 0..<101 {
+            _ = try await fixture.repository.insertRenderedIQHistory(exportIQHistory(
+                marker: "page-\(index)",
+                capturedAt: Date(timeIntervalSince1970: TimeInterval(index + 10))
+            ))
+        }
+        let source = RadarExportSource(
+            repository: fixture.repository,
+            rawSampleStore: RawSampleStore(dataRoot: root),
+            sourceID: .codexRadar
+        )
+        let pagedDestination = root.appending(path: "rendered-iq-paged.zip")
+        let paged = try await RadarExportService(source: source).export(request: .init(
+            destination: pagedDestination,
+            datasets: [.renderedIQHistory],
+            pageSize: 100
+        ))
+        #expect(paged.manifest.datasets == [
+            .init(name: "rendered-iq-history", schemaVersion: 1, recordCount: 101, pageCount: 2),
+        ])
+        let pagedTree = try unzip(pagedDestination, into: root.appending(path: "rendered-iq-paged-tree"))
+        let secondPage = try JSONDecoder.export.decode(
+            PageEnvelope.self,
+            from: Data(contentsOf: pagedTree.appending(path: "rendered-iq-history/page-000002.json"))
+        )
+        #expect(secondPage.recordCount == 1)
+        #expect(!secondPage.hasNextPage)
+
+        let emptyDestination = root.appending(path: "empty.zip")
+        let empty = try await RadarExportService(source: source).export(request: .init(
+            destination: emptyDestination,
+            datasets: []
+        ))
+        #expect(empty.manifest.datasets.isEmpty)
+
+        let corruptContext = ModelContext(fixture.container)
+        let corrupt = try CodexRenderedIQHistorySnapshotEntity(
+            snapshot: exportIQHistory(marker: "corrupt", capturedAt: Date(timeIntervalSince1970: 200))
+        )
+        corrupt.encodedSnapshot = Data("not-json".utf8)
+        corruptContext.insert(corrupt)
+        try corruptContext.save()
+        let corruptDestination = root.appending(path: "corrupt.zip")
+        await #expect(throws: (any Error).self) {
+            try await RadarExportService(source: source).export(request: .init(
+                destination: corruptDestination,
+                datasets: [.renderedIQHistory]
+            ))
+        }
+        #expect(!FileManager.default.fileExists(atPath: corruptDestination.path))
+        #expect(!(try FileManager.default.contentsOfDirectory(atPath: root.path)).contains {
+            $0.hasPrefix(".ClaudeRadarExport-")
+        })
     }
 }
 
@@ -737,6 +881,40 @@ private func exportWarning(
         capturedAt: capturedAt,
         cards: cards,
         semanticFingerprint: fingerprint
+    )
+}
+
+private func exportIQHistory(
+    sourceID: RadarSourceID = .codexRadar,
+    marker: String,
+    capturedAt: Date
+) throws -> CodexRenderedIQHistorySnapshot {
+    let series = [CodexRenderedIQHistorySeries(
+        sourceOrder: 0,
+        seriesKey: "aggregate",
+        displayName: marker,
+        points: (0..<24).map {
+            .init(
+                sourceOrder: $0,
+                sourceTimeLabel: String(format: "07/27 %02d:00", $0),
+                iq: 99.5 + Double($0) / 10
+            )
+        }
+    )]
+    let parserRevision = "codex-radar-rendered-iq-history-v1"
+    let finalOrigin = "https://deng.codexradar.com"
+    return CodexRenderedIQHistorySnapshot(
+        sourceID: sourceID,
+        parserRevision: parserRevision,
+        finalOrigin: finalOrigin,
+        capturedAt: capturedAt,
+        series: series,
+        semanticFingerprint: try CodexRenderedIQHistorySemanticFingerprint.make(
+            sourceID: sourceID,
+            series: series,
+            finalOrigin: finalOrigin,
+            parserRevision: parserRevision
+        )
     )
 }
 

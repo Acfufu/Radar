@@ -135,6 +135,7 @@ struct ExportView: View {
         case .communityRatings: "社区评分"
         case .sourceStatus: "来源状态"
         case .renderedWarnings: "Codex Radar 官网降智预警"
+        case .renderedIQHistory: "Codex Radar 官网 24 小时 IQ 历史"
         case .rawSamples: "原始样本"
         }
     }

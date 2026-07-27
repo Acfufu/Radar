@@ -27,6 +27,8 @@ extension RadarRepository: RadarExportDataSource {
             return try context.fetchCount(sourceStatusDescriptor(range: range, sourceID: sourceID))
         case .renderedWarnings:
             return try context.fetchCount(renderedWarningDescriptor(range: range, sourceID: sourceID))
+        case .renderedIQHistory:
+            return try context.fetchCount(renderedIQHistoryDescriptor(range: range, sourceID: sourceID))
         case .rawSamples:
             return 0
         }
@@ -79,6 +81,11 @@ extension RadarRepository: RadarExportDataSource {
                 .dropFirst(offset)
                 .prefix(limit)
                 .map(renderedWarningRecord)
+        case .renderedIQHistory:
+            var descriptor = renderedIQHistoryDescriptor(range: range, sourceID: sourceID)
+            descriptor.fetchOffset = offset
+            descriptor.fetchLimit = limit
+            return try context.fetch(descriptor).map(renderedIQHistoryRecord)
         case .rawSamples:
             return []
         }
@@ -159,6 +166,27 @@ extension RadarRepository: RadarExportDataSource {
         )
     }
 
+    private func renderedIQHistoryDescriptor(
+        range: ExportDateRange,
+        sourceID: RadarSourceID?
+    ) -> FetchDescriptor<CodexRenderedIQHistorySnapshotEntity> {
+        let lower = range.start ?? .distantPast
+        let upper = range.end ?? .distantFuture
+        let includesAllSources = sourceID == nil
+        let source = sourceID?.rawValue ?? ""
+        return FetchDescriptor(
+            predicate: #Predicate { entity in
+                (includesAllSources || entity.sourceID == source)
+                    && entity.capturedAt >= lower
+                    && entity.capturedAt <= upper
+            },
+            sortBy: [
+                SortDescriptor(\CodexRenderedIQHistorySnapshotEntity.chronologyAt, order: .forward),
+                SortDescriptor(\CodexRenderedIQHistorySnapshotEntity.contentFingerprint, order: .forward),
+            ]
+        )
+    }
+
     private func modelRecord(_ entity: BenchmarkSnapshotEntity) throws -> ExportRecord {
         let dataset = try verifiedBenchmark(entity)
         return ExportRecord(fields: baseFields(entity).merging([
@@ -232,6 +260,33 @@ extension RadarRepository: RadarExportDataSource {
                     "iq": .double(card.iq),
                     "drop24h": .double(card.drop24h),
                     "drop48h": card.drop48h.map(ExportJSONValue.double) ?? .null,
+                ])
+            }),
+        ])
+    }
+
+    private func renderedIQHistoryRecord(
+        _ entity: CodexRenderedIQHistorySnapshotEntity
+    ) throws -> ExportRecord {
+        let snapshot = try verifiedRenderedIQHistory(entity)
+        return ExportRecord(fields: [
+            "id": .string(snapshot.semanticFingerprint),
+            "sourceID": .string(snapshot.sourceID.rawValue),
+            "parserRevision": .string(snapshot.parserRevision),
+            "finalOrigin": .string(snapshot.finalOrigin),
+            "capturedAt": date(snapshot.capturedAt),
+            "series": .array(snapshot.series.map { series in
+                .object([
+                    "sourceOrder": .int(Int64(series.sourceOrder)),
+                    "seriesKey": .string(series.seriesKey),
+                    "displayName": .string(series.displayName),
+                    "points": .array(series.points.map { point in
+                        .object([
+                            "sourceOrder": .int(Int64(point.sourceOrder)),
+                            "sourceTimeLabel": .string(point.sourceTimeLabel),
+                            "iq": .double(point.iq),
+                        ])
+                    }),
                 ])
             }),
         ])
