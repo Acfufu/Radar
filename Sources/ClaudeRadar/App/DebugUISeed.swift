@@ -12,6 +12,16 @@ actor DebugBlockingExportArchiver: RadarExportArchiver {
 }
 
 enum DebugUISeed {
+    static let renderedIQHistoryStates: Set<String> = [
+        "iq-loading",
+        "iq-fresh",
+        "iq-stale",
+        "iq-lkg-error",
+        "iq-schema-drift",
+        "iq-challenge",
+        "iq-unavailable",
+    ]
+
     static let renderedWarningStates: Set<String> = [
         "warning-loading",
         "warning-fresh-cards",
@@ -82,7 +92,123 @@ enum DebugUISeed {
                 state: state,
                 now: now
             )
+            try await populateRenderedIQHistory(
+                repository: repository,
+                state: state,
+                now: now
+            )
         }
+    }
+
+    private static func populateRenderedIQHistory(
+        repository: RadarRepository,
+        state: String,
+        now: Date
+    ) async throws {
+        guard renderedIQHistoryStates.contains(state) else { return }
+
+        switch state {
+        case "iq-loading":
+            return
+        case "iq-schema-drift":
+            try await recordRenderedIQHistoryFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .validation,
+                message: "Rendered IQ history fixture schema drift"
+            )
+            return
+        case "iq-challenge":
+            try await recordRenderedIQHistoryFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .validation,
+                message: "Rendered IQ history fixture challenge"
+            )
+            return
+        case "iq-unavailable":
+            try await recordRenderedIQHistoryFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .network,
+                message: "Rendered IQ history fixture unavailable"
+            )
+            return
+        default:
+            break
+        }
+
+        let capturedAt = switch state {
+        case "iq-stale": now.addingTimeInterval(-8 * 60 * 60)
+        case "iq-lkg-error": now.addingTimeInterval(-30 * 60)
+        default: now
+        }
+        let series = renderedIQHistorySeries
+        let fingerprint = try CodexRenderedIQHistorySemanticFingerprint.make(
+            sourceID: .codexRadar,
+            series: series,
+            finalOrigin: "https://deng.codexradar.com",
+            parserRevision: CodexRenderedIQHistoryDOMParser.parserRevision
+        )
+        _ = try await repository.insertRenderedIQHistory(CodexRenderedIQHistorySnapshot(
+            sourceID: .codexRadar,
+            parserRevision: CodexRenderedIQHistoryDOMParser.parserRevision,
+            finalOrigin: "https://deng.codexradar.com",
+            capturedAt: capturedAt,
+            series: series,
+            semanticFingerprint: fingerprint
+        ))
+
+        if state == "iq-lkg-error" {
+            try await recordRenderedIQHistoryFailure(
+                repository: repository,
+                attemptedAt: now,
+                kind: .validation,
+                message: "Rendered IQ history fixture refresh failed"
+            )
+        }
+    }
+
+    private static func recordRenderedIQHistoryFailure(
+        repository: RadarRepository,
+        attemptedAt: Date,
+        kind: SegmentError.Kind,
+        message: String
+    ) async throws {
+        try await repository.recordFailure(
+            sourceID: .codexRadar,
+            datasetType: .renderedIQHistory,
+            attemptedAt: attemptedAt,
+            error: SegmentError(kind: kind, message: message)
+        )
+    }
+
+    private static let renderedIQHistorySeries = [
+        renderedIQHistorySeries(order: 0, key: "aggregate", name: "官网综合", startIQ: 126),
+        renderedIQHistorySeries(order: 1, key: "model:gpt-5.6-sol", name: "GPT-5.6 Sol", startIQ: 128.5),
+        renderedIQHistorySeries(order: 2, key: "model:gpt-5.5-codex", name: "GPT-5.5 Codex", startIQ: 119),
+        renderedIQHistorySeries(order: 3, key: "model:gpt-5.4", name: "GPT-5.4", startIQ: 110),
+        renderedIQHistorySeries(order: 4, key: "model:gpt-5-mini", name: "GPT-5 mini", startIQ: 104),
+    ]
+
+    private static func renderedIQHistorySeries(
+        order: Int,
+        key: String,
+        name: String,
+        startIQ: Double
+    ) -> CodexRenderedIQHistorySeries {
+        .init(
+            sourceOrder: order,
+            seriesKey: key,
+            displayName: name,
+            points: (0...23).map {
+                .init(
+                    sourceOrder: $0,
+                    sourceTimeLabel: "07/27 \(String(format: "%02d", $0)):00",
+                    iq: startIQ - Double($0) / 4
+                )
+            }
+        )
     }
 
     private static func populateRadar(
