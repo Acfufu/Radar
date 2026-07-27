@@ -38,6 +38,7 @@ enum ExportDataset: String, Codable, CaseIterable, Sendable {
     case communityRatings = "community-ratings"
     case sourceStatus = "source-status"
     case renderedWarnings = "rendered-warnings"
+    case renderedIQHistory = "rendered-iq-history"
     case rawSamples = "raw-samples"
 
     static let normalized: [ExportDataset] = [
@@ -46,5 +47,6 @@ enum ExportDataset: String, Codable, CaseIterable, Sendable {
         .communityRatings,
         .sourceStatus,
         .renderedWarnings,
+        .renderedIQHistory,
     ]
 }
