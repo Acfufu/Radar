@@ -47,7 +47,7 @@ struct OverviewView: View {
 
     @ViewBuilder private var officialWarnings: some View {
         if let warning = projection.renderedWarningPresentation {
-            GroupBox("Codex Radar 官网降智预警") {
+            radarSection("Codex Radar 官网降智预警") {
                 VStack(alignment: .leading, spacing: 12) {
                     Label(warning.stateMessage, systemImage: warningStateIcon(warning.state))
                         .foregroundStyle(warningStateColor(warning.state))
@@ -73,21 +73,23 @@ struct OverviewView: View {
                         }
                     }
 
-                    HStack(spacing: 14) {
-                        if let sourceTime = warning.sourceTimeLabel {
-                            Text("官网时间：\(sourceTime)")
-                                .accessibilityIdentifier(warning.sourceTimeAccessibilityIdentifier)
-                                .accessibilityLabel(warning.sourceTimeAccessibilityLabel)
+                    if warning.sourceTimeLabel != nil || warning.capturedAt != nil {
+                        HStack(spacing: 14) {
+                            if let sourceTime = warning.sourceTimeLabel {
+                                Text("官网时间：\(sourceTime)")
+                                    .accessibilityIdentifier(warning.sourceTimeAccessibilityIdentifier)
+                                    .accessibilityLabel(warning.sourceTimeAccessibilityLabel)
+                            }
+                            if let capturedAt = warning.capturedAt {
+                                Text("本地采集时间：\(capturedAt.ISO8601Format())")
+                                    .accessibilityIdentifier(warning.capturedAtAccessibilityIdentifier)
+                                    .accessibilityLabel(warning.capturedAtAccessibilityLabel)
+                            }
                         }
-                        if let capturedAt = warning.capturedAt {
-                            Text("本地采集时间：\(capturedAt.ISO8601Format())")
-                                .accessibilityIdentifier(warning.capturedAtAccessibilityIdentifier)
-                                .accessibilityLabel(warning.capturedAtAccessibilityLabel)
-                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
 
                     Text(warning.attribution)
                         .font(.caption)
@@ -153,6 +155,17 @@ struct OverviewView: View {
 
     private func officialMetric(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    private func radarSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+            Text(title).font(.headline)
+            content()
+        }
+        .radarPanel()
     }
 
     @ViewBuilder private var officialIQHistoryTrend: some View {
@@ -386,7 +399,7 @@ struct OverviewView: View {
             columns: [GridItem(.adaptive(minimum: 360), alignment: .top)],
             spacing: RadarStyle.compactSpacing
         ) {
-            GroupBox("本地 IQ 拟合") {
+            radarSection("本地 IQ 拟合") {
                 VStack(alignment: .leading, spacing: 10) {
                     if projection.benchmarkState != .fresh {
                         Text("仅在来源数据为最新状态时计算，当前状态不生成信号。")
@@ -425,7 +438,7 @@ struct OverviewView: View {
             .frame(maxWidth: .infinity)
             .accessibilityIdentifier("local-iq-fit-section")
 
-            GroupBox("本地效率估算") {
+            radarSection("本地效率估算") {
                 VStack(alignment: .leading, spacing: 8) {
                     if efficiencyPoints.isEmpty {
                         Text("缺少 IQ、费用或耗时，暂无法估算。")
@@ -557,7 +570,7 @@ struct OverviewView: View {
     }
 
     private var familyHealth: some View {
-        GroupBox("模型家族健康") {
+        radarSection("模型家族健康") {
             VStack(spacing: 0) {
                 ForEach(familySummaries) { summary in
                     HStack(spacing: 10) {
@@ -586,7 +599,7 @@ struct OverviewView: View {
     }
 
     private var tierHeatmap: some View {
-        GroupBox("推理层级表现热力图 · IQ") {
+        radarSection("推理层级表现热力图 · IQ") {
             Grid(horizontalSpacing: 1, verticalSpacing: 1) {
                 GridRow {
                     Text("模型").foregroundStyle(.secondary)
@@ -613,7 +626,7 @@ struct OverviewView: View {
     }
 
     private var quotaContext: some View {
-        GroupBox("配额与成本上下文") {
+        radarSection("配额与成本上下文") {
             VStack(alignment: .leading, spacing: 10) {
                 Picker("订阅方案", selection: $subscription) {
                     Text("Plus").tag("Plus")
@@ -643,7 +656,7 @@ struct OverviewView: View {
             columns: [GridItem(.adaptive(minimum: 360), alignment: .top)],
             spacing: RadarStyle.compactSpacing
         ) {
-            GroupBox("近期表现") {
+            radarSection("近期表现") {
                 Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 0) {
                     GridRow {
                         Text("模型")
@@ -686,7 +699,7 @@ struct OverviewView: View {
             .frame(maxWidth: .infinity)
 
             TimelineView(.periodic(from: .now, by: 60)) { context in
-                GroupBox("实时监控") {
+                radarSection("实时监控") {
                     VStack(alignment: .leading, spacing: 12) {
                         Label(sourceHealth, systemImage: sourceHealthIcon)
                             .foregroundStyle(projection.benchmarkState == .fresh ? .green : .orange)
