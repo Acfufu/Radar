@@ -16,7 +16,7 @@ let package = Package(
         .testTarget(
             name: "ClaudeRadarTests",
             dependencies: ["ClaudeRadar"],
-            exclude: ["Fixtures/CodexRenderedWarning"]
+            exclude: ["Fixtures/CodexRenderedWarning", "Fixtures/CodexRenderedIQHistory"]
         ),
     ],
     swiftLanguageModes: [.v6]
