@@ -16,6 +16,8 @@ struct CodexRenderedIQHistoryPageReaderTests {
 
         let script = CodexRenderedIQHistoryPageReader.extractionScript
         #expect(script.contains(".iq-range button[data-iq-hours=\"24\"]"))
+        #expect(script.contains("#iq-body.iq"))
+        #expect(!script.contains("#iqbody, .iq"))
         #expect(script.contains(".iqcard.total-iq"))
         #expect(script.contains(".iqcard[data-model]"))
         #expect(script.contains(".iq-trend-hit[data-trend-label]"))
@@ -43,7 +45,8 @@ struct CodexRenderedIQHistoryPageReaderTests {
             <button data-iq-hours="24" aria-pressed="false">24h</button>
             <button data-iq-hours="48" aria-pressed="true">48h</button>
           </div>
-          <div id="iqbody" class="iq">
+          <div class="iq"><div class="iqcard total-iq">unrelated root</div></div>
+          <div id="iq-body" class="iq">
             <div class="iqcard"><div class="m">unrelated</div></div>
             <div class="iqcard total-iq" hidden>
               <div class="m">hidden total</div>
@@ -59,7 +62,7 @@ struct CodexRenderedIQHistoryPageReaderTests {
               document.querySelector('[data-iq-hours="24"]').setAttribute("aria-pressed", "true");
               document.querySelector('[data-iq-hours="48"]').setAttribute("aria-pressed", "false");
               setTimeout(() => {
-                const body = document.getElementById("iqbody");
+                const body = document.getElementById("iq-body");
                 body.insertAdjacentHTML("beforeend", Array.from({length: 5}, (_, cardIndex) => {
                   const model = cardIndex ? ` data-model="gpt-5.6-${["sol","terra","luna","old"][cardIndex - 1]}"` : "";
                   const classes = cardIndex ? "iqcard model-iq-card" : "iqcard total-iq";
