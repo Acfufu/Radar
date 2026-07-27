@@ -2,12 +2,12 @@ import Foundation
 import WebKit
 
 @MainActor
-protocol CodexRenderedWarningReading: Sendable {
-    func read() async throws -> CodexRenderedWarningSnapshot
+protocol CodexRenderedIQHistoryReading: Sendable {
+    func read() async throws -> CodexRenderedIQHistorySnapshot
     func cancel()
 }
 
-enum CodexRenderedWarningPageReaderError: Error, Equatable, Sendable {
+enum CodexRenderedIQHistoryPageReaderError: Error, Equatable, Sendable {
     case readAlreadyInProgress
     case navigationDenied
     case responseDenied
@@ -18,26 +18,26 @@ enum CodexRenderedWarningPageReaderError: Error, Equatable, Sendable {
     case navigationTimeout
     case totalTimeout
     case cancelled
-    case validation(CodexRenderedWarningDOMParserError)
+    case validation(CodexRenderedIQHistoryDOMParserError)
 }
 
-typealias CodexRenderedWarningNavigationDecision = CodexRenderedPageNavigationDecision
-typealias CodexRenderedWarningNavigationType = CodexRenderedPageNavigationType
-typealias CodexRenderedWarningNavigationPolicyInput = CodexRenderedPageNavigationPolicyInput
-typealias CodexRenderedWarningResponsePolicyInput = CodexRenderedPageResponsePolicyInput
+typealias CodexRenderedIQHistoryNavigationDecision = CodexRenderedPageNavigationDecision
+typealias CodexRenderedIQHistoryNavigationType = CodexRenderedPageNavigationType
+typealias CodexRenderedIQHistoryNavigationPolicyInput = CodexRenderedPageNavigationPolicyInput
+typealias CodexRenderedIQHistoryResponsePolicyInput = CodexRenderedPageResponsePolicyInput
 
-enum CodexRenderedWarningNavigationPolicy {
-    private static let exactOrigin = "https://codexradar.com"
+enum CodexRenderedIQHistoryNavigationPolicy {
+    private static let exactOrigin = "https://deng.codexradar.com"
 
     static func decide(
-        _ input: CodexRenderedWarningNavigationPolicyInput
-    ) -> CodexRenderedWarningNavigationDecision {
+        _ input: CodexRenderedIQHistoryNavigationPolicyInput
+    ) -> CodexRenderedIQHistoryNavigationDecision {
         CodexRenderedPageNavigationPolicy.decide(input, exactOrigin: exactOrigin)
     }
 
     static func decide(
-        _ input: CodexRenderedWarningResponsePolicyInput
-    ) -> CodexRenderedWarningNavigationDecision {
+        _ input: CodexRenderedIQHistoryResponsePolicyInput
+    ) -> CodexRenderedIQHistoryNavigationDecision {
         CodexRenderedPageNavigationPolicy.decide(input, exactOrigin: exactOrigin)
     }
 
@@ -49,19 +49,19 @@ enum CodexRenderedWarningNavigationPolicy {
     }
 }
 
-enum CodexRenderedWarningReadDecision: Equatable, Sendable {
+enum CodexRenderedIQHistoryReadDecision: Equatable, Sendable {
     case none
     case poll(after: Duration)
-    case success(CodexRenderedWarningSnapshot)
-    case failure(CodexRenderedWarningPageReaderError)
+    case success(CodexRenderedIQHistorySnapshot)
+    case failure(CodexRenderedIQHistoryPageReaderError)
 }
 
-struct CodexRenderedWarningStabilizer: Sendable {
+struct CodexRenderedIQHistoryStabilizer: Sendable {
     private let navigationTimeout: Duration
     private let totalTimeout: Duration
     private let pollInterval: Duration
     private let stabilizationInterval: Duration
-    private let parser = CodexRenderedWarningDOMParser()
+    private let parser = CodexRenderedIQHistoryDOMParser()
 
     private var didFinishNavigation = false
     private var isComplete = false
@@ -84,7 +84,7 @@ struct CodexRenderedWarningStabilizer: Sendable {
         self.stabilizationInterval = stabilizationInterval
     }
 
-    mutating func didFinish(at instant: Duration) -> CodexRenderedWarningReadDecision {
+    mutating func didFinish(at instant: Duration) -> CodexRenderedIQHistoryReadDecision {
         guard !isComplete else { return .none }
         didFinishNavigation = true
         return .poll(after: .zero)
@@ -94,13 +94,13 @@ struct CodexRenderedWarningStabilizer: Sendable {
         _ data: Data,
         capturedAt: Date,
         at instant: Duration
-    ) -> CodexRenderedWarningReadDecision {
+    ) -> CodexRenderedIQHistoryReadDecision {
         guard didFinishNavigation, !isComplete else { return .none }
 
-        let snapshot: CodexRenderedWarningSnapshot
+        let snapshot: CodexRenderedIQHistorySnapshot
         do {
             snapshot = try parser.parse(data, capturedAt: capturedAt)
-        } catch let error as CodexRenderedWarningDOMParserError {
+        } catch let error as CodexRenderedIQHistoryDOMParserError {
             if error == .contentPending {
                 candidateFingerprint = nil
                 candidateSince = nil
@@ -119,9 +119,7 @@ struct CodexRenderedWarningStabilizer: Sendable {
             self.candidateSince = instant
             return .poll(after: pollInterval)
         }
-
-        let stableFor = instant - candidateSince
-        guard stableFor >= stabilizationInterval else {
+        guard instant - candidateSince >= stabilizationInterval else {
             return .poll(after: pollInterval)
         }
 
@@ -131,7 +129,7 @@ struct CodexRenderedWarningStabilizer: Sendable {
 
     mutating func navigationDeadlineReached(
         at instant: Duration
-    ) -> CodexRenderedWarningReadDecision {
+    ) -> CodexRenderedIQHistoryReadDecision {
         guard !isComplete, !didFinishNavigation, instant >= navigationTimeout else {
             return .none
         }
@@ -141,13 +139,13 @@ struct CodexRenderedWarningStabilizer: Sendable {
 
     mutating func totalDeadlineReached(
         at instant: Duration
-    ) -> CodexRenderedWarningReadDecision {
+    ) -> CodexRenderedIQHistoryReadDecision {
         guard !isComplete, instant >= totalTimeout else { return .none }
         isComplete = true
         return .failure(.totalTimeout)
     }
 
-    mutating func cancel() -> CodexRenderedWarningReadDecision {
+    mutating func cancel() -> CodexRenderedIQHistoryReadDecision {
         guard !isComplete else { return .none }
         isComplete = true
         return .failure(.cancelled)
@@ -155,105 +153,100 @@ struct CodexRenderedWarningStabilizer: Sendable {
 }
 
 @MainActor
-final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReading {
-    static let fixedURL = URL(string: "https://codexradar.com/")!
+final class CodexRenderedIQHistoryPageReader: CodexRenderedIQHistoryReading {
+    static let fixedURL = URL(string: "https://deng.codexradar.com/")!
     static let extractionScript = #"""
     (() => {
       "use strict";
-      const revision = "codex-radar-rendered-dom-v1";
+      const revision = "codex-radar-rendered-iq-history-v1";
       const clean = (value) => typeof value === "string"
         ? value.replace(/\s+/g, " ").trim()
         : "";
-      const token = (value) => clean(value)
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9+._-]/g, "");
-      const root = document.querySelector("section[data-radar-degradation]");
+      const visible = (element) => {
+        if (!element || element.hidden || element.getAttribute("aria-hidden") === "true") {
+          return false;
+        }
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && rect.width > 0
+          && rect.height > 0;
+      };
+      const accessibleName = (element) => {
+        const direct = clean(element.getAttribute("aria-label"));
+        if (direct) return direct;
+        const labelled = clean(element.getAttribute("aria-labelledby"))
+          .split(/\s+/)
+          .map((id) => clean(document.getElementById(id)?.textContent))
+          .filter(Boolean)
+          .join(" ");
+        return labelled || clean(element.querySelector("title")?.textContent);
+      };
+      const is24hIQTrend = (name) =>
+        /(?:^|\D)24\s*(?:h|小时)(?:\D|$)/i.test(name)
+        && /(?:^|\W)iq(?:\W|$)/i.test(name)
+        && /(?:趋势|走势|trend)/i.test(name)
+        && /(?:最近|近期|近|recent|last|past)/i.test(name);
+      const visible24h = Array.from(
+        document.querySelectorAll('.iq-range button[data-iq-hours="24"]')
+      ).find(visible);
+      if (visible24h && visible24h.getAttribute("aria-pressed") !== "true") {
+        visible24h.click();
+      }
+      const selected = Array.from(
+        document.querySelectorAll(".iq-range button[data-iq-hours]")
+      ).find((button) => button.getAttribute("aria-pressed") === "true");
+      const root = document.querySelector("#iqbody.iq, #iqbody, .iq");
       const blocked = document.documentElement.querySelector(
         "[data-radar-challenge], [data-radar-consent], #challenge-form, [class*='cf-challenge'], [aria-label*='consent' i]"
       );
       const blockedText = blocked ? clean(blocked.getAttribute("aria-label")) : "";
-      const grid = root ? root.querySelector("[data-radar-degradation-grid]") : null;
-      const live = root ? root.querySelector("[data-radar-degradation-live]") : null;
-      const articles = grid ? Array.from(grid.querySelectorAll(":scope > article")) : [];
-      const numberFrom = (value) => {
-        const matches = clean(value).replace(/,/g, "").match(/[-+]?\d+(?:\.\d+)?/g);
-        return matches && matches.length ? Number(matches[matches.length - 1]) : null;
+      const qualifying = (card) => {
+        if (!visible(card)) return false;
+        const trend = Array.from(
+          card.querySelectorAll("svg")
+        ).find((svg) => visible(svg) && is24hIQTrend(accessibleName(svg)));
+        return trend || false;
       };
-      const metric = (article, kind) => {
-        const patterns = {
-          iq: /(^|[^a-z])iq([^a-z]|$)|智商/i,
-          drop24h: /24\s*(?:h|小时)/i,
-          drop48h: /48\s*(?:h|小时)/i
-        };
-        const observedNode = kind === "iq"
-          ? article.querySelector(".degradation-card-score strong")
-          : Array.from(article.querySelectorAll(".degradation-deltas > span"))
-              .find((candidate) => patterns[kind].test(clean(candidate.textContent)));
-        const nodes = Array.from(article.querySelectorAll("[data-radar-metric], [aria-label]"));
-        const node = observedNode || nodes.find((candidate) => {
-          const label = [
-            candidate.getAttribute("data-radar-metric"),
-            candidate.getAttribute("aria-label"),
-            candidate.textContent
-          ].map(clean).join(" ");
-          return patterns[kind].test(label);
+      const totalCards = root ? Array.from(root.querySelectorAll(
+        ":scope > .iqcard.total-iq:not([data-model])"
+      )).filter(qualifying) : [];
+      const modelCards = root ? Array.from(root.querySelectorAll(
+        ":scope > .iqcard[data-model]:not(.total-iq)"
+      )).filter(qualifying) : [];
+      const cards = totalCards.concat(modelCards);
+      const series = cards.map((card, sourceOrder) => {
+        const model = clean(card.getAttribute("data-model"));
+        const trend = qualifying(card);
+        const labels = Array.from(
+          trend.querySelectorAll(".iq-trend-hit[data-trend-label]")
+        ).map((point) => clean(point.getAttribute("data-trend-label")));
+        const points = labels.map((label, pointOrder) => {
+          const match = label.match(/^(.*?)\s*·\s*([-+]?\d+(?:\.\d+)?)\s*IQ$/i);
+          return match
+            ? { sourceOrder: pointOrder, sourceTimeLabel: clean(match[1]), iq: Number(match[2]) }
+            : { sourceOrder: pointOrder, sourceTimeLabel: "", iq: null };
         });
-        if (!node) return null;
-        const value = numberFrom(
-          node.getAttribute("data-value")
-          || node.getAttribute("aria-valuenow")
-          || node.textContent
-        );
-        if (!Number.isFinite(value)) return null;
-        return kind === "iq" ? value : Math.abs(value);
-      };
-      const cards = articles.map((article, sourceOrder) => {
-        const heading = article.querySelector("h3");
-        const displayName = clean(heading ? heading.textContent : "");
-        const parts = displayName.split(/\s*[·•]\s*/);
-        const words = displayName.split(/\s+/);
-        const fallbackFamily = words.length > 1
-          ? words.slice(0, -1).join("-")
-          : displayName;
-        const fallbackEffort = words.length > 1 ? words[words.length - 1] : "";
-        const family = token(
-          article.getAttribute("data-model-family")
-          || (heading && heading.getAttribute("data-model-family"))
-          || (parts.length > 1 ? parts[0] : fallbackFamily)
-        );
-        const effort = token(
-          article.getAttribute("data-model-effort")
-          || (heading && heading.getAttribute("data-model-effort"))
-          || (parts.length > 1 ? parts[parts.length - 1] : fallbackEffort)
-        );
-        const values = [
-          { kind: "iq", value: metric(article, "iq") },
-          { kind: "drop24h", value: metric(article, "drop24h") },
-          { kind: "drop48h", value: metric(article, "drop48h") }
-        ].filter((entry) => entry.value !== null);
-        return { sourceOrder, displayName, family, effort, metrics: values };
+        return {
+          sourceOrder,
+          seriesKey: card.matches(".total-iq") ? "aggregate" : `model:${model}`,
+          displayName: clean(card.querySelector(".m")?.textContent),
+          points
+        };
       });
-      const rootText = root ? clean(root.textContent) : "";
-      const explicitEmpty = !!(root && (
-        root.querySelector("[data-radar-degradation-empty]")
-        || /(?:暂无|没有|无)\s*(?:降智)?预警|no\s+(?:degradation\s+)?alerts?/i.test(rootText)
-      ));
-      const pageState = blocked
-        ? (/consent/i.test(blockedText) ? "consent" : "challenge")
-        : (explicitEmpty ? "empty" : "ready");
       const dto = {
         revision,
         finalOrigin: location.origin,
         rootPresent: !!root,
-        gridPresent: !!grid,
-        liveTimePresent: !!live,
-        sourceTimeLabel: live ? clean(live.textContent) : null,
-        pageState,
-        cards
+        selectedRange: selected ? `${selected.getAttribute("data-iq-hours")}h` : null,
+        pageState: blocked
+          ? (/consent/i.test(blockedText) ? "consent" : "challenge")
+          : "ready",
+        series
       };
       const json = JSON.stringify(dto);
-      return new TextEncoder().encode(json).byteLength <= 16384
+      return new TextEncoder().encode(json).byteLength <= 65536
         ? json
         : "__CODEX_RADAR_OVERSIZE__";
     })();
@@ -263,13 +256,12 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
     private let totalTimeout: Duration
     private let pollInterval: Duration
     private let stabilizationInterval: Duration
-
-    private var continuation: CheckedContinuation<CodexRenderedWarningSnapshot, any Error>?
-    private var stabilizer = CodexRenderedWarningStabilizer()
+    private var continuation: CheckedContinuation<CodexRenderedIQHistorySnapshot, any Error>?
+    private var stabilizer = CodexRenderedIQHistoryStabilizer()
     private var lifecycle: CodexRenderedPageLifecycle?
     private var generation = 0
 
-    override convenience init() {
+    convenience init() {
         self.init(
             navigationTimeout: .seconds(15),
             totalTimeout: .seconds(20),
@@ -288,30 +280,28 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
         self.totalTimeout = totalTimeout
         self.pollInterval = pollInterval
         self.stabilizationInterval = stabilizationInterval
-        super.init()
     }
 
     static func makeConfiguration() -> WKWebViewConfiguration {
         CodexRenderedPageLifecycle.makeConfiguration()
     }
 
-    func read() async throws -> CodexRenderedWarningSnapshot {
+    func read() async throws -> CodexRenderedIQHistorySnapshot {
         guard continuation == nil else {
-            throw CodexRenderedWarningPageReaderError.readAlreadyInProgress
+            throw CodexRenderedIQHistoryPageReaderError.readAlreadyInProgress
         }
         guard !Task.isCancelled else {
-            throw CodexRenderedWarningPageReaderError.cancelled
+            throw CodexRenderedIQHistoryPageReaderError.cancelled
         }
-
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 guard !Task.isCancelled else {
                     continuation.resume(
-                        throwing: CodexRenderedWarningPageReaderError.cancelled
+                        throwing: CodexRenderedIQHistoryPageReaderError.cancelled
                     )
                     return
                 }
-                self.begin(continuation)
+                begin(continuation)
             }
         } onCancel: {
             Task { @MainActor [weak self] in
@@ -329,16 +319,18 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
         Task { @MainActor in
             lifecycle?.stop()
         }
-        continuation?.resume(throwing: CodexRenderedWarningPageReaderError.cancelled)
+        continuation?.resume(
+            throwing: CodexRenderedIQHistoryPageReaderError.cancelled
+        )
     }
 
     private func begin(
-        _ continuation: CheckedContinuation<CodexRenderedWarningSnapshot, any Error>
+        _ continuation: CheckedContinuation<CodexRenderedIQHistorySnapshot, any Error>
     ) {
         generation &+= 1
         let currentGeneration = generation
         self.continuation = continuation
-        stabilizer = CodexRenderedWarningStabilizer(
+        stabilizer = CodexRenderedIQHistoryStabilizer(
             navigationTimeout: navigationTimeout,
             totalTimeout: totalTimeout,
             pollInterval: pollInterval,
@@ -346,9 +338,9 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
         )
         let lifecycle = CodexRenderedPageLifecycle(
             fixedURL: Self.fixedURL,
-            exactOrigin: "https://codexradar.com",
+            exactOrigin: "https://deng.codexradar.com",
             extractionScript: Self.extractionScript,
-            maximumBridgePayloadBytes: CodexRenderedWarningDOMParser.maximumBridgePayloadBytes,
+            maximumBridgePayloadBytes: CodexRenderedIQHistoryDOMParser.maximumBridgePayloadBytes,
             navigationTimeout: navigationTimeout,
             totalTimeout: totalTimeout,
             pollInterval: pollInterval,
@@ -376,7 +368,8 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
         lifecycle.start()
     }
 
-    private func handle(_ decision: CodexRenderedWarningReadDecision, generation: Int) {
+    private func handle(_ decision: CodexRenderedIQHistoryReadDecision, generation: Int) {
+        guard generation == self.generation else { return }
         switch decision {
         case .none:
             break
@@ -390,7 +383,7 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
     }
 
     private func finish(
-        _ result: Result<CodexRenderedWarningSnapshot, CodexRenderedWarningPageReaderError>,
+        _ result: Result<CodexRenderedIQHistorySnapshot, CodexRenderedIQHistoryPageReaderError>,
         generation expectedGeneration: Int
     ) {
         guard generation == expectedGeneration, let continuation else { return }
@@ -405,7 +398,7 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
 
     private static func error(
         for failure: CodexRenderedPageLifecycleFailure
-    ) -> CodexRenderedWarningPageReaderError {
+    ) -> CodexRenderedIQHistoryPageReaderError {
         switch failure {
         case .navigationDenied: .navigationDenied
         case .responseDenied: .responseDenied
