@@ -896,7 +896,8 @@ final class RadarWorkspaceModel {
             supportLevel: runtime.supportLevel,
             source: runtime.descriptor,
             renderedWarningState: runtime.renderedWarningProjection,
-            renderedWarningHistory: runtime.renderedWarningHistory
+            renderedWarningHistory: runtime.renderedWarningHistory,
+            renderedIQHistoryState: runtime.renderedIQHistoryProjection
         )
     }
     var history: [BenchmarkDataset] { runtime.benchmarkHistory }
@@ -910,7 +911,8 @@ final class RadarWorkspaceModel {
             supportLevel: runtime.supportLevel,
             source: runtime.descriptor,
             renderedWarningState: runtime.renderedWarningProjection,
-            renderedWarningHistory: runtime.renderedWarningHistory
+            renderedWarningHistory: runtime.renderedWarningHistory,
+            renderedIQHistoryState: runtime.renderedIQHistoryProjection
         )
     }
 

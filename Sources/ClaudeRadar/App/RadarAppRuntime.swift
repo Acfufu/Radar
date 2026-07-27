@@ -21,10 +21,13 @@ final class RadarAppRuntime {
     private(set) var benchmarkHistory: [BenchmarkDataset] = []
     private(set) var renderedWarningProjection: SegmentState<CodexRenderedWarningSnapshot>?
     private(set) var renderedWarningHistory: [CodexRenderedWarningSnapshot] = []
+    private(set) var renderedIQHistoryProjection: SegmentState<CodexRenderedIQHistorySnapshot>?
+    private(set) var renderedIQHistoryHistory: [CodexRenderedIQHistorySnapshot] = []
     private(set) var refreshIntervalMinutes: Int
 
     private var coordinator: RadarSyncCoordinator?
     private var renderedWarningCoordinator: CodexRenderedWarningCoordinator?
+    private var renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?
     private var repository: RadarRepository?
     #if DEBUG
     private var evidenceStages: [[String: Any]] = []
@@ -34,6 +37,7 @@ final class RadarAppRuntime {
     private let exportArchiver: any RadarExportArchiver
     private let metadataStore: SyncMetadataStore
     private let renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)?
+    private let renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)?
     private var lifecycleGeneration = 0
     private var startOperation: Task<Void, Never>?
     private var stopOperation: Task<Void, Never>?
@@ -47,7 +51,8 @@ final class RadarAppRuntime {
         startupLoadCheckpoint: (@Sendable (RadarSyncCoordinator) async throws -> Void)? = nil,
         exportArchiver: any RadarExportArchiver = SystemZipArchiver(),
         refreshIntervalMinutes: Int = 30,
-        renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)? = nil
+        renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)? = nil,
+        renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)? = nil
     ) {
         self.environment = environment
         self.sourceID = sourceID
@@ -56,6 +61,7 @@ final class RadarAppRuntime {
         self.startupLoadCheckpoint = startupLoadCheckpoint
         self.exportArchiver = exportArchiver
         self.renderedWarningReaderFactory = renderedWarningReaderFactory
+        self.renderedIQHistoryReaderFactory = renderedIQHistoryReaderFactory
         self.refreshIntervalMinutes = AppSettings.allowedIntervals.contains(refreshIntervalMinutes) ? refreshIntervalMinutes : 30
     }
 
@@ -88,6 +94,7 @@ final class RadarAppRuntime {
         let starting = startOperation
         let activeCoordinator = coordinator
         let activeRenderedWarningCoordinator = renderedWarningCoordinator
+        let activeRenderedIQHistoryCoordinator = renderedIQHistoryCoordinator
         let activeExports = Array(exportOperations.values)
         starting?.cancel()
         activeExports.forEach { $0.cancel() }
@@ -95,11 +102,13 @@ final class RadarAppRuntime {
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             for export in activeExports { _ = try? await export.value }
+            if let activeRenderedIQHistoryCoordinator { await activeRenderedIQHistoryCoordinator.stop() }
             if let activeRenderedWarningCoordinator { await activeRenderedWarningCoordinator.stop() }
             if let activeCoordinator { await activeCoordinator.stop() }
             guard generation == self.lifecycleGeneration else { return }
             self.coordinator = nil
             self.renderedWarningCoordinator = nil
+            self.renderedIQHistoryCoordinator = nil
             self.repository = nil
             self.lifecycleState = .stopped
         }
@@ -172,13 +181,42 @@ final class RadarAppRuntime {
             } else {
                 renderedWarningCoordinator = nil
             }
-            let warningTriggerObserver: (@Sendable (SyncTrigger) -> Void)?
-            if let renderedWarningCoordinator {
-                warningTriggerObserver = { trigger in
-                    Task { await renderedWarningCoordinator.refresh(trigger: trigger) }
+            let renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?
+            if sourceID == .codexRadar, let renderedIQHistoryReaderFactory {
+                let iqHistoryCoordinator = CodexRenderedIQHistoryCoordinator(
+                    reader: renderedIQHistoryReaderFactory(),
+                    repository: repository,
+                    policy: SyncPolicy(refreshInterval: TimeInterval(refreshIntervalMinutes * 60)),
+                    projectionDidChange: { [weak self] state, history in
+                        await self?.acceptRenderedIQHistory(
+                            state,
+                            history: history,
+                            generation: generation
+                        )
+                    }
+                )
+                renderedIQHistoryCoordinator = iqHistoryCoordinator
+                self.renderedIQHistoryCoordinator = iqHistoryCoordinator
+                _ = try? await iqHistoryCoordinator.loadPersistedProjection()
+                guard isStarting(generation) else {
+                    await iqHistoryCoordinator.stop()
+                    return
                 }
             } else {
-                warningTriggerObserver = nil
+                renderedIQHistoryCoordinator = nil
+            }
+            let renderedTriggerObserver: (@Sendable (SyncTrigger) -> Void)?
+            if renderedWarningCoordinator != nil || renderedIQHistoryCoordinator != nil {
+                renderedTriggerObserver = { trigger in
+                    if let renderedWarningCoordinator {
+                        Task { await renderedWarningCoordinator.refresh(trigger: trigger) }
+                    }
+                    if let renderedIQHistoryCoordinator {
+                        Task { await renderedIQHistoryCoordinator.refresh(trigger: trigger) }
+                    }
+                }
+            } else {
+                renderedTriggerObserver = nil
             }
             let coordinator = RadarSyncCoordinator(
                 source: source,
@@ -189,7 +227,7 @@ final class RadarAppRuntime {
                 projectionDidChange: { [weak self] projection in
                     await self?.accept(projection, repository: repository, generation: generation)
                 },
-                triggerObserver: warningTriggerObserver
+                triggerObserver: renderedTriggerObserver
             )
             self.coordinator = coordinator
             await startCheckpoint?()
@@ -233,10 +271,12 @@ final class RadarAppRuntime {
             startOperation = nil
         } catch {
             if let coordinator { await coordinator.stop() }
+            if let renderedIQHistoryCoordinator { await renderedIQHistoryCoordinator.stop() }
             if let renderedWarningCoordinator { await renderedWarningCoordinator.stop() }
             guard isStarting(generation) else { return }
             self.coordinator = nil
             self.renderedWarningCoordinator = nil
+            self.renderedIQHistoryCoordinator = nil
             self.repository = nil
             lifecycleState = .failed
             failureMessage = "Synchronization runtime could not start"
@@ -260,6 +300,7 @@ final class RadarAppRuntime {
         refreshIntervalMinutes = normalized
         await coordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await renderedWarningCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
+        await renderedIQHistoryCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         if let coordinator { projection = try? await coordinator.projection() }
     }
 
@@ -272,6 +313,8 @@ final class RadarAppRuntime {
             benchmarkHistory = []
             renderedWarningProjection = nil
             renderedWarningHistory = []
+            renderedIQHistoryProjection = nil
+            renderedIQHistoryHistory = []
             return true
         } catch {
             return false
@@ -331,6 +374,17 @@ final class RadarAppRuntime {
               lifecycleState == .starting || lifecycleState == .running else { return }
         renderedWarningProjection = state
         renderedWarningHistory = history
+    }
+
+    private func acceptRenderedIQHistory(
+        _ state: SegmentState<CodexRenderedIQHistorySnapshot>,
+        history: [CodexRenderedIQHistorySnapshot],
+        generation: Int
+    ) {
+        guard lifecycleGeneration == generation,
+              lifecycleState == .starting || lifecycleState == .running else { return }
+        renderedIQHistoryProjection = state
+        renderedIQHistoryHistory = history
     }
 
     var statusTitle: String {
