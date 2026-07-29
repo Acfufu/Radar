@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="420" viewBox="0 0 1200 420"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Claude Radar</title>
+  <desc id="desc">A native macOS workspace that keeps Claude Code Radar, Codex Radar, and SWE-bench Verified in three independent source rooms.</desc>
+
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#293548" stroke-width="1"/>
+    </pattern>
+    <clipPath id="canvas">
+      <rect width="1200" height="420" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#canvas)">
+    <rect width="1200" height="420" fill="#0B111A"/>
+    <rect width="1200" height="420" fill="url(#grid)" opacity=".34"/>
+    <rect x="28" y="28" width="1144" height="364" rx="18" fill="#111827" stroke="#293548"/>
+
+    <g transform="translate(72 64)">
+      <text fill="#FBBF24" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="18" font-weight="700" letter-spacing="2">PUBLIC BENCHMARK OBSERVATORY · macOS</text>
+      <text y="92" fill="#E5EDF7"
+            font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif"
+            font-size="68" font-weight="760">Claude Radar</text>
+      <text y="148" fill="#A7B2C3"
+            font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif"
+            font-size="30">Read public model signals.</text>
+      <text y="188" fill="#E5EDF7"
+            font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif"
+            font-size="30" font-weight="650">Never invent one score for unlike sources.</text>
+
+      <g transform="translate(0 238)">
+        <rect width="176" height="44" rx="8" fill="#172033" stroke="#52647D"/>
+        <text x="20" y="29" fill="#E5EDF7"
+              font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+              font-size="18">READ · VALIDATE</text>
+        <rect x="188" width="184" height="44" rx="8" fill="#172033" stroke="#52647D"/>
+        <text x="208" y="29" fill="#E5EDF7"
+              font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+              font-size="18">STORE · ANALYZE</text>
+      </g>
+    </g>
+
+    <g transform="translate(670 54)">
+      <circle cx="210" cy="156" r="138" fill="none" stroke="#293548" stroke-width="2"/>
+      <circle cx="210" cy="156" r="96" fill="none" stroke="#293548" stroke-width="2"/>
+      <circle cx="210" cy="156" r="54" fill="none" stroke="#293548" stroke-width="2"/>
+      <path d="M210 18V294M72 156H348" stroke="#293548" stroke-width="1"/>
+
+      <g>
+        <path d="M210 156L122 70" stroke="#FBBF24" stroke-width="3"/>
+        <circle cx="122" cy="70" r="9" fill="#FBBF24"/>
+        <rect x="0" y="40" width="210" height="58" rx="8" fill="#172033" stroke="#52647D"/>
+        <text x="20" y="76" fill="#E5EDF7"
+              font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+              font-size="20" font-weight="650">Claude Code Radar</text>
+      </g>
+
+      <g>
+        <path d="M210 156L350 126" stroke="#38BDF8" stroke-width="3"/>
+        <circle cx="350" cy="126" r="9" fill="#38BDF8"/>
+        <rect x="350" y="97" width="150" height="58" rx="8" fill="#172033" stroke="#52647D"/>
+        <text x="370" y="133" fill="#E5EDF7"
+              font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+              font-size="20" font-weight="650">Codex Radar</text>
+      </g>
+
+      <g>
+        <path d="M210 156L250 282" stroke="#86EFAC" stroke-width="3"/>
+        <circle cx="250" cy="282" r="9" fill="#86EFAC"/>
+        <rect x="176" y="274" width="270" height="58" rx="8" fill="#172033" stroke="#52647D"/>
+        <text x="196" y="310" fill="#E5EDF7"
+              font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+              font-size="20" font-weight="650">SWE-bench Verified</text>
+      </g>
+
+      <circle cx="210" cy="156" r="16" fill="#0B111A" stroke="#E5EDF7" stroke-width="3"/>
+      <circle cx="210" cy="156" r="4" fill="#E5EDF7"/>
+      <text x="104" y="342" fill="#A7B2C3"
+            font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="18">3 ROOMS · 0 COMPOSITE SCORES</text>
+    </g>
+  </g>
+</svg>
