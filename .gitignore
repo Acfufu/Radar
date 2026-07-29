@@ -3,3 +3,4 @@
 .swiftpm/
 .codex/
 .omo/
+.playwright-cli/

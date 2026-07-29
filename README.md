@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Assets/readme/hero.svg" width="100%" alt="Claude Radar keeps three public model-benchmark sources in independent rooms">
+  <img src="./Assets/readme/hero.gif" width="100%" alt="Claude Radar keeps three public model-benchmark sources in independent rooms">
 </p>
 
 <p align="center">

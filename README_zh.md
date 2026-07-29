@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Assets/readme/hero-zh.svg" width="100%" alt="Claude Radar 将三个公开模型 Benchmark 来源保留在彼此独立的空间中">
+  <img src="./Assets/readme/hero-zh.gif" width="100%" alt="Claude Radar 将三个公开模型 Benchmark 来源保留在彼此独立的空间中">
 </p>
 
 <p align="center">
