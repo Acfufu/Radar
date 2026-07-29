@@ -1,57 +1,49 @@
-<div align="center">
+<p align="center">
+  <img src="./Assets/readme/hero.svg" width="100%" alt="Claude Radar keeps three public model-benchmark sources in independent rooms">
+</p>
 
-<img alt="Claude Radar app icon" src="Assets/ClaudeRadar.png" width="128" height="128">
+<p align="center">
+  <a href="Package.swift"><img alt="macOS 26+" src="https://img.shields.io/badge/macOS-26%2B-111827?logo=apple"></a>
+  <a href="Package.swift"><img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white"></a>
+  <a href="https://github.com/Acfufu/Radar/releases/tag/v0.2.0"><img alt="Published snapshot v0.2.0" src="https://img.shields.io/badge/published_snapshot-v0.2.0-D97706"></a>
+  <a href="LICENSE"><img alt="License GPLv3" src="https://img.shields.io/badge/license-GPLv3-2F855A"></a>
+</p>
 
-# Claude Radar
+<p align="center">
+  English · <a href="README_zh.md">简体中文</a>
+</p>
 
-**A native macOS workspace for reading public model-benchmark snapshots without pretending that unlike sources share one score.**
+Claude Radar is a native macOS menu-bar app and workspace for reading public model-benchmark snapshots. It gives **Claude Code Radar**, **Codex Radar**, and **SWE-bench Verified** separate rooms, vocabulary, history, analysis, and export scope.
 
-[![macOS 26+](https://img.shields.io/badge/macOS-26%2B-111111?logo=apple)](Package.swift)
-[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](Package.swift)
-[![Published snapshot v0.2.0](https://img.shields.io/badge/published_snapshot-v0.2.0-4C8BF5)](https://github.com/Acfufu/Radar/releases/tag/v0.2.0)
-
-[简体中文](README_zh.md) | English
-
-</div>
-
-Claude Radar is a menu-bar and workspace app for three independent public source rooms: **Claude Code Radar**, **Codex Radar**, and **SWE-bench Verified**. Start in **Information Overview** to see the sources side by side, then open a room for its own vocabulary, history, analysis, and export scope. It deliberately has **no unified ranking, composite score, or cross-source recommendation**.
+It deliberately has **no unified ranking, composite score, or cross-source recommendation**.
 
 > [!IMPORTANT]
-> Radar reads, validates, stores, analyzes, displays, and exports already-published information. It does not run a benchmark, submit a result, or write to an upstream system.
+> Radar reads, validates, stores, analyzes, displays, and exports already-published information. It does not run benchmarks, submit results, or write to upstream systems.
 
-## What you can inspect
+## Three rooms, three contracts
 
-| Source room | Native information | Analysis boundary |
-| --- | --- | --- |
-| Claude Code Radar | Benchmark, community, and source-status snapshots | Models, histories, trends, derived metrics, and Pareto comparisons remain in this source. |
-| Codex Radar | Public summary, community snapshots, and warning values already rendered on the public homepage | Official rendered warnings and local IQ fitting stay independent. The protected full Codex API is excluded: Radar does not request, emulate, retry, or bypass it. |
-| SWE-bench Verified | Published `mini-SWE-agent` v2 leaderboard results | `% Resolved`, 500-task counts, cost efficiency, source-local Pareto, and provenance; Radar never runs the evaluator or submits results. |
+<p align="center">
+  <img src="./Assets/readme/workspace-codex-radar.png" width="100%" alt="Claude Radar native macOS workspace showing separate source navigation and a source-local Codex Radar overview">
+</p>
 
-The information overview keeps these rooms separate. Trends never bridge incompatible source revisions, and a failed refresh keeps the last valid data labeled rather than replacing it with a failure.
+<p align="center"><sub>Native macOS workspace. Each room keeps its own metrics and provenance.</sub></p>
+
+- **Claude Code Radar** reads benchmark, community, and source-status snapshots. Models, history, trends, derived metrics, and Pareto comparisons stay inside this room.
+- **Codex Radar** reads public summaries, community snapshots, and warnings rendered on the public homepage. Official warnings and local IQ fitting remain independent; the credential-protected full API stays excluded.
+- **SWE-bench Verified** reads published `mini-SWE-agent` v2 leaderboard results. `% Resolved`, 500-task counts, cost efficiency, Pareto analysis, and provenance stay source-local.
+
+Refresh failures never replace good history with bad data. Radar keeps last valid data and labels its state; trends never bridge incompatible source revisions.
 
 ## Native workflow
 
-1. Open the workspace from the menu bar and begin at **Information Overview**.
-2. Enter a source room to inspect its models or leaderboard, source-scoped history and trends, and source status or SWE-bench methodology.
-3. Use source-local metrics and Pareto views to compare only compatible rows.
-4. Export the selected source data as a JSON ZIP, or use Settings to clear normalized history and raw diagnostics independently.
+1. Open workspace from menu bar and start at **Information Overview**.
+2. Enter one source room to inspect models or leaderboard, history, trends, and source status.
+3. Compare only compatible rows with source-local metrics and Pareto views.
+4. Export selected source data as JSON ZIP, or clear normalized history and raw diagnostics separately in Settings.
 
-Radar stores normalized source snapshots in a local SwiftData store, keeps bounded raw diagnostic samples separately, and writes exports locally. The default data root is:
+## Try published snapshot
 
-```text
-~/Library/Application Support/ClaudeRadar/
-├── Radar.store          # normalized SwiftData history
-├── SyncMetadata.json    # source-scoped synchronization metadata
-└── RawSamples/          # bounded raw diagnostics
-```
-
-Removing the app does not automatically remove this data. The Settings controls keep **Clear normalized history** and **Clear raw diagnostic samples** separate; review an export before sharing it because raw samples and ZIPs can contain upstream-provided content.
-
-The Codex rendered-page reader uses nonpersistent WebKit. Page-owned JavaScript and subresources may render the public page, but Radar does not intercept or retain their responses; only bounded normalized warning fields enter history or the `rendered-warnings` export. No page HTML, scripts, cookies, browser storage/profile, response bodies, credentials, or endpoint material is retained.
-
-## Get a published snapshot
-
-[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) is the published `bf05ad7` snapshot. It provides an ad-hoc signed local-QA archive, not a Developer ID-signed or notarized distribution.
+[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) is published snapshot `bf05ad7` for Apple silicon. The archive is ad-hoc signed for local QA, not Developer ID-signed or notarized.
 
 ```bash
 curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip"
@@ -61,11 +53,11 @@ ditto -x -k ClaudeRadar-0.2.0-macos.zip .
 open ClaudeRadar.app
 ```
 
-If macOS blocks a first launch, use Finder’s **Open** command and review the system warning. Current development on `dev` is newer unpublished work; it is not the v0.2.0 download.
+If macOS blocks first launch, use Finder’s **Open** command and review system warning.
 
-## Build the current source
+## Build current source
 
-Radar requires **macOS 26+**. The package uses Swift 6 and the repository scripts select Xcode when it is installed at `/Applications/Xcode.app`.
+Requirements: **macOS 26+**, **Swift 6**, and Xcode at `/Applications/Xcode.app`.
 
 ```bash
 git clone "https://github.com/Acfufu/Radar.git"
@@ -76,22 +68,36 @@ RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
   .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
 ```
 
-The observable Debug-fixture result is a native workspace opening on Information Overview with three independent source cards. The generated bundle is `.build/app/ClaudeRadar.app`.
+Expected Debug fixture: native workspace opens on Information Overview with three independent source cards. Generated app: `.build/app/ClaudeRadar.app`.
 
-To exercise the Release build instead, use `./Scripts/build-app.sh release` and open that same bundle. Debug `ui` fixtures are sanitized local data and do not synchronize. Release enables the three documented public source adapters; Debug `RADAR_FIXTURE_MODE="online"` runs those public adapters against an isolated `RADAR_DATA_ROOT`. Neither mode promises network-free operation.
+Use `./Scripts/build-app.sh release` for Release build. Debug `ui` fixtures are sanitized local data and never synchronize. Release enables three documented public adapters; Debug `RADAR_FIXTURE_MODE="online"` runs them against isolated `RADAR_DATA_ROOT`. Neither mode promises network-free operation.
 
-## Data movement and verification boundary
+## Local data, explicit boundaries
 
-- Published public responses are validated before local persistence. Source identities, history, trends, exports, rankings, and analysis stay source-scoped.
-- Release contains the app icon but no fixture or Debug-QA resources. Its approved public sources synchronize at startup and on the configured schedule.
-- Normalized history, raw diagnostics, preferences, and exported archives stay on the Mac unless you move or share them.
-- Codex Radar’s public summary and community endpoints are in scope; its credential-protected full API is not.
-- The current source and the v0.2.0 snapshot are different release states. Build current development work from source rather than treating the archived download as current.
+```text
+~/Library/Application Support/ClaudeRadar/
+├── Radar.store          # normalized SwiftData history
+├── SyncMetadata.json    # source-scoped synchronization metadata
+└── RawSamples/          # bounded raw diagnostics
+```
 
-For source contracts and operational detail, see [the source contract](docs/source-contract.md), [release checklist](docs/release-checklist.md), and [implementation status](docs/implementation-status.md).
+- Published public responses are validated before persistence.
+- Normalized history, raw diagnostics, preferences, and exports stay on Mac unless you move or share them.
+- Removing app does not automatically remove its data.
+- Raw samples and exported ZIPs can contain upstream-provided content; review before sharing.
+- Codex rendered-page reader uses nonpersistent WebKit. It retains bounded normalized warning fields, not page HTML, scripts, cookies, browser storage, response bodies, credentials, or endpoint material.
+- Current source may be newer than v0.2.0 snapshot. Build source when you need current development state.
+
+## Reference
+
+- [Source contract](docs/source-contract.md)
+- [SWE-bench integration](docs/swe-bench-integration.md)
+- [Implementation status](docs/implementation-status.md)
+- [Release checklist](docs/release-checklist.md)
+- [Third-party notices](docs/third-party-notices.md)
 
 ## Attribution and license
 
-Radar is not affiliated with or endorsed by Claude Code Radar, Codex Radar, SWE-bench, or Princeton University. The exact upstream attribution and reuse boundaries are in [third-party notices](docs/third-party-notices.md).
+Radar is not affiliated with or endorsed by Claude Code Radar, Codex Radar, SWE-bench, or Princeton University.
 
-No license file is present. No permission to reuse or redistribute this repository is granted unless its owner explicitly says so.
+Copyright © 2026 Acfufu. Licensed under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`).
