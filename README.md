@@ -23,7 +23,7 @@ It deliberately has **no unified ranking, composite score, or cross-source recom
 ## Three rooms, three contracts
 
 <p align="center">
-  <img src="./Assets/readme/workspace-codex-radar.png" width="100%" alt="Claude Radar native macOS workspace showing separate source navigation and a source-local Codex Radar overview">
+  <img src="./Assets/readme/workspace-codex-radar-en.png" width="100%" alt="Claude Radar native macOS workspace in English, showing separate source navigation and a source-local Codex Radar overview">
 </p>
 
 <p align="center"><sub>Native macOS workspace. Each room keeps its own metrics and provenance.</sub></p>
