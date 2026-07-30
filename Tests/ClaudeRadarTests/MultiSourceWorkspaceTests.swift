@@ -5,7 +5,71 @@ import Testing
 
 @Suite("MultiSourceWorkspaceTests", .serialized)
 struct MultiSourceWorkspaceTests {
+    @MainActor
+    @Test("intelligence center route round-trips and stays Codex-only")
+    func intelligenceCenterRouteIsolation() {
+        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let model = RadarWorkspaceModel(
+            runtimes: Dictionary(uniqueKeysWithValues: [
+                RadarSourceID.claudeCodeRadar,
+                .codexRadar,
+                .sweBenchVerified,
+            ].map { ($0, RadarAppRuntime(environment: environment, sourceID: $0)) }),
+            selectedSourceID: .codexRadar
+        )
+        let route = WorkspaceRoute.sourcePage(.codexRadar, .intelligenceCenter)
+
+        #expect(WorkspaceRoute(storageKey: route.storageKey) == route)
+        #expect(WorkspaceDestination.intelligenceCenter.title(for: .codexRadar) == "智力中心")
+        #expect(WorkspaceDestination.intelligenceCenter.icon == "brain.head.profile")
+        #expect(model.destinations(for: .codexRadar).last == .intelligenceCenter)
+        #expect(!model.destinations(for: .claudeCodeRadar).contains(.intelligenceCenter))
+        #expect(!model.destinations(for: .sweBenchVerified).contains(.intelligenceCenter))
+    }
+
     #if DEBUG
+    @Test("analytics fixture publishes same-revision Codex history beyond 24 hours")
+    func analyticsFixtureHistory() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "Radar-Analytics-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .ui, onlineSourceEnabled: false)
+        let repository = RadarRepository(
+            container: try environment.makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+
+        try await DebugUISeed.populate(
+            repository: repository,
+            sourceID: .codexRadar,
+            state: "analytics",
+            now: now
+        )
+        try await DebugUISeed.populate(
+            repository: repository,
+            sourceID: .codexRadar,
+            state: "analytics",
+            now: now.addingTimeInterval(60 * 60)
+        )
+        let history = try await repository.benchmarkHistory(sourceID: .codexRadar)
+        let current = try #require(history.last)
+        let names = current.models.map(\.descriptor.displayName)
+
+        #expect(history.count == 5)
+        #expect(Set(history.map(\.seriesRevision)).count == 1)
+        #expect((history.last!.sourceUpdatedAt ?? history.last!.fetchedAt)
+            .timeIntervalSince(history.first!.sourceUpdatedAt ?? history.first!.fetchedAt) > 24 * 60 * 60)
+        #expect(names.contains { $0.contains("Sol") })
+        #expect(names.contains { $0.contains("Terra") })
+        #expect(names.contains { $0.contains("Luna") })
+        #expect(names.contains { $0.contains("GPT-5.5") })
+        #expect(current.models.contains { $0.agentSteps == nil })
+        #expect(Dictionary(grouping: current.models, by: \.qualityScore).values.contains { $0.count >= 2 })
+        #expect(current.models.allSatisfy { !$0.descriptor.displayName.contains("Ignore previous instructions") })
+    }
+
     @MainActor
     @Test("UI fixture publishes three independent source projections without synchronization")
     func uiFixtureSourceIsolation() async throws {

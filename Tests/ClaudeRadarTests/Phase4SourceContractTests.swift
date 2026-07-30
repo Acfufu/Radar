@@ -56,6 +56,16 @@ struct Phase4SourceContractTests {
         #expect(seed.hasSuffix("#endif\n"))
     }
 
+    @Test("analytics fixture adds no production resource or network surface")
+    func analyticsFixtureReleaseBoundary() throws {
+        let seed = try text("Sources/ClaudeRadar/App/DebugUISeed.swift")
+        let package = try text("Package.swift")
+        #expect(seed.contains("state == \"analytics\""))
+        #expect(!package.contains("analytics-fixture"))
+        #expect(!package.contains("radar-insights"))
+        #expect(!package.contains("intelligence-efficiency"))
+    }
+
     @Test("export is wired as a one-way save surface without an import handler")
     func exportIsOneWay() throws {
         let view = try text("Sources/ClaudeRadar/Features/Export/ExportView.swift")

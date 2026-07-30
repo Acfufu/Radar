@@ -77,8 +77,11 @@ struct RadarWorkspaceView: View {
         .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .task {
             #if DEBUG
-            if let requestedSource = ProcessInfo.processInfo.environment["RADAR_UI_SOURCE"] {
-                let sourceID = RadarSourceID(rawValue: requestedSource)
+            if ProcessInfo.processInfo.environment["RADAR_UI_SOURCE"] != nil {
+                let sourceID = AppEnvironment.debugInitialSourceID(
+                    fixtureMode: .ui,
+                    variables: ProcessInfo.processInfo.environment
+                )
                 model.selectSource(sourceID)
                 routeRaw = WorkspaceRoute.source(sourceID).storageKey
             }
@@ -126,6 +129,8 @@ struct RadarWorkspaceView: View {
             }
         case .trends:
             MetricTrendChart(projection: projection, history: history)
+        case .intelligenceCenter:
+            CodexIntelligenceCenterView(projection: projection, history: history)
         case .sourceStatus:
             if sourceID == .sweBenchVerified {
                 SWEBenchProvenanceView(projection: projection)

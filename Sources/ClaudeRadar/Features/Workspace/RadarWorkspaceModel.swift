@@ -6,10 +6,11 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
     case decisionLens = "决策透镜"
     case models = "模型"
     case trends = "趋势"
+    case intelligenceCenter = "智力中心"
     case sourceStatus = "来源状态"
     case export = "导出"
     var id: Self { self }
-    var icon: String { switch self { case .overview: "rectangle.grid.2x2"; case .decisionLens: "scope"; case .models: "list.bullet.rectangle"; case .trends: "chart.xyaxis.line"; case .sourceStatus: "antenna.radiowaves.left.and.right"; case .export: "square.and.arrow.up" } }
+    var icon: String { switch self { case .overview: "rectangle.grid.2x2"; case .decisionLens: "scope"; case .models: "list.bullet.rectangle"; case .trends: "chart.xyaxis.line"; case .intelligenceCenter: "brain.head.profile"; case .sourceStatus: "antenna.radiowaves.left.and.right"; case .export: "square.and.arrow.up" } }
 
     func title(for sourceID: RadarSourceID) -> String {
         guard sourceID == .sweBenchVerified else { return rawValue }
@@ -26,6 +27,7 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
         case .decisionLens: "decision-lens"
         case .models: "models"
         case .trends: "trends"
+        case .intelligenceCenter: "intelligence-center"
         case .sourceStatus: "source-status"
         case .export: "export"
         }
@@ -37,6 +39,7 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
         case "decision-lens": self = .decisionLens
         case "models": self = .models
         case "trends": self = .trends
+        case "intelligence-center": self = .intelligenceCenter
         case "source-status": self = .sourceStatus
         case "export": self = .export
         default: return nil
@@ -931,7 +934,9 @@ final class RadarWorkspaceModel {
             destinations.append(.sourceStatus)
             return destinations
         }
-        return [.overview, .decisionLens, .models, .trends, .sourceStatus]
+        var destinations: [WorkspaceDestination] = [.overview, .decisionLens, .models, .trends, .sourceStatus]
+        if sourceID == .codexRadar { destinations.append(.intelligenceCenter) }
+        return destinations
     }
 
     func hasComparableHistory(for sourceID: RadarSourceID) -> Bool {
