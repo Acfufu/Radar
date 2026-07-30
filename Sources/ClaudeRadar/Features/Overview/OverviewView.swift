@@ -579,7 +579,7 @@ struct OverviewView: View {
                             .frame(width: 22)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(summary.family).fontWeight(.medium)
-                            Text(RadarIdentity.tier(for: summary.row) ?? "当前最佳档位")
+                            Text(RadarModelIdentity.effort(for: summary.row) ?? "当前最佳档位")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -603,7 +603,7 @@ struct OverviewView: View {
             Grid(horizontalSpacing: 1, verticalSpacing: 1) {
                 GridRow {
                     Text("模型").foregroundStyle(.secondary)
-                    ForEach(RadarIdentity.tiers, id: \.self) { tier in
+                    ForEach(RadarModelIdentity.efforts, id: \.self) { tier in
                         Text(tier).foregroundStyle(.secondary)
                     }
                 }
@@ -614,7 +614,7 @@ struct OverviewView: View {
                         Text(family)
                             .font(.caption)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        ForEach(RadarIdentity.tiers, id: \.self) { tier in
+                        ForEach(RadarModelIdentity.efforts, id: \.self) { tier in
                             heatCell(row: heatmapRow(family: family, tier: tier))
                         }
                     }
@@ -779,12 +779,14 @@ struct OverviewView: View {
     }
 
     private var familySummaries: [RadarFamilySummary] {
-        RadarIdentity.familySummaries(projection.rows)
+        RadarModelIdentity.familySummaries(projection.rows)
     }
 
     private var heatmapFamilies: [String] {
         familySummaries.map(\.family).filter { family in
-            projection.rows.contains { RadarIdentity.family(for: $0) == family && RadarIdentity.tier(for: $0) != nil }
+            projection.rows.contains {
+                RadarModelIdentity.family(for: $0) == family && RadarModelIdentity.effort(for: $0) != nil
+            }
         }
         .prefix(3)
         .map { $0 }
@@ -792,7 +794,7 @@ struct OverviewView: View {
 
     private func heatmapRow(family: String, tier: String) -> WorkspaceModelRow? {
         projection.rows.first {
-            RadarIdentity.family(for: $0) == family && RadarIdentity.tier(for: $0) == tier
+            RadarModelIdentity.family(for: $0) == family && RadarModelIdentity.effort(for: $0) == tier
         }
     }
 
@@ -860,7 +862,7 @@ struct DecisionLensPageView: View {
                 } else {
                     DecisionLensView(
                         rows: projection.rows,
-                        familyRows: RadarIdentity.familySummaries(projection.rows).map(\.row),
+                        familyRows: RadarModelIdentity.familySummaries(projection.rows).map(\.row),
                         goal: $goal
                     )
                 }
@@ -933,9 +935,9 @@ private struct DecisionLensView: View {
                             y: .value("IQ", RadarVisuals.double(row.benchmark.qualityScore ?? 0))
                         )
                         .symbolSize(row.id == recommendation?.id ? 180 : 95)
-                        .foregroundStyle(RadarVisuals.familyColor(RadarIdentity.family(for: row)))
+                        .foregroundStyle(RadarVisuals.familyColor(RadarModelIdentity.family(for: row)))
                         .annotation(position: .top) {
-                            Text(RadarIdentity.family(for: row))
+                            Text(RadarModelIdentity.family(for: row))
                                 .font(.caption2.weight(.medium))
                         }
                     }
@@ -951,9 +953,9 @@ private struct DecisionLensView: View {
                         Label("推荐模型", systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .foregroundStyle(.green)
-                        Text(RadarIdentity.family(for: recommendation))
+                        Text(RadarModelIdentity.family(for: recommendation))
                             .font(.title.bold())
-                        Text(RadarIdentity.tier(for: recommendation) ?? recommendation.name)
+                        Text(RadarModelIdentity.effort(for: recommendation) ?? recommendation.name)
                             .foregroundStyle(.secondary)
                         Divider()
                         LabeledContent("综合 IQ", value: RadarFormat.decimal(recommendation.benchmark.qualityScore))
@@ -1041,8 +1043,8 @@ enum RadarRecentPerformance {
                 RadarPerformanceRow(
                     id: row.id,
                     name: row.name,
-                    family: RadarIdentity.family(for: row),
-                    tier: RadarIdentity.tier(for: row),
+                    family: RadarModelIdentity.family(for: row),
+                    tier: RadarModelIdentity.effort(for: row),
                     quality: row.benchmark.qualityScore,
                     delta: row.benchmark.qualityScore.flatMap { quality in
                         previousByID[row.id]?.qualityScore.map { quality - $0 }
@@ -1081,49 +1083,6 @@ enum RadarDecisionLens {
             return $0.0.name.localizedStandardCompare($1.0.name) == .orderedAscending
         }
         .first?.0
-    }
-}
-
-private enum RadarIdentity {
-    static let tiers = ["ultra", "max", "xhigh", "high", "medium", "low"]
-
-    static func family(for row: WorkspaceModelRow) -> String {
-        let key = row.id.upstreamKey.lowercased()
-        if key.contains("-sol-") { return "Sol" }
-        if key.contains("-terra-") { return "Terra" }
-        if key.contains("-luna-") { return "Luna" }
-        if key.hasPrefix("gpt-5.5") { return "GPT-5.5" }
-        guard tier(in: key, separator: "-") == nil,
-              let displayTier = tier(in: row.name, separator: " ")
-        else { return row.name }
-        return row.name.dropLast(displayTier.count).trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    static func tier(for row: WorkspaceModelRow) -> String? {
-        tier(in: row.id.upstreamKey, separator: "-") ?? tier(in: row.name, separator: " ")
-    }
-
-    private static func tier(in value: String, separator: String) -> String? {
-        tiers.first { value.lowercased().hasSuffix("\(separator)\($0)") }
-    }
-
-    static func familySummaries(_ rows: [WorkspaceModelRow]) -> [RadarFamilySummary] {
-        let preferred = ["Sol", "Terra", "Luna", "GPT-5.5"]
-        let grouped = Dictionary(grouping: rows, by: family)
-        return grouped.compactMap { family, rows in
-            guard let row = rows.compactMap({ $0.benchmark.qualityScore == nil ? nil : $0 })
-                .max(by: { ($0.benchmark.qualityScore ?? 0) < ($1.benchmark.qualityScore ?? 0) })
-            else { return nil }
-            return RadarFamilySummary(family: family, row: row)
-        }
-        .sorted {
-            let left = preferred.firstIndex(of: $0.family) ?? preferred.count
-            let right = preferred.firstIndex(of: $1.family) ?? preferred.count
-            if left != right { return left < right }
-            return $0.family.localizedStandardCompare($1.family) == .orderedAscending
-        }
-        .prefix(4)
-        .map { $0 }
     }
 }
 
@@ -1186,7 +1145,7 @@ private enum RadarVisuals {
     }
 }
 
-private struct RadarFamilySummary: Identifiable {
+struct RadarFamilySummary: Identifiable {
     let family: String
     let row: WorkspaceModelRow
     var id: String { family }
