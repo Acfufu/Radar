@@ -54,6 +54,10 @@ enum DebugUISeed {
             try await populateAnalytics(repository: repository, now: now)
             return
         }
+        if sourceID == .codexRadar, state == "analytics-todo7-gaps" {
+            try await populateTodo7AnalyticsGaps(repository: repository, now: now)
+            return
+        }
 
         switch sourceID {
         case .codexRadar:
@@ -438,16 +442,7 @@ enum DebugUISeed {
     private static func populateAnalytics(repository: RadarRepository, now: Date) async throws {
         let revision = "fixture-analytics-r1"
         guard try await repository.benchmarkHistory(sourceID: .codexRadar).allSatisfy({ $0.seriesRevision != revision }) else { return }
-        let current = [
-            model(sourceID: .codexRadar, key: "gpt-5.6-sol-max", name: "GPT-5.6 Sol · Max", quality: 130, cost: 20, tokens: 120_000, agentSteps: 18),
-            model(sourceID: .codexRadar, key: "gpt-5.6-sol-high", name: "GPT-5.6 Sol · High", quality: 126, cost: 12, tokens: 96_000, agentSteps: 15),
-            model(sourceID: .codexRadar, key: "gpt-5.6-terra-max", name: "GPT-5.6 Terra · Max", quality: 128, cost: 16, tokens: 108_000, agentSteps: 17),
-            model(sourceID: .codexRadar, key: "gpt-5.6-terra-high", name: "GPT-5.6 Terra · High", quality: 126, cost: 10, tokens: 88_000, agentSteps: 14),
-            model(sourceID: .codexRadar, key: "gpt-5.6-luna-high", name: "GPT-5.6 Luna · High", quality: 121, cost: 7, tokens: 72_000, agentSteps: 12),
-            model(sourceID: .codexRadar, key: "gpt-5.6-luna-medium", name: "GPT-5.6 Luna · Medium", quality: 117, cost: 5, tokens: 60_000, agentSteps: nil),
-            model(sourceID: .codexRadar, key: "gpt-5.5-codex-high", name: "GPT-5.5 Codex · High", quality: 114, cost: 4, tokens: 52_000, agentSteps: 10),
-            model(sourceID: .codexRadar, key: "gpt-5.5-codex-medium", name: "GPT-5.5 Codex · Medium", quality: 110, cost: 3, tokens: 44_000, agentSteps: 8),
-        ]
+        let current = analyticsModels()
         for (hours, delta) in [(-26.0, -4), (-24.0, -3), (-12.0, -2), (-4.0, -1), (0.0, 0)] {
             let date = now.addingTimeInterval(hours * 60 * 60)
             _ = try await repository.insertBenchmark(dataset(
@@ -457,6 +452,33 @@ enum DebugUISeed {
                 models: adjusted(current, by: Decimal(delta))
             ))
         }
+    }
+
+    private static func populateTodo7AnalyticsGaps(repository: RadarRepository, now: Date) async throws {
+        try await populateAnalytics(repository: repository, now: now)
+        let revision = "fixture-analytics-r2"
+        guard try await repository.benchmarkHistory(sourceID: .codexRadar)
+            .allSatisfy({ $0.seriesRevision != revision })
+        else { return }
+        _ = try await repository.insertBenchmark(dataset(
+            sourceID: .codexRadar,
+            at: now.addingTimeInterval(60),
+            revision: revision,
+            models: analyticsModels()
+        ))
+    }
+
+    private static func analyticsModels() -> [ModelBenchmark] {
+        [
+            model(sourceID: .codexRadar, key: "gpt-5.6-sol-max", name: "GPT-5.6 Sol · Max", quality: 130, cost: 20, tokens: 120_000, agentSteps: 18),
+            model(sourceID: .codexRadar, key: "gpt-5.6-sol-high", name: "GPT-5.6 Sol · High", quality: 126, cost: 12, tokens: 96_000, agentSteps: 15),
+            model(sourceID: .codexRadar, key: "gpt-5.6-terra-max", name: "GPT-5.6 Terra · Max", quality: 128, cost: 16, tokens: 108_000, agentSteps: 17),
+            model(sourceID: .codexRadar, key: "gpt-5.6-terra-high", name: "GPT-5.6 Terra · High", quality: 126, cost: 10, tokens: 88_000, agentSteps: 14),
+            model(sourceID: .codexRadar, key: "gpt-5.6-luna-high", name: "GPT-5.6 Luna · High", quality: 121, cost: 7, tokens: 72_000, agentSteps: 12),
+            model(sourceID: .codexRadar, key: "gpt-5.6-luna-medium", name: "GPT-5.6 Luna · Medium", quality: 117, cost: 5, tokens: 60_000, agentSteps: nil),
+            model(sourceID: .codexRadar, key: "gpt-5.5-codex-high", name: "GPT-5.5 Codex · High", quality: 114, cost: 4, tokens: 52_000, agentSteps: 10),
+            model(sourceID: .codexRadar, key: "gpt-5.5-codex-medium", name: "GPT-5.5 Codex · Medium", quality: 110, cost: 3, tokens: 44_000, agentSteps: 8),
+        ]
     }
 
     private static func populateExport(repository: RadarRepository, base: Date) async throws {
