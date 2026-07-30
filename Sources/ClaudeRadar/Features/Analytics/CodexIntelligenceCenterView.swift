@@ -21,8 +21,14 @@ struct CodexIntelligenceCenterView: View {
                         sourceName: projection.source.displayName
                     )
                 }
-                IntelligenceCenterSlot(title: "场景推荐", systemImage: "sparkles")
-                IntelligenceCenterSlot(title: "智力效率", systemImage: "square.grid.3x3")
+                CodexScenarioRecommendationsPanel(
+                    recommendations: scenarioRecommendations
+                )
+                CodexEfficiencyMatrixPanel(
+                    cells: efficiencyCells,
+                    sourceUpdatedAt: projection.updatedAt,
+                    provenance: "Radar 按 Codex Radar 公开摘要计算"
+                )
                 IntelligenceCenterSlot(title: "综合成本 × IQ", systemImage: "chart.dots.scatter")
                 IntelligenceCenterSlot(title: "IQ 历史数据", systemImage: "chart.xyaxis.line")
                 IntelligenceCenterSlot(title: "历史数据比较", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
@@ -35,6 +41,14 @@ struct CodexIntelligenceCenterView: View {
             .radarPage()
         }
         .navigationTitle("智力中心")
+    }
+
+    private var scenarioRecommendations: CodexScenarioRecommendations {
+        CodexScenarioRecommendations.project(points: projection.intelligenceEfficiency)
+    }
+
+    private var efficiencyCells: [CodexEfficiencyMatrixCell] {
+        CodexEfficiencyAnalytics.matrix(points: projection.intelligenceEfficiency)
     }
 }
 
