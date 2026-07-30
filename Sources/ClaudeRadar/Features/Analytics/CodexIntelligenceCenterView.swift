@@ -29,9 +29,18 @@ struct CodexIntelligenceCenterView: View {
                     sourceUpdatedAt: projection.updatedAt,
                     provenance: "Radar 按 Codex Radar 公开摘要计算"
                 )
-                IntelligenceCenterSlot(title: "综合成本 × IQ", systemImage: "chart.dots.scatter")
+                CodexCostVersusIQPanel(
+                    points: projection.intelligenceEfficiency,
+                    sourceUpdatedAt: projection.updatedAt,
+                    seriesRevision: projection.sync?.benchmark.value?.seriesRevision,
+                    provenance: "Radar 按 Codex Radar 公开摘要计算；不跨来源或版本比较"
+                )
                 IntelligenceCenterSlot(title: "IQ 历史数据", systemImage: "chart.xyaxis.line")
-                IntelligenceCenterSlot(title: "历史数据比较", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                CodexHistoryComparisonPanel(
+                    current: projection.sync?.benchmark.value,
+                    history: history,
+                    provenance: "数据来自 Codex Radar 与本地 Radar 快照；不跨来源或版本比较"
+                )
                 Text(projection.source.attributionText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
