@@ -87,7 +87,9 @@ enum WorkspaceRoute: Hashable, Sendable {
             return
         }
         let sourceID = RadarSourceID(rawValue: parts[1])
-        if parts.count == 3, let destination = WorkspaceDestination(storageKey: parts[2]) {
+        if parts.count == 3,
+           let destination = WorkspaceDestination(storageKey: parts[2]),
+           destination != .intelligenceCenter || sourceID == .codexRadar {
             self = .sourcePage(sourceID, destination)
         } else {
             self = .source(sourceID)

@@ -26,6 +26,8 @@ struct MultiSourceWorkspaceTests {
         #expect(model.destinations(for: .codexRadar).last == .intelligenceCenter)
         #expect(!model.destinations(for: .claudeCodeRadar).contains(.intelligenceCenter))
         #expect(!model.destinations(for: .sweBenchVerified).contains(.intelligenceCenter))
+        #expect(WorkspaceRoute(storageKey: "source:claude-code-radar:intelligence-center") == .source(.claudeCodeRadar))
+        #expect(WorkspaceRoute(storageKey: "source:swe-bench-verified:intelligence-center") == .source(.sweBenchVerified))
     }
 
     #if DEBUG
