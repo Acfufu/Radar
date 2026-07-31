@@ -58,6 +58,10 @@ enum DebugUISeed {
             try await populateTodo7AnalyticsGaps(repository: repository, now: now)
             return
         }
+        if sourceID == .codexRadar, state == "analytics-todo8-insufficient" {
+            try await populateTodo8AnalyticsInsufficient(repository: repository, now: now)
+            return
+        }
 
         switch sourceID {
         case .codexRadar:
@@ -468,6 +472,39 @@ enum DebugUISeed {
         ))
     }
 
+    private static func populateTodo8AnalyticsInsufficient(repository: RadarRepository, now: Date) async throws {
+        let revision = "fixture-analytics-insufficient-r1"
+        guard try await repository.benchmarkHistory(sourceID: .codexRadar)
+            .allSatisfy({ $0.seriesRevision != revision })
+        else { return }
+        let current = analyticsModels()
+        _ = try await repository.insertBenchmark(dataset(
+            sourceID: .codexRadar,
+            at: now.addingTimeInterval(-7_200),
+            revision: revision,
+            models: current
+        ))
+        _ = try await repository.insertBenchmark(dataset(
+            sourceID: .codexRadar,
+            at: now.addingTimeInterval(-3_600),
+            revision: revision,
+            models: replacingQuality(in: current, with: nil)
+        ))
+        let conflictTime = now.addingTimeInterval(-1_800)
+        _ = try await repository.insertBenchmark(dataset(
+            sourceID: .codexRadar,
+            at: conflictTime,
+            revision: revision,
+            models: adjusted(current, by: 1)
+        ))
+        _ = try await repository.insertBenchmark(dataset(
+            sourceID: .codexRadar,
+            at: conflictTime,
+            revision: revision,
+            models: adjusted(current, by: 2)
+        ))
+    }
+
     private static func analyticsModels() -> [ModelBenchmark] {
         [
             model(sourceID: .codexRadar, key: "gpt-5.6-sol-max", name: "GPT-5.6 Sol · Max", quality: 130, cost: 20, tokens: 120_000, agentSteps: 18),
@@ -533,6 +570,28 @@ enum DebugUISeed {
                 passedTasks: value.passedTasks.map { $0 + passedDelta },
                 validTasks: value.validTasks,
                 invalidTasks: value.invalidTasks.map { $0 - passedDelta },
+                benchmarkCostUSD: value.benchmarkCostUSD,
+                inputTokens: value.inputTokens,
+                outputTokens: value.outputTokens,
+                cacheReadTokens: value.cacheReadTokens,
+                cacheCreationTokens: value.cacheCreationTokens,
+                totalTokens: value.totalTokens,
+                elapsedSeconds: value.elapsedSeconds,
+                agentSteps: value.agentSteps,
+                cacheHitPercent: value.cacheHitPercent
+            )
+        }
+    }
+
+    private static func replacingQuality(in models: [ModelBenchmark], with quality: Decimal?) -> [ModelBenchmark] {
+        models.map { value in
+            .init(
+                id: value.id,
+                descriptor: value.descriptor,
+                qualityScore: quality,
+                passedTasks: value.passedTasks,
+                validTasks: value.validTasks,
+                invalidTasks: value.invalidTasks,
                 benchmarkCostUSD: value.benchmarkCostUSD,
                 inputTokens: value.inputTokens,
                 outputTokens: value.outputTokens,

@@ -35,12 +35,19 @@ struct CodexIntelligenceCenterView: View {
                     seriesRevision: projection.sync?.benchmark.value?.seriesRevision,
                     provenance: "Radar 按 Codex Radar 公开摘要计算；不跨来源或版本比较"
                 )
-                IntelligenceCenterSlot(title: "IQ 历史数据", systemImage: "chart.xyaxis.line")
                 CodexHistoryComparisonPanel(
                     current: projection.sync?.benchmark.value,
                     history: history,
-                    provenance: "数据来自 Codex Radar 与本地 Radar 快照；不跨来源或版本比较"
+                    provenance: "C4-C5 使用 Codex Radar 的 Radar 本地持久化历史；不跨来源或版本比较"
                 )
+                CodexIQHistorySmallMultiplesPanel(
+                    history: history,
+                    provenance: "C4-C5 使用 Codex Radar 的 Radar 本地持久化历史；不跨来源或版本比较"
+                )
+                Text("C1-C3 由 Radar 从现有 Codex Radar 公开摘要在本地派生；C4-C5 使用 Radar 本地持久化历史。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
                 Text(projection.source.attributionText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -58,18 +65,5 @@ struct CodexIntelligenceCenterView: View {
 
     private var efficiencyCells: [CodexEfficiencyMatrixCell] {
         CodexEfficiencyAnalytics.matrix(points: projection.intelligenceEfficiency)
-    }
-}
-
-private struct IntelligenceCenterSlot: View {
-    let title: String
-    let systemImage: String
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.title2.bold())
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
-            .accessibilityAddTraits(.isHeader)
-            .radarPanel()
     }
 }

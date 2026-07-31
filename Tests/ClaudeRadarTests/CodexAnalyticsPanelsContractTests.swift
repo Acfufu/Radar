@@ -14,17 +14,18 @@ struct CodexAnalyticsPanelsContractTests {
     func costVersusIQContract() throws {
         let panel = try source("Sources/ClaudeRadar/Features/Analytics/CodexCostVersusIQPanel.swift")
 
-        #expect(panel.contains("Text(\"综合成本 vs IQ\")"))
-        #expect(panel.contains("越靠左上越高效"))
+        #expect(panel.contains("Text(\"综合成本 × IQ\")"))
+        #expect(panel.contains("横轴为当前数据集内归一化的综合成本，纵轴为 IQ；越靠左上越高效。"))
         #expect(panel.contains("CodexEfficiencyAnalytics.costVersusIQ"))
         #expect(panel.contains("RadarModelIdentity"))
         #expect(panel.contains("模型 \\(point.point.modelName)"))
         #expect(panel.contains("IQ \\(number(point.y))"))
         #expect(panel.contains("综合成本 \\(number(point.x))"))
         #expect(panel.contains(".chartXSelection(value: $selectedCost)"))
+        #expect(panel.contains("overflowResolution: .init(x: .fit, y: .fit)"))
+        #expect(!panel.contains("overflowResolution: .init(x: .fit, y: .disabled)"))
         #expect(panel.contains("已选择模型 \\(point.point.modelName)"))
         #expect(panel.contains(".accessibilityIdentifier(\"codex-cost-versus-iq\")"))
-        #expect(!panel.contains("综合成本 × IQ"))
     }
 
     @Test("C5 exposes six metrics three baselines a four-model cap and reconciliation")
@@ -42,15 +43,53 @@ struct CodexAnalyticsPanelsContractTests {
         #expect(panel.contains(".accessibilityIdentifier(\"codex-history-comparison\")"))
     }
 
-    @Test("intelligence center replaces only C3 and C5 slots with native panels")
+    @Test("C2 and C5 expose one native horizontal-overflow affordance")
+    func horizontalOverflowAffordanceContract() throws {
+        let matrix = try source("Sources/ClaudeRadar/Features/Analytics/CodexEfficiencyMatrixPanel.swift")
+        let comparison = try source("Sources/ClaudeRadar/Features/Analytics/CodexHistoryComparisonPanel.swift")
+
+        for panel in [matrix, comparison] {
+            #expect(panel.contains("RadarStyle.horizontalScrollAffordance"))
+            #expect(panel.contains(".scrollIndicators(.visible, axes: .horizontal)"))
+        }
+        #expect(matrix.contains(".accessibilityIdentifier(\"codex-efficiency-horizontal-affordance\")"))
+        #expect(comparison.contains(".accessibilityIdentifier(\"codex-history-horizontal-affordance\")"))
+    }
+
+    @Test("C2 C3 and C5 consume centralized analytics style tokens")
+    func analyticsStyleTokenContract() throws {
+        let matrix = try source("Sources/ClaudeRadar/Features/Analytics/CodexEfficiencyMatrixPanel.swift")
+        let scatter = try source("Sources/ClaudeRadar/Features/Analytics/CodexCostVersusIQPanel.swift")
+        let comparison = try source("Sources/ClaudeRadar/Features/Analytics/CodexHistoryComparisonPanel.swift")
+
+        #expect(matrix.contains("RadarStyle.analyticsLayout"))
+        #expect(!matrix.contains(".frame(width: 104"))
+        #expect(!matrix.contains(".frame(width: 216"))
+        #expect(!matrix.contains(".frame(minHeight: 112"))
+        #expect(scatter.contains("RadarStyle.analyticsColors(for: colorScheme)"))
+        #expect(!scatter.contains("case 0: .green"))
+        #expect(!scatter.contains("case 1: .purple"))
+        #expect(comparison.contains("RadarStyle.analyticsLayout"))
+        #expect(!comparison.contains(".frame(maxWidth: 260"))
+        #expect(!comparison.contains(".frame(width: 130"))
+        #expect(!comparison.contains("HStack(spacing: 18)"))
+    }
+
+    @Test("intelligence center composes C3 C4 and C5 native panels")
     func integrationContract() throws {
         let center = try source("Sources/ClaudeRadar/Features/Analytics/CodexIntelligenceCenterView.swift")
 
         #expect(center.contains("CodexCostVersusIQPanel("))
+        #expect(center.contains("CodexIQHistorySmallMultiplesPanel("))
         #expect(center.contains("CodexHistoryComparisonPanel("))
+        let c3Index = try #require(center.range(of: "CodexCostVersusIQPanel(")?.lowerBound)
+        let c5Index = try #require(center.range(of: "CodexHistoryComparisonPanel(")?.lowerBound)
+        let c4Index = try #require(center.range(of: "CodexIQHistorySmallMultiplesPanel(")?.lowerBound)
+        #expect(c3Index < c5Index)
+        #expect(c5Index < c4Index)
         #expect(!center.contains("IntelligenceCenterSlot(title: \"综合成本 × IQ\""))
         #expect(!center.contains("IntelligenceCenterSlot(title: \"历史数据比较\""))
-        #expect(center.contains("IntelligenceCenterSlot(title: \"IQ 历史数据\""))
+        #expect(!center.contains("IntelligenceCenterSlot(title: \"IQ 历史数据\""))
         let fixture = try source("Sources/ClaudeRadar/App/DebugUISeed.swift")
         #expect(fixture.contains("state == \"analytics-todo7-gaps\""))
         #expect(fixture.hasPrefix("#if DEBUG"))

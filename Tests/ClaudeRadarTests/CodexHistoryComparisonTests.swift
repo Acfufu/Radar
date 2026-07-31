@@ -168,6 +168,34 @@ struct CodexHistoryComparisonTests {
         #expect(forward == reverse)
     }
 
+    @Test("C5 accessibility projects exactly one stable element per logical model row")
+    func accessibilityRowsAreOneToOne() {
+        let logicalRows = [
+            CodexHistoryComparisonRow(
+                modelID: id("sol"),
+                modelName: "Sol high",
+                values: .init(current: 96, baseline: 90)
+            ),
+            CodexHistoryComparisonRow(
+                modelID: id("terra"),
+                modelName: "Terra high",
+                values: .init(current: nil, baseline: 91)
+            ),
+        ]
+
+        let accessible = CodexHistoryComparisonAccessibility.rows(
+            logicalRows,
+            metric: .iq,
+            baseline: .hours24
+        )
+
+        #expect(accessible.count == logicalRows.count)
+        #expect(accessible.map(\.id) == logicalRows.map(\.id))
+        #expect(Set(accessible.map(\.id)).count == accessible.count)
+        #expect(accessible[0].label == "模型 Sol high，IQ 当前 96.0，24h 前 90.0，变化 +6.0")
+        #expect(accessible[1].label == "模型 Terra high，IQ 当前 不可用，24h 前 91.0，变化 不可用")
+    }
+
     @Test("manual data receipt")
     func qaReceipt() {
         let current = dataset(at: 28, models: [

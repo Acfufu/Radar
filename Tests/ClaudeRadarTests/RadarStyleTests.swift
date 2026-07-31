@@ -56,6 +56,56 @@ struct RadarStyleTests {
         }
     }
 
+    @Test("shared chart metrics keep layout stable while increasing mark emphasis")
+    func sharedChartMetrics() {
+        let standard = RadarStyle.chartMetrics(for: .standard)
+        let increased = RadarStyle.chartMetrics(for: .increased)
+
+        #expect(standard.minimumCardWidth == increased.minimumCardWidth)
+        #expect(standard.minimumHeight == increased.minimumHeight)
+        #expect(standard.minimumCardWidth > standard.minimumHeight)
+        #expect(increased.lineWidth > standard.lineWidth)
+        #expect(increased.symbolSize > standard.symbolSize)
+    }
+
+    @Test("horizontal overflow affordance is concise localized and native")
+    func horizontalOverflowAffordance() {
+        let affordance = RadarStyle.horizontalScrollAffordance
+
+        #expect(affordance.title == "横向滚动查看更多")
+        #expect(affordance.systemImage == "arrow.left.and.right")
+        #expect(affordance.title.count <= 9)
+    }
+
+    @Test("analytics layout and family colors are centralized semantic tokens")
+    func analyticsVisualTokens() {
+        let layout = RadarStyle.analyticsLayout
+
+        #expect(layout.matrixFamilyColumnWidth == 104)
+        #expect(layout.matrixCellWidth == 216)
+        #expect(layout.matrixRowHeight == 112)
+        #expect(layout.comparisonMetricPickerMaximumWidth == 260)
+        #expect(layout.comparisonBaselinePickerWidth == 130)
+        #expect(layout.comparisonColumnSpacing == 18)
+
+        let light = RadarStyle.analyticsColors(for: .light)
+        let dark = RadarStyle.analyticsColors(for: .dark)
+        #expect(light.familyColors == [
+            .rgb(0x15803D),
+            .rgb(0x7E22CE),
+            .rgb(0xC2410C),
+            .rgb(0x1D4ED8),
+            .rgb(0x0F766E),
+        ])
+        #expect(dark.familyColors == [
+            .rgb(0x4ADE80),
+            .rgb(0xC084FC),
+            .rgb(0xFB923C),
+            .rgb(0x60A5FA),
+            .rgb(0x2DD4BF),
+        ])
+    }
+
     @Test("brand accent never replaces semantic success or error")
     func statusRolesRemainDistinct() {
         for scheme in [ColorScheme.light, .dark] {
