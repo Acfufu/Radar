@@ -24,6 +24,49 @@ struct RadarShadow: Equatable, Sendable {
     let y: CGFloat
 }
 
+struct RadarChartMetrics: Equatable, Sendable {
+    let minimumCardWidth: CGFloat
+    let minimumHeight: CGFloat
+    let lineWidth: CGFloat
+    let symbolSize: CGFloat
+}
+
+struct RadarHistoryAxisMetrics: Equatable, Sendable {
+    let regularWidth: CGFloat
+    let expandedWidth: CGFloat
+
+    func tickCount(for availableWidth: CGFloat) -> Int {
+        if availableWidth >= expandedWidth { return 4 }
+        if availableWidth >= regularWidth { return 3 }
+        return 2
+    }
+}
+
+struct RadarHorizontalScrollAffordance: Equatable, Sendable {
+    let title: String
+    let systemImage: String
+}
+
+struct RadarAnalyticsLayoutMetrics: Equatable, Sendable {
+    let matrixFamilyColumnWidth: CGFloat
+    let matrixCellWidth: CGFloat
+    let matrixRowHeight: CGFloat
+    let comparisonMetricPickerMaximumWidth: CGFloat
+    let comparisonBaselinePickerWidth: CGFloat
+    let comparisonColumnSpacing: CGFloat
+}
+
+struct RadarAnalyticsColors: Equatable, Sendable {
+    let familyColors: [RadarColorToken]
+
+    func familyColor(at index: Int?) -> RadarColorToken {
+        guard let index, familyColors.indices.contains(index) else {
+            return familyColors.last ?? .rgb(0x0F766E)
+        }
+        return familyColors[index]
+    }
+}
+
 struct RadarPalette: Equatable, Sendable {
     let canvas: RadarColorToken
     let section: RadarColorToken
@@ -45,6 +88,52 @@ enum RadarStyle {
     static let sectionSpacing: CGFloat = 20
     static let cardSpacing: CGFloat = 14
     static let compactSpacing: CGFloat = 12
+    static let historyAxisMetrics = RadarHistoryAxisMetrics(
+        regularWidth: 440,
+        expandedWidth: 700
+    )
+    static let horizontalScrollAffordance = RadarHorizontalScrollAffordance(
+        title: "横向滚动查看更多",
+        systemImage: "arrow.left.and.right"
+    )
+    static let analyticsLayout = RadarAnalyticsLayoutMetrics(
+        matrixFamilyColumnWidth: 104,
+        matrixCellWidth: 216,
+        matrixRowHeight: 112,
+        comparisonMetricPickerMaximumWidth: 260,
+        comparisonBaselinePickerWidth: 130,
+        comparisonColumnSpacing: 18
+    )
+
+    static func analyticsColors(for scheme: ColorScheme) -> RadarAnalyticsColors {
+        switch scheme {
+        case .dark:
+            RadarAnalyticsColors(familyColors: [
+                .rgb(0x4ADE80),
+                .rgb(0xC084FC),
+                .rgb(0xFB923C),
+                .rgb(0x60A5FA),
+                .rgb(0x2DD4BF),
+            ])
+        default:
+            RadarAnalyticsColors(familyColors: [
+                .rgb(0x15803D),
+                .rgb(0x7E22CE),
+                .rgb(0xC2410C),
+                .rgb(0x1D4ED8),
+                .rgb(0x0F766E),
+            ])
+        }
+    }
+
+    static func chartMetrics(for contrast: ColorSchemeContrast) -> RadarChartMetrics {
+        RadarChartMetrics(
+            minimumCardWidth: 300,
+            minimumHeight: 240,
+            lineWidth: contrast == .increased ? 4 : 2.5,
+            symbolSize: contrast == .increased ? 70 : 45
+        )
+    }
 
     static func palette(
         for scheme: ColorScheme,

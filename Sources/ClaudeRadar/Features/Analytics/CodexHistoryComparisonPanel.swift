@@ -27,7 +27,7 @@ struct CodexHistoryComparisonPanel: View {
                     }
                 }
                 .accessibilityIdentifier("codex-history-metric")
-                .frame(maxWidth: 260)
+                .frame(maxWidth: layout.comparisonMetricPickerMaximumWidth)
 
                 Picker("基线", selection: $baseline) {
                     ForEach(CodexHistoryBaseline.allCases, id: \.self) {
@@ -35,7 +35,7 @@ struct CodexHistoryComparisonPanel: View {
                     }
                 }
                 .accessibilityIdentifier("codex-history-baseline")
-                .frame(width: 130)
+                .frame(width: layout.comparisonBaselinePickerWidth)
                 Spacer()
             }
 
@@ -68,7 +68,13 @@ struct CodexHistoryComparisonPanel: View {
     }
 
     private func modelChoices(_ dataset: BenchmarkDataset) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: RadarStyle.compactSpacing / 2) {
+            let affordance = RadarStyle.horizontalScrollAffordance
+            Label(affordance.title, systemImage: affordance.systemImage)
+                .font(.caption)
+                .foregroundStyle(palette.secondaryText.color)
+                .accessibilityIdentifier("codex-history-horizontal-affordance")
+
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(allRows(dataset)) { row in
@@ -99,6 +105,7 @@ struct CodexHistoryComparisonPanel: View {
                     }
                 }
             }
+            .scrollIndicators(.visible, axes: .horizontal)
             Text(selection.selected.count >= CodexHistorySelection.limit ? "已达 4 个模型上限；其他模型暂不可选。" : "已选择 \(selection.selected.count) / \(CodexHistorySelection.limit)")
                 .font(.caption)
                 .foregroundStyle(palette.secondaryText.color)
@@ -117,25 +124,36 @@ struct CodexHistoryComparisonPanel: View {
             )
             .frame(minHeight: 170)
         } else {
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
-                GridRow {
-                    header("模型")
-                    header("当前")
-                    header(baseline.title + " 前")
-                    header("变化")
+            VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+                HStack(spacing: layout.comparisonColumnSpacing) {
+                    header("模型").frame(maxWidth: .infinity, alignment: .leading)
+                    header("当前").frame(maxWidth: .infinity, alignment: .leading)
+                    header(baseline.title + " 前").frame(maxWidth: .infinity, alignment: .leading)
+                    header("变化").frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Divider().gridCellColumns(4)
+                Divider()
                 ForEach(selectedRows) { row in
-                    GridRow {
-                        Text(row.modelName).fontWeight(.medium)
+                    let accessibleRow = CodexHistoryComparisonAccessibility.row(
+                        row,
+                        metric: metric,
+                        baseline: baseline
+                    )
+                    HStack(spacing: layout.comparisonColumnSpacing) {
+                        Text(row.modelName)
+                            .fontWeight(.medium)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(format(row.current))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(format(row.baseline))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(formatDelta(row.delta))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .font(.caption.monospacedDigit())
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        "模型 \(row.modelName)，\(metric.title) 当前 \(format(row.current))，\(baseline.title) 前 \(format(row.baseline))，变化 \(formatDelta(row.delta))"
+                    .accessibilityLabel(accessibleRow.label)
+                    .accessibilityIdentifier(
+                        "codex-history-row-\(accessibleRow.modelID.upstreamKey)"
                     )
                 }
             }
@@ -170,6 +188,10 @@ struct CodexHistoryComparisonPanel: View {
         return ([current.seriesRevision] + current.models.map(\.id.upstreamKey).sorted()).joined(separator: "|")
     }
 
+    private var layout: RadarAnalyticsLayoutMetrics {
+        RadarStyle.analyticsLayout
+    }
+
     private func header(_ value: String) -> some View {
         Text(value)
             .font(.caption.bold())
@@ -177,6 +199,42 @@ struct CodexHistoryComparisonPanel: View {
     }
 
     private func format(_ value: Double?) -> String {
+        CodexHistoryComparisonAccessibility.format(value, metric: metric)
+    }
+
+    private func formatDelta(_ value: Double?) -> String {
+        CodexHistoryComparisonAccessibility.formatDelta(value, metric: metric)
+    }
+}
+
+struct CodexHistoryComparisonAccessibilityRow: Identifiable, Equatable, Sendable {
+    let modelID: ModelID
+    let label: String
+
+    var id: ModelID { modelID }
+}
+
+enum CodexHistoryComparisonAccessibility {
+    static func rows(
+        _ rows: [CodexHistoryComparisonRow],
+        metric: CodexHistoryMetric,
+        baseline: CodexHistoryBaseline
+    ) -> [CodexHistoryComparisonAccessibilityRow] {
+        rows.map { row($0, metric: metric, baseline: baseline) }
+    }
+
+    static func row(
+        _ row: CodexHistoryComparisonRow,
+        metric: CodexHistoryMetric,
+        baseline: CodexHistoryBaseline
+    ) -> CodexHistoryComparisonAccessibilityRow {
+        .init(
+            modelID: row.modelID,
+            label: "模型 \(row.modelName)，\(metric.title) 当前 \(format(row.current, metric: metric))，\(baseline.title) 前 \(format(row.baseline, metric: metric))，变化 \(formatDelta(row.delta, metric: metric))"
+        )
+    }
+
+    static func format(_ value: Double?, metric: CodexHistoryMetric) -> String {
         guard let value, value.isFinite else { return "不可用" }
         switch metric {
         case .iq, .averageMinutesPerValidTask:
@@ -190,9 +248,9 @@ struct CodexHistoryComparisonPanel: View {
         }
     }
 
-    private func formatDelta(_ value: Double?) -> String {
+    static func formatDelta(_ value: Double?, metric: CodexHistoryMetric) -> String {
         guard let value, value.isFinite else { return "不可用" }
-        let formatted = format(abs(value))
+        let formatted = format(abs(value), metric: metric)
         if value > 0 { return "+" + formatted }
         if value < 0 { return "−" + formatted }
         return formatted

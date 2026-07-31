@@ -2,6 +2,8 @@ import Charts
 import SwiftUI
 
 struct CodexCostVersusIQPanel: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.radarPalette) private var palette
 
     let points: [IntelligenceEfficiencyPoint]
@@ -12,8 +14,9 @@ struct CodexCostVersusIQPanel: View {
     @State private var selectedCost: Double?
 
     var body: some View {
+        let chartMetrics = RadarStyle.chartMetrics(for: contrast)
         VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
-            Text("综合成本 vs IQ")
+            Text("综合成本 × IQ")
                 .font(.title2.bold())
                 .accessibilityAddTraits(.isHeader)
             Text("横轴为当前数据集内归一化的综合成本，纵轴为 IQ；越靠左上越高效。")
@@ -26,7 +29,7 @@ struct CodexCostVersusIQPanel: View {
                     systemImage: "chart.dots.scatter",
                     description: Text("缺少 IQ、费用或耗时；不会以 0 代替。")
                 )
-                .frame(minHeight: 220)
+                .frame(minHeight: chartMetrics.minimumHeight)
             } else {
                 Chart(chartPoints) { point in
                     PointMark(
@@ -35,21 +38,14 @@ struct CodexCostVersusIQPanel: View {
                     )
                     .foregroundStyle(by: .value("系列", point.family))
                     .symbol(by: .value("系列", point.family))
-                    .annotation(position: .top) {
-                        Text(point.point.modelName)
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(maxWidth: 150)
-                    }
                     .accessibilityLabel(
-                        "模型 \(point.point.modelName)，IQ \(number(point.y))，综合成本 \(number(point.x))，系列 \(point.family)"
+                        pointAccessibilityLabel(point)
                     )
 
-                    if selectedPoint?.id == point.id {
+                    if visiblePointIDs.contains(point.id) {
                         RuleMark(x: .value("所选综合成本", point.x))
                             .foregroundStyle(palette.accent.color)
-                            .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
+                            .annotation(position: .top, overflowResolution: .init(x: .fit, y: .fit)) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(point.point.modelName).fontWeight(.semibold)
                                     Text("IQ \(number(point.y)) · 综合成本 \(number(point.x))")
@@ -66,7 +62,9 @@ struct CodexCostVersusIQPanel: View {
                 }
                 .chartForegroundStyleScale(
                     domain: families,
-                    range: families.map(Self.familyColor)
+                    range: families.map {
+                        Self.familyColor($0, colorScheme: colorScheme)
+                    }
                 )
                 .chartLegend(position: .bottom, alignment: .leading)
                 .chartXAxis {
@@ -83,8 +81,21 @@ struct CodexCostVersusIQPanel: View {
                 }
                 .chartPlotStyle { $0.background(palette.section.color) }
                 .chartXSelection(value: $selectedCost)
-                .frame(minHeight: 260)
+                .frame(minHeight: chartMetrics.minimumHeight)
                 .accessibilityHint("在图表中选择一个点可查看模型、IQ 与综合成本")
+                .accessibilityRepresentation {
+                    VStack(alignment: .leading) {
+                        Text("综合成本与 IQ 散点图")
+                        ForEach(chartPoints) { point in
+                            HStack {
+                                Text(point.point.modelName)
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(pointAccessibilityLabel(point))
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                }
             }
 
             Divider().overlay(palette.divider.color)
@@ -119,18 +130,38 @@ struct CodexCostVersusIQPanel: View {
         }
     }
 
+    private var visiblePointIDs: [ModelID] {
+        CodexCostVersusIQAnnotationPolicy.visiblePointIDs(
+            chartPoints,
+            selected: selectedPoint?.id
+        )
+    }
+
+    private func pointAccessibilityLabel(_ point: CodexCostVersusIQPoint) -> String {
+        "模型 \(point.point.modelName)，IQ \(number(point.y))，综合成本 \(number(point.x))，系列 \(point.family)"
+    }
+
     private func number(_ value: Double) -> String {
         guard value.isFinite else { return "不可用" }
         return value.formatted(.number.precision(.fractionLength(1)))
     }
 
-    private static func familyColor(_ family: String) -> Color {
-        switch RadarModelIdentity.canonicalFamilies.firstIndex(of: family) {
-        case 0: .green
-        case 1: .purple
-        case 2: .orange
-        case 3: .blue
-        default: .teal
-        }
+    private static func familyColor(
+        _ family: String,
+        colorScheme: ColorScheme
+    ) -> Color {
+        RadarStyle.analyticsColors(for: colorScheme)
+            .familyColor(at: RadarModelIdentity.canonicalFamilies.firstIndex(of: family))
+            .color
+    }
+}
+
+enum CodexCostVersusIQAnnotationPolicy {
+    static func visiblePointIDs(
+        _ points: [CodexCostVersusIQPoint],
+        selected: ModelID?
+    ) -> [ModelID] {
+        guard let selected, points.contains(where: { $0.id == selected }) else { return [] }
+        return [selected]
     }
 }

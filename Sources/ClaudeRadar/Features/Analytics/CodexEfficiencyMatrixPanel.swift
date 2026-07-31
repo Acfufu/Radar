@@ -27,14 +27,24 @@ struct CodexEfficiencyMatrixPanel: View {
                 )
                 .frame(minHeight: 180)
             } else {
+                let affordance = RadarStyle.horizontalScrollAffordance
+                Label(affordance.title, systemImage: affordance.systemImage)
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText.color)
+                    .accessibilityIdentifier("codex-efficiency-horizontal-affordance")
+
                 ScrollView(.horizontal) {
-                    Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 12) {
+                    Grid(
+                        alignment: .topLeading,
+                        horizontalSpacing: RadarStyle.compactSpacing,
+                        verticalSpacing: RadarStyle.compactSpacing
+                    ) {
                         GridRow {
                             header("系列")
-                                .frame(width: 104, alignment: .leading)
+                                .frame(width: layout.matrixFamilyColumnWidth, alignment: .leading)
                             ForEach(efforts, id: \.self) { effort in
                                 header(effort)
-                                    .frame(width: 216, alignment: .leading)
+                                    .frame(width: layout.matrixCellWidth, alignment: .leading)
                             }
                         }
 
@@ -42,13 +52,16 @@ struct CodexEfficiencyMatrixPanel: View {
                             GridRow {
                                 Text(family)
                                     .font(.headline)
-                                    .frame(width: 104, alignment: .topLeading)
-                                    .frame(minHeight: 112, alignment: .topLeading)
+                                    .frame(width: layout.matrixFamilyColumnWidth, alignment: .topLeading)
+                                    .frame(minHeight: layout.matrixRowHeight, alignment: .topLeading)
                                 ForEach(efforts, id: \.self) { effort in
                                     if let cell = cellsByCoordinate[.init(family: family, effort: effort)] {
                                         matrixCell(cell)
                                     } else {
-                                        Color.clear.frame(width: 216, height: 112)
+                                        Color.clear.frame(
+                                            width: layout.matrixCellWidth,
+                                            height: layout.matrixRowHeight
+                                        )
                                     }
                                 }
                             }
@@ -56,6 +69,7 @@ struct CodexEfficiencyMatrixPanel: View {
                     }
                     .padding(.vertical, 2)
                 }
+                .scrollIndicators(.visible, axes: .horizontal)
                 .accessibilityLabel("智力效率矩阵，可水平滚动查看各努力等级")
             }
 
@@ -76,6 +90,10 @@ struct CodexEfficiencyMatrixPanel: View {
         Dictionary(uniqueKeysWithValues: cells.map { ($0.coordinate, $0) })
     }
 
+    private var layout: RadarAnalyticsLayoutMetrics {
+        RadarStyle.analyticsLayout
+    }
+
     private func header(_ value: String) -> some View {
         Text(value)
             .font(.caption.bold())
@@ -83,7 +101,7 @@ struct CodexEfficiencyMatrixPanel: View {
     }
 
     private func matrixCell(_ cell: CodexEfficiencyMatrixCell) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: RadarStyle.compactSpacing / 2) {
             metric("IQ", value: cell.quality.formatted(.number.precision(.fractionLength(1))), valid: cell.quality)
             metric(
                 "平均费用 / 每个有效任务",
@@ -98,8 +116,8 @@ struct CodexEfficiencyMatrixPanel: View {
         }
         .font(.caption)
         .monospacedDigit()
-        .frame(width: 216, alignment: .topLeading)
-        .frame(minHeight: 112, alignment: .topLeading)
+        .frame(width: layout.matrixCellWidth, alignment: .topLeading)
+        .frame(minHeight: layout.matrixRowHeight, alignment: .topLeading)
         .radarMetricCard()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("系列 \(cell.family)，努力等级 \(cell.effort)，IQ \(number(cell.quality))，平均费用 / 每个有效任务 \(cost(cell.averageCostUSD))，平均耗时 / 每个有效任务 \(minutes(cell.averageMinutes))")

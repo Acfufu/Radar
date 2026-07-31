@@ -64,6 +64,26 @@ struct CodexEfficiencyAnalyticsTests {
         #expect(projected[1].point == second)
     }
 
+    @Test("clustered C3 points preserve identity while annotating only the selected model")
+    func costVersusIQAnnotationPolicy() {
+        let clustered = CodexEfficiencyAnalytics.costVersusIQ(points: [
+            point("gpt-5.6-sol-high", "GPT-5.6 Sol · High", quality: 127, cost: 1, minutes: 2, index: 50),
+            point("gpt-5.6-terra-high", "GPT-5.6 Terra · High", quality: 127, cost: 1, minutes: 2, index: 50.2),
+            point("gpt-5.6-luna-high", "GPT-5.6 Luna · High", quality: 126.8, cost: 1, minutes: 2, index: 50.4),
+        ])
+        let selected = clustered[1].id
+
+        #expect(Set(clustered.map(\.id)).count == clustered.count)
+        #expect(CodexCostVersusIQAnnotationPolicy.visiblePointIDs(clustered, selected: nil).isEmpty)
+        #expect(CodexCostVersusIQAnnotationPolicy.visiblePointIDs(clustered, selected: selected) == [selected])
+        #expect(
+            CodexCostVersusIQAnnotationPolicy.visiblePointIDs(
+                clustered,
+                selected: id("not-in-chart")
+            ).isEmpty
+        )
+    }
+
     @Test("Overview family summaries retain canonical order, winner selection, and four-family limit")
     func overviewFamilySummaries() {
         let rows = [

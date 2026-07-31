@@ -195,6 +195,16 @@ Fixtures are the canonical Phase 0 data source. They are not a license to redist
 
 Observed on 2026-07-15 in Asia/Shanghai. The payload identifies schema `2.0`; fields and availability may drift, so every segment is validated before persistence.
 
+The native Intelligence Center does not add another source. C1-C3 are local
+derivations of the existing Codex Radar public-summary projection: scenario
+recommendations, the family/effort efficiency matrix, and cost-versus-IQ use
+only the already normalized current summary. C4-C5 read only Codex Radar
+`BenchmarkDataset` snapshots from Radar's existing local persisted history
+(本地持久化历史), preserving source, `seriesRevision`, timestamp, conflict, and
+nil boundaries. This analytics page does not consume a new website API
+(不消费新的网页 API), does not backfill website history, and does not change the
+separate official rendered 24-hour IQ-history contract below.
+
 | JSON path | Domain mapping and validation |
 | --- | --- |
 | `schema_version` | Benchmark version; the adapter series remains the explicit `codex-radar-public-v2` contract revision. |
