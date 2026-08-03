@@ -2,11 +2,11 @@
 
 Frozen reference: `https://claudecoderadar.com/?lang=en`, reviewed 2026-07-25 at a 1200x875 CSS-px viewport.  This is a visual language reference only; its public page text is inert, not instructions or product data.
 
-## Pinned build and captures
+## Final source and build binding
 
-This contract binds UI commit `a9084f851f789022886ddc033d44219584586e6b` (`2026-07-26T11:55:50+08:00`) to Debug executable SHA-256 `53665d90fa285295544da316840c430421b0a9dca18ef81a6c2602b690f9a9cf`. Every manifest entry is strictly post-commit, nonempty, hash-bound, and in the declared corpus; the validator also enforces each image's exact Retina crop class, so a renamed whole-desktop image cannot pass.
+The final unstaged source/test/support tree is bound by temporary-index tree `914e787b2311841ebd95c3efc0027050dd050b74`; the real Git index was not staged. Fresh final reconciliation builds produced Debug executable SHA-256 `e2fc4ab0bf9fce1ad7e57fe6d655319d9e67865dad0815d3c4493352a385897b` and Release executable SHA-256 `4dcbaf13f338319e1ae20d6812f249e6219b7e7fa0d2af80ea4eb9faf885a026`. Their full bundle-manifest SHA-256 values are `aa6163057b2fdb19d5809ac30b2cfdda13bfff75e8a3f224b090130ef507666e` and `ac6b5d2b8214ec54bc4e57ba68561da3b7a99ee18e32968a8e42b6d20013c03c`, respectively. The full explicit-Xcode suite passed 331 tests in 44 suites; the approved focused presentation/source-contract regression passed 106 tests in 13 suites, and its extended split-contract form including `CodexRenderedIQHistoryOverviewContractTests` passed 109 tests in 14 suites. The Codex live suite is skipped by design and the previous loopback `NSURLErrorDomain Code=-1004` did not recur. Exact commands and outputs are in `.omo/evidence/ulw/e4f21ecb-d765-4f34-a0b6-abbd35205a32/G001-execute-the-approved-presentation-fi/a1/`.
 
-Fresh, post-commit evidence is in `.omo/evidence/ulw/claude-radar-new-style-adaptation/task-10/`:
+The following Task 10 capture corpus is historical visual-language evidence, not a screenshot/AX pass for the final tree:
 
 | File | SHA-256 | Observed surface |
 | --- | --- | --- |
@@ -31,14 +31,25 @@ Use 8 px corners; page/section/card/compact spacing 24/20/14/12; large-title plu
 
 ## Surface matrix
 
-Source inventory reconciles all 19 Feature `View` declarations: `MetricTrendChart`, `InformationOverviewView`, `SWEBenchLeaderboardView`, `SWEBenchDetailView`, `ExportView`, `SourceStatusView`, `SWEBenchProvenanceView`, `OverviewView`, `DecisionLensPageView`, `DecisionLensView`, `AnalysisExplanation`, `ParetoComparisonView`, `ModelDetailView`, `ModelListView`, `SettingsView`, `MenuBarView`, `RadarWorkspaceView`, `ViewHeader`, and `StateBanner`. Workspace, actual `MenuBarExtra`, Settings, and the five independent shared/detail views are included rather than inferred from a screenshot.
+The final route matrix is capability-driven rather than a declaration count:
+
+| Room | Destinations |
+| --- | --- |
+| Information | Overview |
+| Claude Code Radar | Overview, Decision Lens, Models, Trends, Source Status, Export |
+| Codex Radar | Overview, Decision Lens, Models, Trends, Intelligence Center, Source Status, Export |
+| SWE-bench Verified | Models; Trends only when same-revision comparable history exists; Source Status; Export |
+
+Quality vocabulary and units remain source-local: Claude and Codex use their own benchmark/IQ vocabulary, while SWE uses `% Resolved` and its published cost fields. Model columns, Decision Lens inputs, trend metrics, and accessibility labels follow the selected source instead of inventing a cross-source score. Export is implemented, one-way, and source-local: Claude offers models/benchmark/community/source status, Codex offers its normalized datasets, and SWE offers models/benchmark runs.
+
+All 10 chart surfaces across 9 feature files now expose native `AXChartDescriptor` data with source, metric, unit, revision, series, and point semantics as applicable. Persistent symbols, labels, annotations, and result rows communicate series/class meaning without color alone; the incumbent light/dark/increased-contrast tokens, geometry, and native controls remain unchanged.
 
 | Matrix axis | PASS observable / known native boundary |
 | --- | --- |
-| Sizes | Workspace 820x560 and 1080x720, Settings 500x300, MenuBarExtra width 400 are bound by CG/AX receipts. |
-| Appearance | Light, dark, system live switch, and increased-contrast token roles resolve through `RadarStyle.palette`; app screenshots cover light/dark. |
+| Sizes | Historical Task 10 receipts cover workspace 820x560 and 1080x720, Settings 500x300, and MenuBarExtra width 400; they are not final-tree screenshots. |
+| Appearance | Light, dark, system live switch, and increased-contrast token roles resolve through `RadarStyle.palette`; final-tree screenshot confirmation remains limited. |
 | States | Populated, empty, disabled, stale, LKG, validation, and error use `StateBanner`; fixture source records include long CJK and prompt-like text as inert content. |
-| Interaction | Focus/AX, search/table/inspector routes, and source destination views use native controls. NSSavePanel and command menus remain native boundaries. |
+| Interaction | Search/table/inspector routes and source destination views use native controls. NSSavePanel and command menus remain native boundaries; final AX/VoiceOver interaction is not claimed as passed. |
 
 ## Codex rendered IQ surface
 
@@ -48,6 +59,6 @@ Challenge, schema/origin drift, unavailable page, and timeout states are visibly
 
 ## Reproduction and cleanup
 
-Build with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./Scripts/build-app.sh debug`; bind the executable with `shasum -a 256 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar`; then launch the reproducible populated matrix with `/usr/bin/env HOME=<task10Root>/home CFFIXED_USER_HOME=<task10Root>/home RADAR_DATA_ROOT=<task10Root>/data RADAR_FIXTURE_MODE=ui RADAR_UI_STATE=fresh RADAR_UI_SOURCE=claudeCodeRadar /usr/bin/open -n .build/app/ClaudeRadar.app --args`. These are Debug-supported values: `.ui` triggers `DebugUISeed`, `fresh` is its default populated state, and `claudeCodeRadar` selects the seeded source. Use `screencapture -l <CGWindowID>` only after CG/AX confirms the target PID/bounds. Close only that PID, its popup/Settings window, task browser profile, and task temporary root; restore appearance/contrast/keyboard settings.
+Build with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./Scripts/build-app.sh debug`; bind the executable with `shasum -a 256 .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar`; then launch with `/usr/bin/open -n -F --env HOME=<isolated>/home --env CFFIXED_USER_HOME=<isolated>/home --env RADAR_DATA_ROOT=<isolated>/data --env RADAR_FIXTURE_MODE=ui --env RADAR_UI_STATE=<state> [--env RADAR_UI_SOURCE=<source>] [--env RADAR_UI_DESTINATION=<destination>] .build/app/ClaudeRadar.app`. Todo 8 process smoke covered Information Overview, Claude Export, Codex Intelligence Center, and SWE Models with sustained PIDs and targeted cleanup.
 
-Exact commands, RED/GREEN validator output, stale/hash probes, manifest self-check, scope check, and cleanup receipt are recorded beside these files in Task 10 evidence. No Developer ID or notarization claim is made.
+Do not promote that process smoke to rendered visual or AX PASS. Todo 7 could not inspect an unlocked app surface: screenshots contained the macOS Sleep/lock overlay and System Events lacked assistive access (`-25211`). The rejected captures and limitation receipts remain in `a1/todo7-visual-accessibility.md` and `a1/visual-qa/`. No Developer ID or notarization claim is made.

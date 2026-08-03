@@ -7,6 +7,7 @@ struct MenuBarView: View {
     let model: RadarWorkspaceModel
 
     var body: some View {
+        let benchmark = presentation
         VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
             HStack {
                 Image(systemName: "scope")
@@ -23,16 +24,16 @@ struct MenuBarView: View {
                 ForEach(model.sources) { source in Text(source.displayName).tag(source.id) }
             }
             Text(model.source.attributionText).font(.caption2).foregroundStyle(palette.secondaryText.color)
-            if let supportState = Self.presentation(for: model.projection).supportState {
+            if let supportState = benchmark.supportState {
                 StateBanner(state: supportState, error: nil, sourceName: model.source.displayName)
             }
-            if let healthState = Self.presentation(for: model.projection).healthState {
-                StateBanner(state: healthState, error: Self.presentation(for: model.projection).error, sourceName: model.source.displayName)
+            if let healthState = benchmark.healthState {
+                StateBanner(state: healthState, error: benchmark.error, sourceName: model.source.displayName)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("质量摘要").font(.caption).foregroundStyle(palette.secondaryText.color)
-                ForEach(topThree) { row in HStack { Text(row.name).fixedSize(horizontal: false, vertical: true); Spacer(); Text(RadarFormat.decimal(row.benchmark.qualityScore)).monospacedDigit() } }
-                if topThree.isEmpty { Text("暂无模型数据").foregroundStyle(palette.secondaryText.color) }
+                Text("\(metric.qualityLabel) 摘要").font(.caption).foregroundStyle(palette.secondaryText.color)
+                ForEach(topThree) { row in HStack { Text(row.name).fixedSize(horizontal: false, vertical: true); Spacer(); Text(metric.formattedQuality(row.benchmark.qualityScore)).monospacedDigit() } }
+                if topThree.isEmpty { Text("\(metric.qualityLabel) \(metric.unavailableValue)").foregroundStyle(palette.secondaryText.color) }
             }
             .radarPanel()
             Divider().overlay(palette.divider.color)
@@ -53,8 +54,10 @@ struct MenuBarView: View {
         .background(palette.canvas.color)
     }
     static func presentation(for projection: WorkspaceProjection) -> BenchmarkPresentation {
-        projection.benchmarkPresentation
+        WorkspacePresentation.benchmark(for: projection)
     }
+    private var presentation: BenchmarkPresentation { Self.presentation(for: model.projection) }
+    private var metric: WorkspaceMetricPresentation { WorkspacePresentation.metric(for: model.selectedSourceID) }
     private var topThree: [WorkspaceModelRow] { Array(model.projection.filteredModels(query: "", sort: .quality, ascending: false).prefix(3)) }
     private var freshness: String { "更新于 \(RadarFormat.date(model.projection.updatedAt))" }
     private var quota: String {

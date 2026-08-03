@@ -85,6 +85,7 @@ struct InformationOverviewView: View {
 
     private func sourceBand(_ source: RadarSourceDescriptor) -> some View {
         let projection = model.projection(for: source.id)
+        let metric = WorkspacePresentation.metric(for: source.id)
         let leader = projection?.rows
             .filter { $0.benchmark.qualityScore != nil }
             .max {
@@ -93,27 +94,31 @@ struct InformationOverviewView: View {
                 }
                 return $0.name.localizedStandardCompare($1.name) == .orderedDescending
             }
-        let metricName = source.id == .sweBenchVerified ? "% Resolved" : "IQ"
-
         return VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
             HStack(alignment: .firstTextBaseline) {
                 Label(source.displayName, systemImage: source.icon)
                     .font(.headline)
                 Spacer()
-                Label(stateText(projection?.benchmarkState), systemImage: stateIcon(projection?.benchmarkState))
+                Label(
+                    WorkspacePresentation.stateText(for: projection?.benchmarkState),
+                    systemImage: WorkspacePresentation.stateIcon(for: projection?.benchmarkState)
+                )
                     .font(.caption)
                     .foregroundStyle(palette.secondaryText.color)
             }
             Divider().overlay(palette.divider.color)
             HStack(alignment: .firstTextBaseline, spacing: RadarStyle.compactSpacing) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(metricName)
+                    Text(metric.qualityLabel)
                         .font(.caption)
                         .foregroundStyle(palette.secondaryText.color)
-                    Text(RadarFormat.decimal(leader?.benchmark.qualityScore))
+                    Text(metric.formattedQuality(leader?.benchmark.qualityScore))
                         .font(.system(size: 30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(metric.accessibilityLabel)
+                .accessibilityValue(metric.accessibilityValue(leader?.benchmark.qualityScore))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(leader?.name ?? "等待已发布快照")
                         .font(.headline)
@@ -169,29 +174,6 @@ struct InformationOverviewView: View {
         return "\(count) 个来源内模型配置 · \(source.seriesRevision)"
     }
 
-    private func stateText(_ state: WorkspaceState?) -> String {
-        switch state {
-        case .fresh: "正常"
-        case .stale: "陈旧"
-        case .usingLastKnownGood: "LKG"
-        case .validationFailed(let hasLastKnownGood): hasLastKnownGood ? "校验失败 · LKG" : "校验失败"
-        case .loading: "载入中"
-        case .empty, nil: "暂无数据"
-        case .disabled: "在线读取关闭"
-        case .unavailable, .error: "不可用"
-        }
-    }
-
-    private func stateIcon(_ state: WorkspaceState?) -> String {
-        switch state {
-        case .fresh: "checkmark.circle.fill"
-        case .stale, .usingLastKnownGood, .validationFailed: "clock.arrow.circlepath"
-        case .loading: "arrow.triangle.2.circlepath"
-        case .empty, nil: "circle.dashed"
-        case .disabled: "pause.circle"
-        case .unavailable, .error: "exclamationmark.triangle"
-        }
-    }
 }
 
 private extension RadarSourceDescriptor {

@@ -5,6 +5,7 @@ struct ModelDetailView: View {
     @Environment(\.radarPalette) private var palette
     let row: WorkspaceModelRow
     let sourceName: String
+    let metricPresentation: WorkspaceMetricPresentation
     let revision: String
     let paretoPreset: ParetoPreset
     let paretoClassification: ParetoClassification
@@ -25,6 +26,7 @@ struct ModelDetailView: View {
                     Text("暂无历史数据").foregroundStyle(.secondary)
                 } else {
                     scaledHistoryChart
+                        .accessibilityChartDescriptor(historyDescriptor)
                         .chartLegend(position: .bottom)
                         .chartXAxis {
                             AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
@@ -41,7 +43,7 @@ struct ModelDetailView: View {
                 }
             }
             Section("原始指标") {
-                metric("质量分", RadarFormat.decimal(row.benchmark.qualityScore))
+                metric(metricPresentation.qualityLabel, RadarFormat.decimal(row.benchmark.qualityScore))
                 metric("通过 / 有效", "\(RadarFormat.integer(row.benchmark.passedTasks)) / \(RadarFormat.integer(row.benchmark.validTasks))")
                 metric("成本", row.benchmark.benchmarkCostUSD.map { "$" + RadarFormat.decimal($0) } ?? "—")
                 metric("Token", RadarFormat.integer(row.benchmark.totalTokens))
@@ -79,7 +81,7 @@ struct ModelDetailView: View {
             ForEach(group.points) { point in
                 LineMark(
                     x: .value("时间", point.date),
-                    y: .value("质量", point.value),
+                    y: .value(metricPresentation.qualityLabel, point.value),
                     series: .value("Revision 系列", group.id)
                 )
                 .foregroundStyle(by: .value("Revision", group.seriesRevision))
@@ -93,6 +95,29 @@ struct ModelDetailView: View {
         } else {
             historyChart
         }
+    }
+    private var historyDescriptor: RadarChartDescriptor {
+        RadarChartDescriptor(
+            title: "\(sourceName) · \(row.name) 单模型历史",
+            summary: "仅所选模型；数据版本变化时断线，缺失值不插值。",
+            xAxisTitle: "时间",
+            yAxisTitle: "\(metricPresentation.qualityLabel)\(metricPresentation.qualityUnit.isEmpty ? "" : "（\(metricPresentation.qualityUnit)）")",
+            xValueDescription: RadarChartDescriptor.dateTime,
+            yValueDescription: { RadarChartDescriptor.number($0, unit: metricPresentation.qualityUnit) },
+            series: historySeries.map { group in
+                .init(
+                    name: "\(row.name) · \(group.seriesRevision)",
+                    isContinuous: true,
+                    points: group.points.map { point in
+                        .init(
+                            x: point.date.timeIntervalSince1970,
+                            y: point.value,
+                            label: "\(sourceName)，\(row.name)，数据版本 \(group.seriesRevision)，\(RadarChartDescriptor.dateTime(point.date.timeIntervalSince1970))，\(metricPresentation.qualityLabel) \(RadarChartDescriptor.number(point.value, unit: metricPresentation.qualityUnit))"
+                        )
+                    }
+                )
+            }
+        )
     }
 
     private func metric(_ label: String, _ value: String) -> some View {

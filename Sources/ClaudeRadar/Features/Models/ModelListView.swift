@@ -66,7 +66,7 @@ struct ModelListView: View {
         .inspector(isPresented: Binding(
             get: { selected != nil },
             set: { if !$0 { selection = nil } }
-        )) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 280, ideal: 320, max: 380) } }
+        )) { if let selected { ModelDetailView(row: selected, sourceName: projection.source.displayName, metricPresentation: WorkspacePresentation.metric(for: projection.source.id), revision: projection.sync?.benchmark.value?.seriesRevision ?? "—", paretoPreset: paretoPreset, paretoClassification: classification(for: selected.id), history: history).inspectorColumnWidth(min: 280, ideal: 320, max: 380) } }
         .navigationTitle("模型")
     }
 

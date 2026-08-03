@@ -82,20 +82,8 @@ struct CodexCostVersusIQPanel: View {
                 .chartPlotStyle { $0.background(palette.section.color) }
                 .chartXSelection(value: $selectedCost)
                 .frame(minHeight: chartMetrics.minimumHeight)
+                .accessibilityChartDescriptor(chartDescriptor)
                 .accessibilityHint("在图表中选择一个点可查看模型、IQ 与综合成本")
-                .accessibilityRepresentation {
-                    VStack(alignment: .leading) {
-                        Text("综合成本与 IQ 散点图")
-                        ForEach(chartPoints) { point in
-                            HStack {
-                                Text(point.point.modelName)
-                            }
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(pointAccessibilityLabel(point))
-                        }
-                    }
-                    .accessibilityElement(children: .contain)
-                }
             }
 
             Divider().overlay(palette.divider.color)
@@ -128,6 +116,26 @@ struct CodexCostVersusIQPanel: View {
         return chartPoints.min {
             abs($0.x - selectedCost) < abs($1.x - selectedCost)
         }
+    }
+
+    private var chartDescriptor: RadarChartDescriptor {
+        RadarChartDescriptor(
+            title: "Codex Radar · 综合成本与 IQ",
+            summary: "\(provenance)；仅当前数据集与数据版本 \(seriesRevision ?? "不可用")，越靠左上越高效。",
+            xAxisTitle: "相对综合成本指数",
+            yAxisTitle: "IQ",
+            xValueDescription: { RadarChartDescriptor.number($0, unit: "指数") },
+            yValueDescription: { RadarChartDescriptor.number($0, unit: "IQ") },
+            series: families.map { family in
+                .init(
+                    name: family,
+                    isContinuous: false,
+                    points: chartPoints.filter { $0.family == family }.map { point in
+                        .init(x: point.x, y: point.y, label: pointAccessibilityLabel(point))
+                    }
+                )
+            }
+        )
     }
 
     private var visiblePointIDs: [ModelID] {

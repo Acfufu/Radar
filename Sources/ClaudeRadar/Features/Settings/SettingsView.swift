@@ -52,14 +52,14 @@ struct SettingsView: View {
             .background(palette.canvas.color)
             .tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 500, height: 212)
+        .frame(width: 500, height: 300)
         .background(palette.canvas.color)
         .tint(palette.accent.color)
         .onAppear { launchAtLogin = SMAppService.mainApp.status == .enabled }
     }
     private var interval: Binding<Int> { Binding(get: { settings.refreshIntervalMinutes }, set: { value in
         settings.refreshIntervalMinutes = value
-        Task { await runtime.updateRefreshInterval(minutes: value) }
+        Task { await model.updateRefreshInterval(minutes: settings.refreshIntervalMinutes) }
     }) }
     private var appearance: Binding<AppAppearance> {
         Binding(get: { settings.appearance }, set: { settings.appearance = $0 })

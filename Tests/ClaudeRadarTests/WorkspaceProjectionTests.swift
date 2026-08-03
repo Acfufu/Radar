@@ -184,6 +184,23 @@ struct WorkspaceProjectionTests {
         #expect(series.allSatisfy { $0.id.contains("claude-code-radar") })
     }
 
+    @Test("trend series omit selected models with no values for the metric")
+    func trendSeriesOmitEmptyMetricGroups() {
+        let modelID = ModelID(sourceID: .claudeCodeRadar, upstreamKey: "empty")
+        let snapshots = [
+            benchmark(at: 1, revision: "r1", models: [model("empty", "Empty", quality: nil)]),
+            benchmark(at: 2, revision: "r2", models: [model("empty", "Empty", quality: nil)]),
+        ]
+
+        let series = WorkspaceProjection.trendSeries(
+            history: snapshots,
+            metric: .quality,
+            selected: [modelID]
+        )
+
+        #expect(series.isEmpty)
+    }
+
     @Test("overview exposes a transparent exact best cost per passed task")
     func bestCostEfficiencyUsesExactDerivedMetric() {
         let exactWinnerCost = Decimal(string: "3.000000000000000003")!

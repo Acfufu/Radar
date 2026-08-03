@@ -115,4 +115,31 @@ struct RadarStyleTests {
             #expect(palette.positive != palette.negative)
         }
     }
+
+    @Test("shared chart descriptor preserves axes units series and point labels")
+    func chartDescriptorContract() {
+        let descriptor = RadarChartDescriptor(
+            title: "来源趋势",
+            summary: "来源上下文",
+            xAxisTitle: "时间",
+            yAxisTitle: "成本（USD）",
+            xValueDescription: RadarChartDescriptor.dateTime,
+            yValueDescription: { RadarChartDescriptor.number($0, unit: "USD") },
+            series: [
+                .init(
+                    name: "模型 · r1",
+                    isContinuous: true,
+                    points: [.init(x: 1, y: 2.5, label: "模型，成本 2.5 USD")]
+                ),
+            ]
+        ).makeChartDescriptor()
+
+        #expect(descriptor.title == "来源趋势")
+        #expect(descriptor.summary == "来源上下文")
+        #expect(descriptor.xAxis.title == "时间")
+        #expect(descriptor.yAxis?.title == "成本（USD）")
+        #expect(descriptor.yAxis?.valueDescriptionProvider(2.5) == "2.5 USD")
+        #expect(descriptor.series.first?.name == "模型 · r1")
+        #expect(descriptor.series.first?.dataPoints.first?.label == "模型，成本 2.5 USD")
+    }
 }

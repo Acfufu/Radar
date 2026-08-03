@@ -1,4 +1,70 @@
+import Accessibility
+import Foundation
 import SwiftUI
+
+struct RadarChartPoint {
+    let x: Double
+    let y: Double
+    let label: String
+}
+
+struct RadarChartSeries {
+    let name: String
+    let isContinuous: Bool
+    let points: [RadarChartPoint]
+}
+
+struct RadarChartDescriptor: AXChartDescriptorRepresentable {
+    let title: String
+    let summary: String
+    let xAxisTitle: String
+    let yAxisTitle: String
+    let xValueDescription: (Double) -> String
+    let yValueDescription: (Double) -> String
+    let series: [RadarChartSeries]
+
+    func makeChartDescriptor() -> AXChartDescriptor {
+        AXChartDescriptor(
+            title: title,
+            summary: summary,
+            xAxis: axis(title: xAxisTitle, values: series.flatMap(\.points).map(\.x), description: xValueDescription),
+            yAxis: axis(title: yAxisTitle, values: series.flatMap(\.points).map(\.y), description: yValueDescription),
+            series: series.map { item in
+                AXDataSeriesDescriptor(
+                    name: item.name,
+                    isContinuous: item.isContinuous,
+                    dataPoints: item.points.map { AXDataPoint(x: $0.x, y: $0.y, label: $0.label) }
+                )
+            }
+        )
+    }
+
+    static func dateTime(_ value: Double) -> String {
+        Date(timeIntervalSince1970: value).formatted(date: .abbreviated, time: .shortened)
+    }
+
+    static func number(_ value: Double, unit: String = "") -> String {
+        let number = value.formatted(.number.precision(.fractionLength(0...2)))
+        return unit.isEmpty ? number : "\(number) \(unit)"
+    }
+
+    private func axis(
+        title: String,
+        values: [Double],
+        description: @escaping (Double) -> String
+    ) -> AXNumericDataAxisDescriptor {
+        let finite = values.filter(\.isFinite)
+        let lower = finite.min() ?? 0
+        let upper = finite.max() ?? 1
+        let range = lower == upper ? (lower - 1)...(upper + 1) : lower...upper
+        return AXNumericDataAxisDescriptor(
+            title: title,
+            range: range,
+            gridlinePositions: [],
+            valueDescriptionProvider: description
+        )
+    }
+}
 
 struct RadarColorToken: Equatable, Sendable {
     let hex: UInt32
