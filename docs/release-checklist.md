@@ -20,6 +20,12 @@
 
 Release assembly must contain only `ClaudeRadar.icns` under Resources and no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. All three public source runtimes start with the app; changing the selected source room changes display only.
 
+Final route matrix: Information Overview; Claude Overview/Decision Lens/Models/Trends/Source Status/Export; Codex Overview/Decision Lens/Models/Trends/Intelligence Center/Source Status/Export; SWE Models, Trends only when same-revision comparable history exists, Source Status, and Export. Metric vocabulary, units, Decision Lens inputs, trend datasets, accessibility descriptions, and Export choices remain source-local; no route implies a unified cross-source rank.
+
+Final reconciliation local-QA binding: temporary-index source/test/support tree `914e787b2311841ebd95c3efc0027050dd050b74`; Debug executable/bundle-manifest SHA-256 `e2fc4ab0bf9fce1ad7e57fe6d655319d9e67865dad0815d3c4493352a385897b` / `aa6163057b2fdb19d5809ac30b2cfdda13bfff75e8a3f224b090130ef507666e`; Release executable/bundle-manifest SHA-256 `4dcbaf13f338319e1ae20d6812f249e6219b7e7fa0d2af80ea4eb9faf885a026` / `ac6b5d2b8214ec54bc4e57ba68561da3b7a99ee18e32968a8e42b6d20013c03c`. Plist lint and strict codesign pass; Release Resources are icon-only and the signature is ad-hoc hardened runtime.
+
+Current verification disposition is **PASS for the final explicit-Xcode Swift suite**: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test` passed 331 tests in 44 suites; the previous loopback `NSURLErrorDomain Code=-1004` did not recur, and `CodexRenderedIQHistoryLiveTests` is skipped by design. The approved 13-suite presentation/source-contract regression passed 106/106; adding `CodexRenderedIQHistoryOverviewContractTests` passed 109 tests in 14 suites and verifies the split that includes `OfficialOverviewTrendSections.swift`. Isolated Debug process smoke covered Information Overview, Claude Export, Codex Intelligence Center, and SWE Models with targeted PID cleanup. Todo 7 screenshot/AX/VoiceOver completion remains **BLOCKED** because captures showed the macOS Sleep/lock overlay and System Events lacked assistive access (`-25211`).
+
 ## Upgrade
 
 1. Quit Claude Radar and verify no `ClaudeRadar` process remains.
@@ -44,7 +50,7 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 
 ## Required verification receipts
 
-- Full Swift tests, Debug and Release builds, explicit-Xcode Release build.
+- Full Swift tests with honest failure accounting, approved focused regression, and fresh Debug and Release packaged builds.
 - Plist lint and inventory showing the app icon as the only Release resource.
 - Isolated three-source online launch, shared sync-metadata inspection, and source-room checks proving that cached data remains isolated.
 - Isolated noncommercial Codex page rendering that produces fresh official cards or an explicit rendered empty state. Challenge, schema drift, or page unavailability is **BLOCKED** live readiness, not Pass.
@@ -53,6 +59,7 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 - Export inspection proving `rendered-iq-history` schema version 1 contains only normalized source/provenance/series/point fields, with no HTML, script, cookies, browser storage/profile, response body, authorization, API, or interception material; verify the official curve remains distinct from local IQ fitting.
 - SWE-bench live acceptance proving the mini-SWE-agent v2 cohort count, `% Resolved` mapping, 500-task denominator, source-local Pareto analysis, inspector, and permanent read-only/provenance copy.
 - `codesign --verify --deep --strict`, signing details, entitlements, dependencies, and nested-code inventory.
+- Chart/accessibility contract inspection proving all chart surfaces expose native descriptors and non-color series meaning; rendered screenshot/AX/VoiceOver PASS requires an unlocked owner session with Accessibility permission.
 - Credential classification from `security find-identity -v -p codesigning` and `ClaudeRadarNotary` availability, with secrets excluded.
 - Isolated install, second-build replacement, data-preservation, independent-clear, quit, and app-only uninstall evidence.
 - Gatekeeper is Pass only for a Developer ID/notarized artifact; ad-hoc rejection is expected and remains externally BLOCKED.

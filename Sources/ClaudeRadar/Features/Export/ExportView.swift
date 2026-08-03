@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 struct ExportView: View {
     @Environment(\.radarPalette) private var palette
     let runtime: RadarAppRuntime
-    @State private var datasets = Set(ExportDataset.normalized)
+    @State private var datasets: Set<ExportDataset>
     @State private var includesRawSamples = false
     @State private var pageSize = 500
     @State private var limitsStart = false
@@ -17,6 +17,11 @@ struct ExportView: View {
     @State private var errorMessage: String?
     @State private var exportTask: Task<Void, Never>?
 
+    init(runtime: RadarAppRuntime) {
+        self.runtime = runtime
+        _datasets = State(initialValue: Set(Self.availableDatasets(for: runtime.sourceID)))
+    }
+
     var body: some View {
         Form {
             Section("日期范围") {
@@ -26,7 +31,7 @@ struct ExportView: View {
                 if limitsEnd { DatePicker("结束", selection: $end) }
             }
             Section("数据集") {
-                ForEach(ExportDataset.normalized, id: \.self) { dataset in
+                ForEach(Self.availableDatasets(for: runtime.sourceID), id: \.self) { dataset in
                     Toggle(datasetTitle(dataset), isOn: datasetBinding(dataset))
                 }
                 Toggle("包含最近原始样本", isOn: $includesRawSamples)
@@ -74,6 +79,17 @@ struct ExportView: View {
     }
 
     private var invalidRange: Bool { limitsStart && limitsEnd && start > end }
+
+    static func availableDatasets(for sourceID: RadarSourceID) -> [ExportDataset] {
+        switch sourceID {
+        case .codexRadar:
+            ExportDataset.normalized
+        case .sweBenchVerified:
+            [.models, .benchmarkRuns]
+        default:
+            [.models, .benchmarkRuns, .communityRatings, .sourceStatus]
+        }
+    }
 
     private func datasetBinding(_ dataset: ExportDataset) -> Binding<Bool> {
         Binding(

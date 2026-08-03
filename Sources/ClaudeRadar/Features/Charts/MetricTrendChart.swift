@@ -44,6 +44,7 @@ struct MetricTrendChart: View {
                             .frame(maxWidth: .infinity, minHeight: 320)
                         } else {
                             scaledTrendChart
+                                .accessibilityChartDescriptor(trendDescriptor)
                                 .chartLegend(position: .bottom)
                                 .chartXAxis {
                                     AxisMarks { AxisGridLine().foregroundStyle(palette.divider.color); AxisValueLabel().foregroundStyle(palette.secondaryText.color) }
@@ -96,11 +97,21 @@ struct MetricTrendChart: View {
         }
     }
     private var selectionCandidates: [ModelID] {
-        let historicalIDs = Set(history.flatMap { $0.models.map(\.id) })
-        return projection.rows.filter { historicalIDs.contains($0.id) }.map(\.id)
+        let availableIDs = Set(WorkspaceProjection.trendSeries(
+            history: history,
+            metric: metric,
+            selected: Set(projection.rows.map(\.id)),
+            timeRange: timeRange
+        ).map(\.modelID))
+        return projection.rows.filter { availableIDs.contains($0.id) }.map(\.id)
     }
     private func reconcileSelection() {
-        selectionState = TrendSelection.reconcile(state: selectionState, rows: projection.rows, history: history)
+        let availableIDs = Set(selectionCandidates)
+        selectionState = TrendSelection.reconcile(
+            state: selectionState,
+            rows: projection.rows.filter { availableIDs.contains($0.id) },
+            history: history
+        )
     }
     private func binding(_ id: ModelID) -> Binding<Bool> {
         Binding(get: { selectionState.selected.contains(id) }, set: { enabled in
@@ -110,7 +121,44 @@ struct MetricTrendChart: View {
         })
     }
     private func metricTitle(_ metric: TrendMetric) -> String {
-        metric == .quality && projection.source.id == .sweBenchVerified ? "% Resolved" : metric.rawValue
+        WorkspacePresentation.metric(for: projection.source.id).title(for: metric)
+    }
+    private var trendDescriptor: RadarChartDescriptor {
+        RadarChartDescriptor(
+            title: "\(projection.source.displayName) · \(metricTitle(metric)) 历史",
+            summary: "Radar 本地快照；按模型与数据版本分段，缺失值不补零或插值。",
+            xAxisTitle: "时间",
+            yAxisTitle: "\(metricTitle(metric))\(metricUnit.isEmpty ? "" : "（\(metricUnit)）")",
+            xValueDescription: RadarChartDescriptor.dateTime,
+            yValueDescription: { RadarChartDescriptor.number($0, unit: metricUnit) },
+            series: series.flatMap { group in
+                Dictionary(grouping: group.points, by: \.segmentIndex)
+                    .sorted { $0.key < $1.key }
+                    .map { segment, points in
+                        RadarChartSeries(
+                            name: "\(group.modelName) · \(group.seriesRevision) · 分段 \(segment + 1)",
+                            isContinuous: true,
+                            points: points.map { point in
+                                .init(
+                                    x: point.date.timeIntervalSince1970,
+                                    y: point.value,
+                                    label: "\(projection.source.displayName)，\(group.modelName)，数据版本 \(group.seriesRevision)，\(RadarChartDescriptor.dateTime(point.date.timeIntervalSince1970))，\(metricTitle(metric)) \(RadarChartDescriptor.number(point.value, unit: metricUnit))"
+                                )
+                            }
+                        )
+                    }
+            }
+        )
+    }
+    private var metricUnit: String {
+        switch metric {
+        case .quality: WorkspacePresentation.metric(for: projection.source.id).qualityUnit
+        case .cost: "USD"
+        case .elapsed: "秒"
+        case .cache: "%"
+        case .agentSteps: "步"
+        case .tokens: "Token"
+        }
     }
 }
 

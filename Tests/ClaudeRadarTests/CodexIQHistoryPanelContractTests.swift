@@ -20,7 +20,6 @@ struct CodexIQHistoryPanelContractTests {
         #expect(panel.contains("PointMark("))
         #expect(panel.contains("foregroundStyle(by: .value(\"努力等级\""))
         #expect(panel.contains(".chartLegend(position: .bottom"))
-        #expect(panel.contains(".accessibilityRepresentation"))
         #expect(panel.contains("努力等级图例"))
         #expect(panel.contains("series: .value(\"分段\", segment.id)"))
         #expect(panel.contains("来源更新时间，缺失时使用本地抓取时间"))

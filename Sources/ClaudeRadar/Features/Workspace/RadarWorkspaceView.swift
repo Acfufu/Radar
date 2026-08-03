@@ -48,11 +48,6 @@ struct RadarWorkspaceView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                Section {
-                    Label("导出", systemImage: "square.and.arrow.up")
-                        .foregroundStyle(route == .export ? palette.accent.color : palette.primaryText.color)
-                        .tag(WorkspaceRoute.export)
-                }
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
@@ -90,6 +85,7 @@ struct RadarWorkspaceView: View {
                 routeRaw = WorkspaceRoute.sourcePage(model.selectedSourceID, destination).storageKey
             }
             #endif
+            routeRaw = model.restoreRoute(WorkspaceRoute(storageKey: routeRaw)).storageKey
         }
     }
 
@@ -105,7 +101,7 @@ struct RadarWorkspaceView: View {
         case .sourcePage(let sourceID, let destination):
             sourceView(destination, sourceID: sourceID)
         case .export:
-            ExportView(runtime: model.runtime)
+            sourceView(.export, sourceID: model.selectedSourceID)
         }
     }
 
@@ -137,11 +133,11 @@ struct RadarWorkspaceView: View {
             } else {
                 SourceStatusView(projection: projection)
             }
-        case .export: ExportView(runtime: model.runtime)
+        case .export: ExportView(runtime: model.runtime(for: sourceID) ?? model.runtime)
         }
     }
 
-    private var route: WorkspaceRoute { WorkspaceRoute(storageKey: routeRaw) }
+    private var route: WorkspaceRoute { model.normalizedRoute(WorkspaceRoute(storageKey: routeRaw)) }
     private var routeBinding: Binding<WorkspaceRoute?> {
         Binding(
             get: { route },

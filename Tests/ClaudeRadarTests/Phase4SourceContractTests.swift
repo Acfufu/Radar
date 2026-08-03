@@ -103,7 +103,7 @@ struct Phase4SourceContractTests {
         let parser = try text("Sources/ClaudeRadar/Sources/CodexRadar/CodexRenderedIQHistoryDOMParser.swift")
         let lifecycle = try text("Sources/ClaudeRadar/Sources/CodexRadar/CodexRenderedPageLifecycle.swift")
         let export = try text("Sources/ClaudeRadar/Data/Export/ExportManifest.swift")
-        let model = try text("Sources/ClaudeRadar/Features/Workspace/RadarWorkspaceModel.swift")
+        let model = try text("Sources/ClaudeRadar/Features/Workspace/CodexRenderedWorkspacePresentation.swift")
 
         #expect(contract.contains("https://deng.codexradar.com/"))
         #expect(contract.contains("noncommercial, anonymous observation"))

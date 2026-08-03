@@ -30,7 +30,7 @@ struct CodexIQHistorySmallMultiplesPanel: View {
                 spacing: RadarStyle.cardSpacing
             ) {
                 ForEach(orderedPanels) { panel in
-                    CodexIQHistoryFamilyPanel(panel: panel, sharedDomain: sharedDomain)
+                    CodexIQHistoryFamilyPanel(panel: panel, sharedDomain: sharedDomain, provenance: provenance)
                 }
             }
 
@@ -75,6 +75,7 @@ private struct CodexIQHistoryFamilyPanel: View {
 
     let panel: CodexIQHistoryPanel
     let sharedDomain: ClosedRange<Date>?
+    let provenance: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
@@ -128,20 +129,7 @@ private struct CodexIQHistoryFamilyPanel: View {
                             }
                         }
                         .chartPlotStyle { $0.background(palette.section.color) }
-                        .accessibilityRepresentation {
-                            VStack(alignment: .leading) {
-                                Text("\(panel.family) IQ 历史图")
-                                Text("时间刻度：\(axis.labels.joined(separator: "，"))")
-                                Text("努力等级图例：\(efforts.joined(separator: "，"))")
-                                ForEach(panel.lines) { line in
-                                    ForEach(line.segments) { segment in
-                                        ForEach(segment.points) { point in
-                                            Text(pointLabel(line: line, segment: segment, point: point))
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        .accessibilityChartDescriptor(chartDescriptor)
                 }
                 .frame(minHeight: chartMetrics.minimumHeight)
             }
@@ -212,6 +200,32 @@ private struct CodexIQHistoryFamilyPanel: View {
         point: CodexIQHistoryPoint
     ) -> String {
         "\(panel.family)，努力等级 \(line.effort)，\(point.date.formatted(date: .abbreviated, time: .shortened))，IQ \(number(point.value))，数据版本 \(segment.seriesRevision)"
+    }
+
+    private var chartDescriptor: RadarChartDescriptor {
+        RadarChartDescriptor(
+            title: "Codex Radar · \(panel.family) IQ 历史",
+            summary: "\(provenance)；努力等级图例：\(efforts.joined(separator: "，"))；按数据版本分段，缺失或冲突值不以 0 代替。",
+            xAxisTitle: "来源更新时间",
+            yAxisTitle: "IQ",
+            xValueDescription: RadarChartDescriptor.dateTime,
+            yValueDescription: { RadarChartDescriptor.number($0, unit: "IQ") },
+            series: panel.lines.flatMap { line in
+                line.segments.map { segment in
+                    .init(
+                        name: "\(panel.family) · 努力等级 \(line.effort) · \(segment.seriesRevision)",
+                        isContinuous: true,
+                        points: segment.points.map { point in
+                            .init(
+                                x: point.date.timeIntervalSince1970,
+                                y: point.value,
+                                label: pointLabel(line: line, segment: segment, point: point)
+                            )
+                        }
+                    )
+                }
+            }
+        )
     }
 
     private func number(_ value: Double) -> String {
@@ -297,6 +311,7 @@ private struct CodexIQHistorySegmentMarks: ChartContent {
                 y: .value("IQ", point.value)
             )
             .foregroundStyle(by: .value("努力等级", effort))
+            .symbol(by: .value("努力等级", effort))
             .symbolSize(symbolSize)
             .accessibilityLabel(
                 "\(family)，努力等级 \(effort)，\(point.date.formatted(date: .abbreviated, time: .shortened))，IQ \(number(point.value))，数据版本 \(segment.seriesRevision)"

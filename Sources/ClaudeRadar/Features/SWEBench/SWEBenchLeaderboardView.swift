@@ -176,6 +176,7 @@ struct SWEBenchLeaderboardView: View {
                     .foregroundStyle(by: .value("状态", classification(for: row.id).label))
                     .symbol(by: .value("状态", classification(for: row.id).label))
                 }
+                .accessibilityChartDescriptor(leaderboardDescriptor)
                 .chartXScale(domain: 0...maximumChartCost)
                 .chartYScale(domain: 0...100)
                 .chartLegend(position: .bottom, alignment: .leading)
@@ -199,6 +200,32 @@ struct SWEBenchLeaderboardView: View {
             }
         }
         .groupBoxStyle(RadarGroupBoxStyle())
+    }
+
+    private var leaderboardDescriptor: RadarChartDescriptor {
+        RadarChartDescriptor(
+            title: "\(projection.source.displayName) · 成本与 % Resolved",
+            summary: "仅 Verified · mini-SWE-agent v2 · \(projection.source.seriesRevision)；Pareto 状态同时以符号和系列名称区分。",
+            xAxisTitle: "总成本（USD）",
+            yAxisTitle: "% Resolved（%）",
+            xValueDescription: { RadarChartDescriptor.number($0, unit: "USD") },
+            yValueDescription: { RadarChartDescriptor.number($0, unit: "%") },
+            series: [ParetoClassification.frontier, .dominated, .dataInsufficient].map { classification in
+                .init(
+                    name: classification.label,
+                    isContinuous: false,
+                    points: chartRows.filter { self.classification(for: $0.id) == classification }.map { row in
+                        let cost = decimal(row.benchmark.benchmarkCostUSD)
+                        let resolved = decimal(row.benchmark.qualityScore)
+                        return .init(
+                            x: cost,
+                            y: resolved,
+                            label: "\(projection.source.displayName)，\(row.name)，\(classification.label)，总成本 \(RadarChartDescriptor.number(cost, unit: "USD"))，% Resolved \(RadarChartDescriptor.number(resolved, unit: "%"))"
+                        )
+                    }
+                )
+            }
+        )
     }
 
     private var filterControls: some View {
