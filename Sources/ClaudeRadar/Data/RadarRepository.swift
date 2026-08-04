@@ -390,16 +390,28 @@ actor RadarRepository {
         }
     }
 
-    func deleteAll() async throws {
+    func deleteNormalizedHistory(sourceID: RadarSourceID) async throws {
         try await waitForExportLease()
+        try await metadataStore.delete(sourceID: sourceID)
+
+        // ponytail: metadata and SwiftData are not transactional; metadata-first preserves normalized rows on a later save failure. Add a journal only if cross-store atomicity becomes required.
         let context = ModelContext(container)
-        try context.delete(model: BenchmarkSnapshotEntity.self)
-        try context.delete(model: CommunitySnapshotEntity.self)
-        try context.delete(model: SourceStatusSnapshotEntity.self)
-        try context.delete(model: CodexRenderedWarningSnapshotEntity.self)
-        try context.delete(model: CodexRenderedIQHistorySnapshotEntity.self)
+        for entity in try context.fetch(FetchDescriptor<BenchmarkSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<CommunitySnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<SourceStatusSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<CodexRenderedWarningSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
         try context.save()
-        try await metadataStore.deleteAll()
     }
 
     private func recordSuccess(sourceID: RadarSourceID, datasetType: RadarDatasetType, at date: Date) async throws {

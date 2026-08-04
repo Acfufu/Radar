@@ -191,7 +191,7 @@ struct RadarExportServiceTests {
         #expect(last.first?.fields["id"] == expectedIDs[500].map(ExportJSONValue.string))
     }
 
-    @Test("repository export lease freezes pages while insertion and clear wait for release")
+    @Test("repository export lease freezes pages while insertion and source deletion wait for release")
     func snapshotLeaseConsistency() async throws {
         // Given
         let root = try temporaryDirectory()
@@ -216,7 +216,7 @@ struct RadarExportServiceTests {
         }
         let clearTask = Task {
             await mutations.markClearAttempted()
-            try await fixture.repository.deleteAll()
+            try await fixture.repository.deleteNormalizedHistory(sourceID: .claudeCodeRadar)
             await mutations.markClearCompleted()
         }
         await mutations.waitForAttempts()

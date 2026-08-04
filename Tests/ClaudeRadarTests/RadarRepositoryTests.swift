@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftData
 import Testing
@@ -250,20 +251,49 @@ struct RadarRepositoryTests {
         #expect(statusState.error == nil)
     }
 
-    @Test("delete removes normalized history and metadata and permits reinitialization")
-    func deleteAndReinitialize() async throws {
-        // Given
+    @Test("source deletion filters all five normalized entities and metadata while preserving sibling and raw data")
+    func sourceScopedDeletion() async throws {
         let fixture = try repositoryFixture()
-        _ = try await fixture.repository.insertBenchmark(benchmark())
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let target = RadarSourceID(rawValue: "codex-radar")
+        let sibling = RadarSourceID(rawValue: "codex-radar-preview")
+        for sourceID in [target, sibling] {
+            _ = try await fixture.repository.insertBenchmark(benchmark(sourceID: sourceID))
+            _ = try await fixture.repository.insertCommunity(community(sourceID: sourceID))
+            _ = try await fixture.repository.insertSourceStatus(sourceStatus(sourceID: sourceID))
+            _ = try await fixture.repository.insertRenderedWarning(try warning(sourceID: sourceID))
+            _ = try await fixture.repository.insertRenderedIQHistory(try iqHistory(sourceID: sourceID))
+        }
+        let rawStore = RawSampleStore(dataRoot: fixture.root)
+        try await rawStore.save(Data("target-raw".utf8), sourceID: target, outcome: .success, at: .init(timeIntervalSince1970: 100))
+        try await rawStore.save(Data("sibling-raw".utf8), sourceID: sibling, outcome: .success, at: .init(timeIntervalSince1970: 101))
+        let metadataFile = fixture.root.appending(path: "SyncMetadata.json")
+        let metadataHashBefore = sha256(try Data(contentsOf: metadataFile))
+        let rawHashBefore = try await rawHash(rawStore, sourceIDs: [target, sibling])
+        let types = RadarDatasetType.allCases
+        let targetCountsBefore = try await counts(fixture.repository, sourceID: target, types: types)
+        let siblingCountsBefore = try await counts(fixture.repository, sourceID: sibling, types: types)
 
-        // When
-        try await fixture.repository.deleteAll()
+        try await fixture.repository.deleteNormalizedHistory(sourceID: target)
         let restarted = RadarRepository(container: fixture.container, metadataStore: SyncMetadataStore(root: fixture.root))
+        let targetCountsAfter = try await counts(restarted, sourceID: target, types: types)
+        let siblingCountsAfter = try await counts(restarted, sourceID: sibling, types: types)
+        let metadataHashAfter = sha256(try Data(contentsOf: metadataFile))
+        let rawHashAfter = try await rawHash(rawStore, sourceIDs: [target, sibling])
 
-        // Then
-        #expect(try await restarted.snapshotCount(datasetType: .benchmark, sourceID: .claudeCodeRadar) == 0)
-        #expect(try await restarted.benchmarkState(sourceID: .claudeCodeRadar).value == nil)
-        #expect(try await restarted.metadata(sourceID: .claudeCodeRadar, datasetType: .benchmark).lastAttemptedAt == nil)
+        #expect(targetCountsBefore == [1, 1, 1, 1, 1])
+        #expect(siblingCountsBefore == [1, 1, 1, 1, 1])
+        #expect(targetCountsAfter == [0, 0, 0, 0, 0])
+        #expect(siblingCountsAfter == [1, 1, 1, 1, 1])
+        for type in types {
+            #expect(try await restarted.metadata(sourceID: target, datasetType: type) == .empty)
+            #expect(try await restarted.metadata(sourceID: sibling, datasetType: type).lastSuccessfulAt != nil)
+        }
+        #expect(try await rawStore.samples(sourceID: target).count == 1)
+        #expect(try await rawStore.samples(sourceID: sibling).count == 1)
+        #expect(rawHashAfter == rawHashBefore)
+        #expect(metadataHashAfter != metadataHashBefore)
+        print("G001_MANUAL_QA counts_before_target=\(targetCountsBefore) counts_after_target=\(targetCountsAfter) counts_before_sibling=\(siblingCountsBefore) counts_after_sibling=\(siblingCountsAfter) metadata_sha256_before=\(metadataHashBefore) metadata_sha256_after=\(metadataHashAfter) raw_sha256_before=\(rawHashBefore) raw_sha256_after=\(rawHashAfter)")
     }
 
     @Test("manual repository narrative emits the required history dump")
@@ -348,6 +378,108 @@ struct RadarRepositoryTests {
                 cacheHitPercent: nil
             )]
         )
+    }
+
+    private func community(sourceID: RadarSourceID) -> CommunityDataset {
+        let modelID = ModelID(sourceID: sourceID, upstreamKey: "m1")
+        return CommunityDataset(
+            sourceID: sourceID,
+            sourceUpdatedAt: Date(timeIntervalSince1970: 5),
+            fetchedAt: Date(timeIntervalSince1970: 10),
+            ratings: [CommunityRating(
+                id: modelID,
+                model: ModelDescriptor(id: modelID, upstreamName: "Model", displayName: "Model"),
+                average: 7,
+                voteCount: 1,
+                scaleMinimum: 1,
+                scaleMaximum: 10
+            )]
+        )
+    }
+
+    private func sourceStatus(sourceID: RadarSourceID) -> SourceStatusDataset {
+        SourceStatusDataset(
+            sourceID: sourceID,
+            sourceUpdatedAt: Date(timeIntervalSince1970: 5),
+            fetchedAt: Date(timeIntervalSince1970: 10),
+            quotaEstimates: [SourceQuotaEstimate(
+                id: "window",
+                windowLabel: "Window",
+                usedPercent: 25,
+                estimatedValueUSD: nil,
+                resetDescription: nil
+            )]
+        )
+    }
+
+    private func warning(sourceID: RadarSourceID) throws -> CodexRenderedWarningSnapshot {
+        let cards = [CodexRenderedWarningCard(
+            displayName: "Model",
+            family: "Family",
+            effort: "High",
+            sourceOrder: 0,
+            iq: 100,
+            drop24h: 1,
+            drop48h: 2
+        )]
+        let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
+            sourceTimeLabel: "Updated now",
+            cards: cards,
+            finalOrigin: "https://example.com",
+            parserRevision: "test-v1"
+        )
+        return CodexRenderedWarningSnapshot(
+            sourceID: sourceID,
+            parserRevision: "test-v1",
+            finalOrigin: "https://example.com",
+            sourceTimeLabel: "Updated now",
+            capturedAt: Date(timeIntervalSince1970: 10),
+            cards: cards,
+            semanticFingerprint: fingerprint
+        )
+    }
+
+    private func iqHistory(sourceID: RadarSourceID) throws -> CodexRenderedIQHistorySnapshot {
+        let points = [CodexRenderedIQHistoryPoint(sourceOrder: 0, sourceTimeLabel: "now", iq: 100)]
+        let series = [CodexRenderedIQHistorySeries(sourceOrder: 0, seriesKey: "aggregate", displayName: "Aggregate", points: points)]
+        let fingerprint = try CodexRenderedIQHistorySemanticFingerprint.make(
+            sourceID: sourceID,
+            series: series,
+            finalOrigin: "https://example.com",
+            parserRevision: "test-v1"
+        )
+        return CodexRenderedIQHistorySnapshot(
+            sourceID: sourceID,
+            parserRevision: "test-v1",
+            finalOrigin: "https://example.com",
+            capturedAt: Date(timeIntervalSince1970: 10),
+            series: series,
+            semanticFingerprint: fingerprint
+        )
+    }
+
+    private func counts(
+        _ repository: RadarRepository,
+        sourceID: RadarSourceID,
+        types: [RadarDatasetType]
+    ) async throws -> [Int] {
+        var values: [Int] = []
+        for type in types {
+            values.append(try await repository.snapshotCount(datasetType: type, sourceID: sourceID))
+        }
+        return values
+    }
+
+    private func rawHash(_ store: RawSampleStore, sourceIDs: [RadarSourceID]) async throws -> String {
+        var payloads: [RawSamplePayload] = []
+        for sourceID in sourceIDs {
+            payloads.append(contentsOf: try await store.exportPayloads(sourceID: sourceID))
+        }
+        return sha256(payloads.reduce(into: Data()) { $0.append($1.data) })
+    }
+
+    private func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     private func benchmarkWithModels(_ dataset: BenchmarkDataset, models: [ModelBenchmark]) -> BenchmarkDataset {

@@ -53,16 +53,27 @@ actor SyncMetadataStore {
         var metadata = records[recordKey] ?? .empty
         transform(&metadata)
         records[recordKey] = metadata
-        try persist()
+        try persist(records)
     }
 
-    func deleteAll() throws {
-        records = [:]
-        loaded = true
-        loadFailure = nil
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            try FileManager.default.removeItem(at: fileURL)
+    func delete(sourceID: RadarSourceID) throws {
+        try loadIfNeeded()
+        if let loadFailure {
+            throw SegmentError(kind: loadFailure.kind, message: loadFailure.message)
         }
+
+        let remaining = records.filter { recordKey, _ in
+            guard let component = sourceComponent(in: recordKey) else { return true }
+            return component != sourceID.rawValue
+        }
+        if remaining.isEmpty {
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try FileManager.default.removeItem(at: fileURL)
+            }
+        } else {
+            try persist(remaining)
+        }
+        records = remaining
     }
 
     private func loadIfNeeded() throws {
@@ -80,7 +91,7 @@ actor SyncMetadataStore {
         }
     }
 
-    private func persist() throws {
+    private func persist(_ records: [String: SyncMetadata]) throws {
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -90,5 +101,10 @@ actor SyncMetadataStore {
 
     private func key(_ sourceID: RadarSourceID, _ datasetType: RadarDatasetType) -> String {
         "\(sourceID.rawValue)|\(datasetType.rawValue)"
+    }
+
+    private func sourceComponent(in recordKey: String) -> Substring? {
+        guard let separator = recordKey.firstIndex(of: "|") else { return nil }
+        return recordKey[..<separator]
     }
 }

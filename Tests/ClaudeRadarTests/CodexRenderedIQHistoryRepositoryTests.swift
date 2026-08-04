@@ -123,8 +123,8 @@ struct CodexRenderedIQHistoryRepositoryTests {
         ) == 257)
     }
 
-    @Test("deleteAll clears normalized IQ and warning rows but preserves raw samples")
-    func deleteAllAndRawIsolation() async throws {
+    @Test("source deletion clears normalized IQ and warning rows but preserves raw samples")
+    func sourceDeletionAndRawIsolation() async throws {
         let fixture = try repositoryFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
         _ = try await fixture.repository.insertRenderedIQHistory(try history())
@@ -137,7 +137,7 @@ struct CodexRenderedIQHistoryRepositoryTests {
             at: Date(timeIntervalSince1970: 11)
         )
 
-        try await fixture.repository.deleteAll()
+        try await fixture.repository.deleteNormalizedHistory(sourceID: .codexRadar)
 
         #expect(try await fixture.repository.snapshotCount(
             datasetType: .renderedIQHistory,
