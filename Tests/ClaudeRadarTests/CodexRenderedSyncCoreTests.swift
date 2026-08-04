@@ -173,6 +173,7 @@ struct CodexRenderedSyncCoreTests {
         #expect((await core.lifecycleState()).hasActiveTask)
         #expect(counters.snapshot().read == 0)
         let stopping = Task { await core.stop() }
+        while !(await core.lifecycleState()).isStopped { await Task.yield() }
         await eligibilityGate.release()
         await stopping.value
         await refresh.value

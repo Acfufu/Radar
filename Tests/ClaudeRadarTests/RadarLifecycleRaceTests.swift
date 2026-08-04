@@ -23,6 +23,7 @@ struct RadarLifecycleRaceTests {
 
         let stopping = Task { await runtime.stop() }
         while runtime.lifecycleState != .stopping { await Task.yield() }
+        while reader.cancelCount == 0 { await Task.yield() }
         await gate.succeed(try lifecycleWarning(capturedAt: Date(timeIntervalSince1970: 100)))
         await stopping.value
         await starting.value
@@ -64,6 +65,7 @@ struct RadarLifecycleRaceTests {
 
         let stopping = Task { await runtime.stop() }
         while runtime.lifecycleState != .stopping { await Task.yield() }
+        while reader.cancelCount == 0 { await Task.yield() }
         await gate.succeed(try lifecycleIQHistory(capturedAt: Date(timeIntervalSince1970: 100)))
         await stopping.value
         await starting.value
