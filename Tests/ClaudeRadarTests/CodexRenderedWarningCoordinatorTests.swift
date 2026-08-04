@@ -9,6 +9,7 @@ struct CodexRenderedWarningCoordinatorTests {
     @Test("a successful render is persisted and published")
     func successfulRender() async throws {
         let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
         let reader = WarningReaderProbe(results: [.success(snapshot)])
         let publications = WarningPublicationRecorder()
@@ -36,6 +37,7 @@ struct CodexRenderedWarningCoordinatorTests {
     @Test("a trigger burst joins one in-flight render")
     func triggerBurstCoalesces() async throws {
         let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
         let gate = WarningReadGate()
         let reader = GatedWarningReader(gate: gate)
@@ -67,6 +69,7 @@ struct CodexRenderedWarningCoordinatorTests {
     @Test("duplicate success refreshes metadata without adding history")
     func duplicateSuccess() async throws {
         let fixture = try warningCoordinatorFixture(now: Date(timeIntervalSince1970: 100))
+        defer { fixture.cleanup() }
         let original = try renderedWarning(capturedAt: Date(timeIntervalSince1970: 10))
         let duplicate = try renderedWarning(capturedAt: fixture.clock.now())
         _ = try await fixture.repository.insertRenderedWarning(original)
@@ -94,6 +97,7 @@ struct CodexRenderedWarningCoordinatorTests {
     func failureProjectionMatrix() async throws {
         for hasLKG in [false, true] {
             let fixture = try warningCoordinatorFixture()
+            defer { fixture.cleanup() }
             let prior = try renderedWarning(
                 sourceTimeLabel: "cached",
                 capturedAt: fixture.clock.now().addingTimeInterval(-10)
@@ -125,25 +129,60 @@ struct CodexRenderedWarningCoordinatorTests {
     @Test("projection uses the existing stale interval")
     func staleProjection() async throws {
         let fixture = try warningCoordinatorFixture(now: Date(timeIntervalSince1970: 10_000))
+        defer { fixture.cleanup() }
         let prior = try renderedWarning(capturedAt: Date(timeIntervalSince1970: 6_399))
         _ = try await fixture.repository.insertRenderedWarning(prior)
         let coordinator = await CodexRenderedWarningCoordinator(
             reader: WarningReaderProbe(results: []),
             repository: fixture.repository,
-            policy: SyncPolicy(refreshInterval: 30 * 60),
+            policy: SyncPolicy(refreshInterval: 60 * 60),
             clock: fixture.clock
         )
 
-        let projection = try await coordinator.projection()
+        let initialProjection = try await coordinator.projection()
 
+        #expect(initialProjection.state.value == prior)
+        #expect(!initialProjection.state.isStale)
+
+        await coordinator.updateRefreshInterval(30 * 60)
+        let updatedProjection = try await coordinator.projection()
+
+        #expect(updatedProjection.state.value == prior)
+        #expect(updatedProjection.state.isStale)
+    }
+
+    @MainActor
+    @Test("persisted projection delegates without a reader call and publishes")
+    func persistedProjectionDelegates() async throws {
+        let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let prior = try renderedWarning(capturedAt: fixture.clock.now())
+        _ = try await fixture.repository.insertRenderedWarning(prior)
+        let reader = WarningReaderProbe(results: [])
+        let publications = WarningPublicationRecorder()
+        let coordinator = CodexRenderedWarningCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock,
+            projectionDidChange: { state, history in
+                await publications.append(state: state, history: history)
+            }
+        )
+
+        let projection = try await coordinator.loadPersistedProjection()
+
+        #expect(reader.readCount == 0)
         #expect(projection.state.value == prior)
-        #expect(projection.state.isStale)
+        #expect(projection.history == [prior])
+        #expect(await publications.count == 1)
+        #expect(await publications.lastState?.value == prior)
     }
 
     @MainActor
     @Test("periodic obeys backoff while manual bypasses it")
     func backoffAndManualPriority() async throws {
         let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
         let reader = WarningReaderProbe(results: [
             .failure(WarningTestError.offline),
@@ -171,6 +210,7 @@ struct CodexRenderedWarningCoordinatorTests {
     @Test("stop during a suspended read fences late persistence and publication")
     func stopDuringRead() async throws {
         let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
         let gate = WarningReadGate()
         let reader = GatedWarningReader(gate: gate)
@@ -204,6 +244,7 @@ struct CodexRenderedWarningCoordinatorTests {
     @Test("stop during the persistence phase fences the write")
     func stopDuringPersistence() async throws {
         let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
         let reader = WarningReaderProbe(results: [.success(snapshot)])
         let gate = WarningPersistenceGate()
@@ -231,6 +272,196 @@ struct CodexRenderedWarningCoordinatorTests {
             sourceID: .codexRadar
         ) == 0)
         #expect(await publications.count == 0)
+    }
+
+    @MainActor
+    @Test("pause drains, rejects triggers, and resume accepts one later refresh")
+    func pauseDrainResume() async throws {
+        let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
+        let gate = WarningReadGate()
+        let reader = GatedWarningReader(gate: gate)
+        let publications = WarningPublicationRecorder()
+        let coordinator = CodexRenderedWarningCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock,
+            projectionDidChange: { state, history in
+                await publications.append(state: state, history: history)
+            }
+        )
+
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await gate.waitUntilStarted()
+        let pausing = Task { await coordinator.pauseAndDrain() }
+        while !(await coordinator.lifecycleState()).isPaused { await Task.yield() }
+        await gate.succeed(snapshot)
+        await pausing.value
+        await refresh.value
+
+        #expect((await coordinator.lifecycleState()).isPaused)
+        await coordinator.refresh(trigger: .manual)
+        #expect(await gate.readCount == 1)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedWarnings,
+            sourceID: .codexRadar
+        ) == 0)
+        #expect(await publications.count == 0)
+
+        await coordinator.resume()
+        let resumed = Task { await coordinator.refresh(trigger: .manual) }
+        while await gate.readCount < 2 { await Task.yield() }
+        await gate.succeed(snapshot)
+        await resumed.value
+
+        #expect(!(await coordinator.lifecycleState()).isPaused)
+        #expect(await gate.readCount == 2)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedWarnings,
+            sourceID: .codexRadar
+        ) == 1)
+        #expect(await publications.count == 1)
+    }
+
+    @MainActor
+    @Test("concurrent pause callers join one reader drain")
+    func concurrentPauseJoins() async throws {
+        let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let snapshot = try renderedWarning(capturedAt: fixture.clock.now())
+        let readGate = WarningReadGate()
+        let persistenceGate = WarningPersistenceGate()
+        let reader = GatedWarningReader(gate: readGate)
+        let publications = WarningPublicationRecorder()
+        let coordinator = CodexRenderedWarningCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock,
+            projectionDidChange: { state, history in
+                await publications.append(state: state, history: history)
+            },
+            persistenceCheckpoint: { await persistenceGate.pause() }
+        )
+
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await readGate.waitUntilStarted()
+        await readGate.succeed(snapshot)
+        await persistenceGate.waitUntilPaused()
+
+        let firstPause = Task { await coordinator.pauseAndDrain() }
+        while true {
+            let lifecycle = await coordinator.lifecycleState()
+            if lifecycle.isPaused, lifecycle.hasActiveTask { break }
+            await Task.yield()
+        }
+        let secondPause = Task { await coordinator.pauseAndDrain() }
+        await Task.yield()
+
+        #expect(reader.cancelCount == 1)
+        await persistenceGate.release()
+        await firstPause.value
+        await secondPause.value
+        await refresh.value
+
+        #expect(reader.cancelCount == 1)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedWarnings,
+            sourceID: .codexRadar
+        ) == 0)
+        #expect(await publications.count == 0)
+    }
+
+    @MainActor
+    @Test("warning reader cancellation is suppressed without metadata or publication")
+    func cancellationSuppression() async throws {
+        let fixture = try warningCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let reader = WarningReaderProbe(results: [
+            .failure(CodexRenderedWarningPageReaderError.cancelled),
+        ])
+        let publications = WarningPublicationRecorder()
+        let coordinator = CodexRenderedWarningCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock,
+            projectionDidChange: { state, history in
+                await publications.append(state: state, history: history)
+            }
+        )
+
+        await coordinator.refresh(trigger: .manual)
+
+        let metadata = try await fixture.repository.metadata(
+            sourceID: .codexRadar,
+            datasetType: .renderedWarnings
+        )
+        #expect(reader.readCount == 1)
+        #expect(metadata.lastAttemptedAt == nil)
+        #expect(metadata.lastError == nil)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedWarnings,
+            sourceID: .codexRadar
+        ) == 0)
+        #expect(await publications.count == 1)
+        #expect(await publications.lastState?.value == nil)
+        #expect(await publications.lastState?.error == nil)
+        #expect(await publications.lastHistory == [])
+    }
+
+    @MainActor
+    @Test("warning reader network failures map to network with the exact message")
+    func networkErrorMappingAndMessage() async throws {
+        let networkErrors: [CodexRenderedWarningPageReaderError] = [
+            .navigationFailed,
+            .navigationTimeout,
+            .totalTimeout,
+        ]
+        for error in networkErrors {
+            let fixture = try warningCoordinatorFixture()
+            defer { fixture.cleanup() }
+            let reader = WarningReaderProbe(results: [.failure(error)])
+            let publications = WarningPublicationRecorder()
+            let coordinator = CodexRenderedWarningCoordinator(
+                reader: reader,
+                repository: fixture.repository,
+                clock: fixture.clock,
+                projectionDidChange: { state, history in
+                    await publications.append(state: state, history: history)
+                }
+            )
+
+            await coordinator.refresh(trigger: .manual)
+
+            let metadata = try await fixture.repository.metadata(
+                sourceID: .codexRadar,
+                datasetType: .renderedWarnings
+            )
+            #expect(metadata.lastError?.kind == .network)
+            #expect(metadata.lastError?.message == "The rendered Codex warning page could not be read")
+            #expect(await publications.lastState?.error?.kind == .network)
+            #expect(await publications.lastState?.error?.message == "The rendered Codex warning page could not be read")
+        }
+
+        let validationFixture = try warningCoordinatorFixture()
+        defer { validationFixture.cleanup() }
+        let validationReader = WarningReaderProbe(results: [
+            .failure(CodexRenderedWarningPageReaderError.validation(.revisionMismatch)),
+        ])
+        let validationCoordinator = CodexRenderedWarningCoordinator(
+            reader: validationReader,
+            repository: validationFixture.repository,
+            clock: validationFixture.clock
+        )
+
+        await validationCoordinator.refresh(trigger: .manual)
+
+        let validationMetadata = try await validationFixture.repository.metadata(
+            sourceID: .codexRadar,
+            datasetType: .renderedWarnings
+        )
+        #expect(validationMetadata.lastError?.kind == .validation)
+        #expect(validationMetadata.lastError?.message == "The rendered Codex warning page could not be read")
     }
 }
 
@@ -349,8 +580,13 @@ private actor WarningPersistenceGate {
 }
 
 private struct WarningCoordinatorFixture {
+    let root: URL
     let repository: RadarRepository
     let clock: WarningTestClock
+
+    func cleanup() {
+        try? FileManager.default.removeItem(at: root)
+    }
 }
 
 private func warningCoordinatorFixture(
@@ -362,6 +598,7 @@ private func warningCoordinatorFixture(
         configuration: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     return WarningCoordinatorFixture(
+        root: root,
         repository: RadarRepository(container: container, metadataStore: SyncMetadataStore(root: root)),
         clock: WarningTestClock(now)
     )
