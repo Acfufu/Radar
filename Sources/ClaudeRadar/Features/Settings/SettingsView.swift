@@ -27,10 +27,11 @@ struct SettingsView: View {
             .tabItem { Label("通用", systemImage: "gear") }
             Form {
                 Button("清除规范化历史", role: .destructive) {
-                    Task { dataActionMessage = await runtime.clearHistory() ? "规范化历史（含官网预警及同步元数据）已清除；原始诊断样本保留。" : "无法清除规范化历史。" }
+                    let sourceName = model.source.displayName
+                    Task { dataActionMessage = await runtime.clearHistory() ? "当前来源（\(sourceName)）的规范化历史（含渲染预警、IQ 历史及同步元数据）已清除；原始诊断样本和其他来源保留。后续合法同步可能重新填充该来源数据。" : "无法清除当前来源（\(sourceName)）的规范化历史；未报告已清除数据。" }
                 }
                 Button("清除原始诊断样本", role: .destructive) {
-                    Task { dataActionMessage = await runtime.clearRawSamples() ? "原始诊断样本已清除；规范化历史（含官网预警）保留。" : "无法清除原始诊断样本。" }
+                    Task { dataActionMessage = await runtime.clearRawSamples() ? "原始诊断样本已清除；规范化历史（含渲染预警、IQ 历史及同步元数据）保留。" : "无法清除原始诊断样本；未报告已清除数据。" }
                 }
                 Button("在 Finder 中显示数据目录") { NSWorkspace.shared.activateFileViewerSelecting([runtime.environment.dataRoot]) }
                 Text(runtime.environment.dataRoot.path).font(.caption).foregroundStyle(palette.secondaryText.color).textSelection(.enabled)

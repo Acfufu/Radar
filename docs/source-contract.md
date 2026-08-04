@@ -5,10 +5,10 @@ The existing contract sections through “Canonical sanitized fixtures” descri
 ## Release boundary
 
 - Homepage: `https://claudecoderadar.com/?lang=en`
-- Support: `authorized`
-- public online default: enabled
+- Support: current source support is controlled by `AppEnvironment`; no current external-authorization receipt is claimed here.
+- public online default: enabled in current source; current live-provider validation is not claimed here.
 - Access: the inspected GET endpoints are public and require no authentication.
-- Project authorization: on 2026-07-16, the project owner authorized automatic synchronization, local history retention, and in-app re-display of the public GET responses.
+- Historical authorization record (2026-07-16): the project owner authorized automatic synchronization, local history retention, and in-app re-display of the public GET responses. This dated record is preserved for provenance, not as a current external-authorization receipt.
 - Access controls: the app must not bypass authentication, challenges, rate limits, or other access controls and must not persist cookies or sensitive request headers.
 - Release enforcement: `AppEnvironment.current()` enables all three public source runtimes outside Debug, while the Release bundle excludes every development fixture and includes only the app icon under Resources. Settings/About disclose the same boundary. See `release-checklist.md` and `third-party-notices.md`.
 - Manual real-site acceptance uses a Debug package with `RADAR_FIXTURE_MODE=online` and an isolated `RADAR_DATA_ROOT`. That mode starts all production HTTP/source/parser/repository paths without fixture transport.
@@ -32,6 +32,8 @@ Release startup, Debug `online` QA, and every future source addition share one l
 - Selecting a workspace changes presentation only. Startup, periodic, network-recovery, and wake synchronization remain active for every enabled runtime.
 - All runtimes that share a data root must share one `SyncMetadataStore` actor. Atomic file replacement alone does not make independent read-modify-write actor instances safe.
 - Benchmark, community, source-status, raw samples, metadata, LKG lookup, history, trends, and export remain scoped by `RadarSourceID`.
+- Clearing normalized history removes only the selected source's normalized benchmark, community, source-status, rendered-warning, and rendered-IQ history plus sync metadata; sibling-source normalized data and all raw diagnostic samples remain. A later legitimate synchronization may repopulate the selected source.
+- Clearing raw diagnostic samples is a separate global operation; it removes `RawSamples` without removing normalized history.
 
 ### 4. Validation & Error Matrix
 
@@ -42,6 +44,8 @@ Release startup, Debug `online` QA, and every future source addition share one l
 | Metadata is corrupt | Report metadata decoding failure while independently readable normalized history remains available. |
 | Synchronization is disabled for QA restart | Make no request and load every available source-scoped cached projection. |
 | Two runtimes update metadata concurrently | Serialize through the shared actor; no last-writer loss is allowed. |
+| Selected-source normalized clear | Remove only the selected source's normalized history and sync metadata; preserve sibling sources and raw diagnostic samples. |
+| Raw diagnostic clear | Remove raw samples independently; preserve normalized history. |
 | Protected Codex full API is unavailable or requires credentials | Do not request, emulate, retry, or bypass it. |
 | Public Codex page renders valid warning cards or an explicit empty state | Persist only the bounded normalized warning snapshot; keep its state and history independent from local IQ fitting. |
 | SWE-bench has no community or quota/status segment | Persist benchmark data without manufacturing segment failures. |
@@ -55,6 +59,7 @@ Release startup, Debug `online` QA, and every future source addition share one l
 ### 6. Tests Required
 
 - `ReleaseReadinessTests`: Release/online enables all approved sources, app startup is unconditional, and every runtime receives the shared metadata actor.
+- `ReleaseReadinessTests`: selected-source normalized clearing preserves sibling-source rows/metadata and raw samples; raw clearing preserves normalized history and the Settings copy states both boundaries.
 - `MultiSourceWorkspaceTests`: one workspace start activates all runtimes; source selection never merges projections.
 - `SWEBenchParserTests`: cohort filtering, exact 500-task mapping, duplicate policy, HTTP policy, and status-less synchronization remain frozen.
 - Packaged manual QA: run a fresh isolated online read, then inspect the global overview and each source-native room.
@@ -186,10 +191,10 @@ Fixtures are the canonical Phase 0 data source. They are not a license to redist
 - Homepage: `https://codexradar.com/`
 - Public summary: `https://codexradar.com/current.json`
 - Community ratings: `https://codexradar.com/api/model-ratings?history=14`
-- Source ID: `codex-radar`; series revision: `codex-radar-public-v2`; support: `authorized`.
+- Source ID: `codex-radar`; series revision: `codex-radar-public-v2`; support: enabled in current source; no current external-authorization receipt is claimed here.
 - The public summary declares `full_api_status = authorization_required`, says full JSON API and derivative integrations require authorization, and requires the attribution `数据来自 Codex 雷达 codexradar.com`.
 - A direct request to `/api/v1/current` returned HTTP 401 during the 2026-07-15 inspection. The adapter does not call, emulate, or bypass that protected API.
-- On 2026-07-16, the project owner authorized automatic synchronization, local history retention, and in-app re-display for `current.json` and the public community endpoint. Release and Debug `online` QA enable this public adapter; the protected full API remains excluded.
+- Historical authorization record (2026-07-16): the project owner authorized automatic synchronization, local history retention, and in-app re-display for `current.json` and the public community endpoint. Release and Debug `online` QA enable this public adapter in current source; the dated record is not a current external-authorization receipt, and the protected full API remains excluded.
 
 ### Public-summary projection
 
@@ -228,17 +233,17 @@ These are small hand-authored projections of the public shapes, not copied live 
 ### Public rendered-warning page
 
 - Page: `https://codexradar.com/`; parser revision: `codex-radar-rendered-dom-v1`; exact attribution: `数据来自 Codex 雷达 codexradar.com`.
-- The project owner approved this noncommercial path for observing warning values already visible after the public page renders. DOM observation is not official API authorization, a license grant, or permission to access protected responses.
+- Historical approval record (2026-07-16): the project owner approved this noncommercial path for observing warning values already visible after the public page renders. It is preserved for provenance, not as a current external-authorization receipt. DOM observation is not official API authorization, a license grant, or permission to access protected responses.
 - A hidden native WebKit view uses `WKWebsiteDataStore.nonPersistent()`. Page-owned JavaScript and subresource traffic may render the page, but Radar does not author, intercept, inspect, parse, replay, or persist those requests or responses.
 - The fixed extraction script returns a bounded JSON-safe projection of visible card fields. Radar never persists or exports HTML, body text, script source, cookies, browser storage/profile data, response bodies, authorization material, or endpoint/interception data.
 - Each normalized snapshot contains source ID, parser revision, final origin, visible source-time label, local capture time, semantic fingerprint, and upstream-ordered cards with display name, family, effort, source order, IQ, 24-hour drop, and optional 48-hour drop. No official 12-hour value is invented.
 - Official state remains one of loading, fresh cards, fresh explicit empty, stale last-known-good, last-known-good plus error, or error without cache. A challenge, schema drift, or unavailable page is a live-readiness blocker, never a successful empty result.
 - `Codex Radar 官网降智预警` and `本地 IQ 拟合` are independent results with different provenance. Radar does not join them or claim that local fitting reproduces the official warning.
-- The `rendered-warnings` export dataset is normalized-only and source/date scoped. `清除规范化历史` removes warning snapshots and their sync metadata; raw diagnostic clearing remains independent.
+- The `rendered-warnings` export dataset is normalized-only and source/date scoped. `清除规范化历史` removes warning snapshots and their sync metadata only for the selected source; sibling sources and raw diagnostic samples remain, and a later legitimate synchronization may repopulate the selected source.
 
 ## Codex rendered 24-hour IQ history contract
 
-The approved Todo 10 path observes only the browser-visible DOM at `https://deng.codexradar.com/`. It is a noncommercial, anonymous observation of values the public page has already rendered. It is not API access, endpoint discovery, a response reader, a license grant, or permission to access protected data.
+The documented Todo 10 path observes only the browser-visible DOM at `https://deng.codexradar.com/`. It is a noncommercial, anonymous observation of values the public page has already rendered. It is not API access, endpoint discovery, a response reader, a license grant, or permission to access protected data.
 
 - WebKit uses `WKWebsiteDataStore.nonPersistent()` for every read. No login, cookie, browser profile, local storage, or other persistent website data is supplied or retained.
 - The page may perform its own JavaScript and subresource traffic. Radar does not call an API, author requests, intercept endpoints, inspect response bodies, use `fetch`, `XMLHttpRequest`, or `PerformanceObserver`, or persist HTML, scripts, body text, cookies, browser storage/profile data, response bodies, credentials, or endpoint/interception material.
@@ -251,7 +256,7 @@ The approved Todo 10 path observes only the browser-visible DOM at `https://deng
 
 - `rendered-iq-history` is a normalized SwiftData dataset. Each snapshot stores only source ID, parser revision, final origin, capture time, semantic fingerprint, and the ordered series/point values. Per source and parser revision, retention keeps the newest 256 valid snapshots and removes corrupt/obsolete rows during insertion; raw diagnostic retention is a separate store and policy.
 - Export uses dataset name `rendered-iq-history` with schema version `1`. A record contains `id`, `sourceID`, `parserRevision`, `finalOrigin`, `capturedAt`, and `series`; each series contains `sourceOrder`, `seriesKey`, `displayName`, and 24 points with `sourceOrder`, `sourceTimeLabel`, and `iq`. Export contains no HTML, script, cookie, profile, body, credential, API, or interception fields.
-- `清除规范化历史` removes rendered IQ-history snapshots and their sync metadata together with the other normalized datasets. `清除原始诊断样本` remains independent and does not restore or remove normalized IQ history.
+- `清除规范化历史` removes rendered IQ-history snapshots and their sync metadata only for the selected source together with that source's other normalized datasets; sibling sources and raw diagnostic samples remain. `清除原始诊断样本` remains independent and does not restore or remove normalized IQ history.
 - `官网 24h` is the official rendered curve. `本地拟合` is a separate local calculation over the current source's benchmark/history snapshots: it requires the same source and revision, reports a signal only when 24-hour decline is at least 2 IQ and 12-hour decline remains downward, and never claims to reproduce or validate the official curve. Insufficient points do not get interpolated.
 
 ### Readiness and attribution

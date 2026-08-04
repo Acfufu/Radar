@@ -39,7 +39,9 @@ Refresh failures never replace good history with bad data. Radar keeps last vali
 1. Open workspace from menu bar and start at **Information Overview**.
 2. Enter one source room to inspect models or leaderboard, history, trends, and source status.
 3. Compare only compatible rows with source-local metrics and Pareto views.
-4. Export selected source data as JSON ZIP, or clear normalized history and raw diagnostics separately in Settings.
+4. Export selected source data as JSON ZIP, or use Settings to clear the selected source's normalized history and sync metadata while preserving raw diagnostic samples and sibling-source data.
+
+Clearing normalized history includes rendered warnings and IQ history for the selected source only. Raw diagnostic clearing is independent and leaves normalized history intact. A later legitimate synchronization may repopulate the selected source.
 
 ## Try published snapshot
 

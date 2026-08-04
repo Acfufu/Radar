@@ -52,7 +52,7 @@ struct ReleaseReadinessTests {
     }
 
     @MainActor
-    @Test("history and raw samples clear independently")
+    @Test("selected-source normalized history clear preserves siblings and raw samples; raw clear is independent")
     func independentClearOperations() async throws {
         try await verifyHistoryClearPreservesRaw()
         try await verifyRawClearPreservesHistory()
@@ -77,11 +77,14 @@ struct ReleaseReadinessTests {
         let checklist = try text("docs/release-checklist.md")
         #expect(checklist.contains("/Applications/ClaudeRadar.app"))
         #expect(checklist.contains("~/Library/Application Support/ClaudeRadar"))
-        #expect(checklist.contains("Claude Code Radar online source: **ENABLED**"))
-        #expect(checklist.contains("Codex Radar online source: **ENABLED**"))
+        #expect(checklist.contains("Claude Code Radar online source: **ENABLED in current code"))
+        #expect(checklist.contains("Codex Radar online source: **ENABLED in current code"))
         #expect(checklist.contains("approved noncommercial rendered-page path"))
         #expect(checklist.contains("protected full API remains out of scope"))
-        #expect(checklist.contains("rendered-warning history, and sync metadata"))
+        #expect(checklist.contains("selected source's normalized"))
+        #expect(checklist.contains("legitimate synchronization may repopulate"))
+        #expect(checklist.contains("rendered-warning history, rendered-IQ history, and sync metadata"))
+        #expect(checklist.contains("HISTORICAL RECEIPT ONLY; CURRENT LIVE READINESS NOT ESTABLISHED"))
         #expect(checklist.contains("**BLOCKED** live readiness, not Pass"))
         #expect(checklist.contains("BLOCKED"))
         let notices = try text("docs/third-party-notices.md")
@@ -94,7 +97,11 @@ struct ReleaseReadinessTests {
         #expect(notices.contains("does not call or bypass the protected full API"))
         let settings = try text("Sources/ClaudeRadar/Features/Settings/SettingsView.swift")
         #expect(settings.contains("已启用自动同步"))
-        #expect(settings.contains("规范化历史（含官网预警及同步元数据）已清除"))
+        #expect(settings.contains("规范化历史（含渲染预警、IQ 历史及同步元数据）已清除"))
+        #expect(settings.contains("原始诊断样本和其他来源保留"))
+        #expect(settings.contains("后续合法同步可能重新填充该来源数据"))
+        #expect(settings.contains("规范化历史（含渲染预警、IQ 历史及同步元数据）保留"))
+        #expect(settings.contains("未报告已清除数据"))
         #expect(settings.contains("官网预警与本地 IQ 拟合口径独立"))
         #expect(settings.contains("受保护的完整 API"))
     }
@@ -117,6 +124,7 @@ struct ReleaseReadinessTests {
         await runtime.stop()
         let clearedRepository = try repository(at: dataRoot)
         #expect(try await clearedRepository.benchmarkHistory(sourceID: .claudeCodeRadar).count == 1)
+        #expect(try await clearedRepository.metadata(sourceID: .claudeCodeRadar, datasetType: .benchmark).lastSuccessfulAt != nil)
         #expect(try await clearedRepository.renderedWarningHistory(sourceID: .codexRadar).isEmpty)
         #expect(try await clearedRepository.metadata(sourceID: .codexRadar, datasetType: .renderedWarnings) == .empty)
         #expect(!(try await rawStore.samples(sourceID: .codexRadar)).isEmpty)
