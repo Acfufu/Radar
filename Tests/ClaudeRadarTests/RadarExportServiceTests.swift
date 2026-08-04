@@ -270,6 +270,50 @@ struct RadarExportServiceTests {
         #expect(await completion.cancelled)
     }
 
+    @Test("source deletion holds an exclusive lease through metadata preflight and row deletion")
+    func sourceDeletionLeaseIsExclusive() async throws {
+        let root = try temporaryDirectory()
+        let fixture = try exportRepository(root: root, count: 1)
+        let gate = DeletionLeaseGate()
+        let probe = DeletionLeaseProbe()
+        let repository = RadarRepository(
+            container: fixture.container,
+            metadataStore: SyncMetadataStore(root: root),
+            deletionLeaseCheckpoint: { await gate.pause() },
+            leaseWaiterDidSuspend: { Task { await probe.recordWaiter() } }
+        )
+        let deleting = Task {
+            try await repository.deleteNormalizedHistory(sourceID: .claudeCodeRadar)
+        }
+        await gate.waitUntilPaused()
+        let exporting = Task {
+            let token = try await repository.beginExportSnapshot()
+            await probe.recordCompletion(.export)
+            return token
+        }
+        let inserting = Task {
+            _ = try await repository.insertBenchmark(
+                exportBenchmark(index: 999, fetchedAt: .init(timeIntervalSince1970: 999))
+            )
+            await probe.recordCompletion(.insert)
+        }
+
+        await probe.waitForTwoObservations()
+        let beforeRelease = await probe.snapshot
+
+        #expect(beforeRelease.waiterCount == 2)
+        #expect(beforeRelease.completions.isEmpty)
+        await gate.release()
+        try await deleting.value
+        let token = try await exporting.value
+        await repository.endExportSnapshot(token)
+        try await inserting.value
+        #expect(try await repository.snapshotCount(
+            datasetType: .benchmark,
+            sourceID: .claudeCodeRadar
+        ) == 1)
+    }
+
     @Test("persisted chronology ties use stable fingerprint before differing fetched times")
     func persistedChronologyOrdering() async throws {
         // Given
@@ -698,6 +742,65 @@ private actor ExportLeaseCompletion {
         let deadline = clock.now.advanced(by: duration)
         while !finished, clock.now < deadline { try? await clock.sleep(for: .milliseconds(2)) }
         return finished
+    }
+}
+
+private actor DeletionLeaseGate {
+    private var paused = false
+    private var released = false
+    private var pauseWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func pause() async {
+        paused = true
+        pauseWaiters.forEach { $0.resume() }
+        pauseWaiters.removeAll()
+        if !released { await withCheckedContinuation { releaseWaiters.append($0) } }
+    }
+
+    func waitUntilPaused() async {
+        if paused { return }
+        await withCheckedContinuation { pauseWaiters.append($0) }
+    }
+
+    func release() {
+        released = true
+        releaseWaiters.forEach { $0.resume() }
+        releaseWaiters.removeAll()
+    }
+}
+
+private actor DeletionLeaseProbe {
+    enum Completion: Hashable { case export, insert }
+    struct Snapshot: Sendable {
+        let waiterCount: Int
+        let completions: Set<Completion>
+    }
+
+    private var waiterCount = 0
+    private var completions: Set<Completion> = []
+    private var observationWaiters: [CheckedContinuation<Void, Never>] = []
+    var snapshot: Snapshot { Snapshot(waiterCount: waiterCount, completions: completions) }
+
+    func recordWaiter() {
+        waiterCount += 1
+        resumeObservationWaitersIfNeeded()
+    }
+
+    func recordCompletion(_ completion: Completion) {
+        completions.insert(completion)
+        resumeObservationWaitersIfNeeded()
+    }
+
+    func waitForTwoObservations() async {
+        if waiterCount + completions.count >= 2 { return }
+        await withCheckedContinuation { observationWaiters.append($0) }
+    }
+
+    private func resumeObservationWaitersIfNeeded() {
+        guard waiterCount + completions.count >= 2 else { return }
+        observationWaiters.forEach { $0.resume() }
+        observationWaiters.removeAll()
     }
 }
 
