@@ -38,9 +38,15 @@ final class RadarAppRuntime {
     private let metadataStore: SyncMetadataStore
     private let renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)?
     private let renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)?
+    private let primaryPersistenceCheckpoint: (@Sendable () async -> Void)?
+    private let renderedWarningPersistenceCheckpoint: (@Sendable () async -> Void)?
+    private let renderedIQHistoryPersistenceCheckpoint: (@Sendable () async -> Void)?
+    private let deleteNormalizedHistory: @Sendable (RadarRepository, RadarSourceID) async throws -> Void
     private var lifecycleGeneration = 0
+    private var historyGeneration = 0
     private var startOperation: Task<Void, Never>?
     private var stopOperation: Task<Void, Never>?
+    private var clearHistoryOperation: Task<Bool, Never>?
     private var exportOperations: [UUID: Task<ExportResult, Error>] = [:]
 
     init(
@@ -52,7 +58,13 @@ final class RadarAppRuntime {
         exportArchiver: any RadarExportArchiver = SystemZipArchiver(),
         refreshIntervalMinutes: Int = 30,
         renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)? = nil,
-        renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)? = nil
+        renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)? = nil,
+        primaryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
+        renderedWarningPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
+        renderedIQHistoryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
+        deleteNormalizedHistory: @escaping @Sendable (RadarRepository, RadarSourceID) async throws -> Void = { repository, sourceID in
+            try await repository.deleteNormalizedHistory(sourceID: sourceID)
+        }
     ) {
         self.environment = environment
         self.sourceID = sourceID
@@ -62,6 +74,10 @@ final class RadarAppRuntime {
         self.exportArchiver = exportArchiver
         self.renderedWarningReaderFactory = renderedWarningReaderFactory
         self.renderedIQHistoryReaderFactory = renderedIQHistoryReaderFactory
+        self.primaryPersistenceCheckpoint = primaryPersistenceCheckpoint
+        self.renderedWarningPersistenceCheckpoint = renderedWarningPersistenceCheckpoint
+        self.renderedIQHistoryPersistenceCheckpoint = renderedIQHistoryPersistenceCheckpoint
+        self.deleteNormalizedHistory = deleteNormalizedHistory
         self.refreshIntervalMinutes = AppSettings.allowedIntervals.contains(refreshIntervalMinutes) ? refreshIntervalMinutes : 30
     }
 
@@ -169,7 +185,8 @@ final class RadarAppRuntime {
                             history: history,
                             generation: generation
                         )
-                    }
+                    },
+                    persistenceCheckpoint: renderedWarningPersistenceCheckpoint
                 )
                 renderedWarningCoordinator = warningCoordinator
                 self.renderedWarningCoordinator = warningCoordinator
@@ -193,7 +210,8 @@ final class RadarAppRuntime {
                             history: history,
                             generation: generation
                         )
-                    }
+                    },
+                    persistenceCheckpoint: renderedIQHistoryPersistenceCheckpoint
                 )
                 renderedIQHistoryCoordinator = iqHistoryCoordinator
                 self.renderedIQHistoryCoordinator = iqHistoryCoordinator
@@ -227,6 +245,7 @@ final class RadarAppRuntime {
                 projectionDidChange: { [weak self] projection in
                     await self?.accept(projection, repository: repository, generation: generation)
                 },
+                persistenceCheckpoint: primaryPersistenceCheckpoint,
                 triggerObserver: renderedTriggerObserver
             )
             self.coordinator = coordinator
@@ -288,9 +307,12 @@ final class RadarAppRuntime {
         guard environment.synchronizationEnabled(for: sourceID),
               let coordinator,
               lifecycleState == .running else { return }
+        let generation = historyGeneration
         await coordinator.refresh(trigger: .manual)
+        guard generation == historyGeneration, lifecycleState == .running else { return }
         let updatedProjection = try? await coordinator.projection()
         let updatedHistory = try? await coordinator.repository.benchmarkHistory(sourceID: sourceID)
+        guard generation == historyGeneration, lifecycleState == .running else { return }
         if let updatedProjection { projection = updatedProjection }
         if let updatedHistory { benchmarkHistory = updatedHistory }
     }
@@ -306,19 +328,95 @@ final class RadarAppRuntime {
 
     @discardableResult
     func clearHistory() async -> Bool {
-        guard let coordinator else { return false }
+        if let clearHistoryOperation { return await clearHistoryOperation.value }
+        guard lifecycleState == .running, let repository, let coordinator else { return false }
+        historyGeneration += 1
+        let renderedWarningCoordinator = renderedWarningCoordinator
+        let renderedIQHistoryCoordinator = renderedIQHistoryCoordinator
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return false }
+            return await self.performClearHistory(
+                repository: repository,
+                coordinator: coordinator,
+                renderedWarningCoordinator: renderedWarningCoordinator,
+                renderedIQHistoryCoordinator: renderedIQHistoryCoordinator
+            )
+        }
+        clearHistoryOperation = task
+        let result = await task.value
+        clearHistoryOperation = nil
+        return result
+    }
+
+    private func performClearHistory(
+        repository: RadarRepository,
+        coordinator: RadarSyncCoordinator,
+        renderedWarningCoordinator: CodexRenderedWarningCoordinator?,
+        renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?
+    ) async -> Bool {
+        await renderedWarningCoordinator?.pauseAndDrain()
+        await renderedIQHistoryCoordinator?.pauseAndDrain()
+        await coordinator.pauseAndDrain()
+
         do {
-            try await coordinator.repository.deleteAll()
-            projection = try await coordinator.projection()
-            benchmarkHistory = []
-            renderedWarningProjection = nil
-            renderedWarningHistory = []
-            renderedIQHistoryProjection = nil
-            renderedIQHistoryHistory = []
-            return true
+            try await deleteNormalizedHistory(repository, sourceID)
         } catch {
+            await resume(
+                coordinator: coordinator,
+                renderedWarningCoordinator: renderedWarningCoordinator,
+                renderedIQHistoryCoordinator: renderedIQHistoryCoordinator
+            )
             return false
         }
+
+        do {
+            clearInMemoryHistory(projection: try await coordinator.projection())
+            await resume(
+                coordinator: coordinator,
+                renderedWarningCoordinator: renderedWarningCoordinator,
+                renderedIQHistoryCoordinator: renderedIQHistoryCoordinator
+            )
+            return true
+        } catch {
+            clearInMemoryHistory(projection: nil)
+            await resume(
+                coordinator: coordinator,
+                renderedWarningCoordinator: renderedWarningCoordinator,
+                renderedIQHistoryCoordinator: renderedIQHistoryCoordinator
+            )
+            return false
+        }
+    }
+
+    private func clearInMemoryHistory(projection: RadarSyncProjection?) {
+        self.projection = projection
+        benchmarkHistory = []
+        renderedWarningProjection = nil
+        renderedWarningHistory = []
+        renderedIQHistoryProjection = nil
+        renderedIQHistoryHistory = []
+    }
+
+    private func resume(
+        coordinator: RadarSyncCoordinator,
+        renderedWarningCoordinator: CodexRenderedWarningCoordinator?,
+        renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?
+    ) async {
+        await renderedWarningCoordinator?.resume()
+        await renderedIQHistoryCoordinator?.resume()
+        await coordinator.resume()
+    }
+
+    func synchronizationLifecycleStates() async -> (
+        primary: SyncLifecycleState?,
+        renderedWarning: CodexRenderedWarningLifecycleState?,
+        renderedIQHistory: CodexRenderedIQHistoryLifecycleState?
+    ) {
+        (
+            await coordinator?.lifecycleState(),
+            await renderedWarningCoordinator?.lifecycleState(),
+            await renderedIQHistoryCoordinator?.lifecycleState()
+        )
     }
 
     @discardableResult

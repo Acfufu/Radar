@@ -116,7 +116,7 @@ struct ReleaseReadinessTests {
         #expect(await runtime.clearHistory())
         await runtime.stop()
         let clearedRepository = try repository(at: dataRoot)
-        #expect(try await clearedRepository.benchmarkHistory(sourceID: .claudeCodeRadar).isEmpty)
+        #expect(try await clearedRepository.benchmarkHistory(sourceID: .claudeCodeRadar).count == 1)
         #expect(try await clearedRepository.renderedWarningHistory(sourceID: .codexRadar).isEmpty)
         #expect(try await clearedRepository.metadata(sourceID: .codexRadar, datasetType: .renderedWarnings) == .empty)
         #expect(!(try await rawStore.samples(sourceID: .codexRadar)).isEmpty)
