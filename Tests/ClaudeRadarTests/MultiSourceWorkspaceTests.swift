@@ -152,6 +152,75 @@ struct MultiSourceWorkspaceTests {
             }
         }
     }
+
+    @MainActor
+    @Test("clearing Codex preserves sibling normalized history and every raw sample after reopen")
+    func codexClearIsSourceLocalAfterReopen() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "Radar-SourceLocalClear-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let metadataStore = SyncMetadataStore(root: root)
+        let seededRepository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: metadataStore)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        try await DebugUISeed.populate(repository: seededRepository, sourceID: .claudeCodeRadar, state: "fresh", now: now)
+        try await DebugUISeed.populate(repository: seededRepository, sourceID: .codexRadar, state: "warning-fresh-cards", now: now)
+        try await DebugUISeed.populate(repository: seededRepository, sourceID: .codexRadar, state: "iq-fresh", now: now)
+        try await DebugUISeed.populate(repository: seededRepository, sourceID: .sweBenchVerified, state: "fresh", now: now)
+        let rawStore = RawSampleStore(dataRoot: root)
+        for (index, sourceID) in [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified].enumerated() {
+            try await rawStore.save(Data("raw-\(sourceID.rawValue)".utf8), sourceID: sourceID, outcome: .success, at: now.addingTimeInterval(Double(index)))
+        }
+        var rawBefore: [RadarSourceID: [RawSamplePayload]] = [:]
+        for sourceID in [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified] {
+            rawBefore[sourceID] = try await rawStore.exportPayloads(sourceID: sourceID)
+        }
+        let codex = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            metadataStore: metadataStore,
+            renderedWarningReaderFactory: { WorkspaceWarningReader() },
+            renderedIQHistoryReaderFactory: { WorkspaceIQHistoryReader() }
+        )
+        await codex.start()
+        #expect(codex.projection?.benchmark.value != nil)
+        #expect(codex.renderedWarningProjection?.value != nil)
+        #expect(codex.renderedIQHistoryProjection?.value != nil)
+
+        #expect(await codex.clearHistory())
+        #expect(codex.projection?.benchmark.value == nil)
+        #expect(codex.benchmarkHistory.isEmpty)
+        #expect(codex.renderedWarningProjection == nil)
+        #expect(codex.renderedIQHistoryProjection == nil)
+        await codex.stop()
+
+        let reopenedRepository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: metadataStore)
+        #expect(try await reopenedRepository.benchmarkHistory(sourceID: .codexRadar).isEmpty)
+        #expect(try await reopenedRepository.renderedWarningHistory(sourceID: .codexRadar).isEmpty)
+        #expect(try await reopenedRepository.renderedIQHistoryHistory(sourceID: .codexRadar).isEmpty)
+        let claudeCount = try await reopenedRepository.benchmarkHistory(sourceID: .claudeCodeRadar).count
+        let sweCount = try await reopenedRepository.benchmarkHistory(sourceID: .sweBenchVerified).count
+        #expect(claudeCount > 0)
+        #expect(sweCount > 0)
+        for datasetType in RadarDatasetType.allCases {
+            #expect(try await reopenedRepository.metadata(sourceID: .codexRadar, datasetType: datasetType) == .empty)
+        }
+        #expect(try await reopenedRepository.metadata(sourceID: .claudeCodeRadar, datasetType: .benchmark).lastSuccessfulAt != nil)
+        #expect(try await reopenedRepository.metadata(sourceID: .sweBenchVerified, datasetType: .benchmark).lastSuccessfulAt != nil)
+        var rawAfter: [RadarSourceID: [RawSamplePayload]] = [:]
+        for sourceID in [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified] {
+            rawAfter[sourceID] = try await rawStore.exportPayloads(sourceID: sourceID)
+        }
+        #expect(rawAfter == rawBefore)
+
+        for sourceID in [RadarSourceID.claudeCodeRadar, .codexRadar, .sweBenchVerified] {
+            let runtime = RadarAppRuntime(environment: environment, sourceID: sourceID, metadataStore: metadataStore)
+            await runtime.start()
+            #expect((runtime.projection?.benchmark.value != nil) == (sourceID != .codexRadar))
+            await runtime.stop()
+        }
+        print("G032_SOURCE_LOCAL codex_normalized=0 claude_benchmark=\(claudeCount) swe_benchmark=\(sweCount) raw_sources=3")
+    }
     #endif
 
     @MainActor
@@ -351,6 +420,12 @@ private final class WorkspaceIQHistoryReader: CodexRenderedIQHistoryReading {
         throw CancellationError()
     }
 
+    func cancel() {}
+}
+
+@MainActor
+private final class WorkspaceWarningReader: CodexRenderedWarningReading {
+    func read() async throws -> CodexRenderedWarningSnapshot { throw CancellationError() }
     func cancel() {}
 }
 

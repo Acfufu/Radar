@@ -273,10 +273,122 @@ struct RadarAppRuntimeTests {
         #expect(runtime.renderedIQHistoryHistory.isEmpty)
         await runtime.stop()
     }
+
+    @MainActor
+    @Test("concurrent history clears coalesce into one source deletion")
+    func concurrentHistoryClearsCoalesce() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-CoalescedClear-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let repository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: SyncMetadataStore(root: root))
+        _ = try await repository.insertRenderedWarning(try runtimeWarning(capturedAt: Date(timeIntervalSince1970: 100)))
+        _ = try await repository.insertRenderedIQHistory(try runtimeIQHistory(capturedAt: Date(timeIntervalSince1970: 100)))
+        let deletion = RuntimeDeletionProbe()
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            renderedWarningReaderFactory: { RuntimeWarningReader(result: .failure(RuntimeWarningError.unavailable)) },
+            renderedIQHistoryReaderFactory: { RuntimeIQReader(results: [.failure(RuntimeWarningError.unavailable)]) },
+            deleteNormalizedHistory: { repository, sourceID in
+                try await deletion.delete(repository: repository, sourceID: sourceID)
+            }
+        )
+        await runtime.start()
+
+        let first = Task { await runtime.clearHistory() }
+        await deletion.waitUntilStarted()
+        let second = Task { await runtime.clearHistory() }
+        await Task.yield()
+        #expect(await deletion.callCount == 1)
+        await deletion.release()
+
+        #expect(await first.value)
+        #expect(await second.value)
+        #expect(await deletion.callCount == 1)
+        #expect(runtime.lifecycleState == .running)
+        let states = await runtime.synchronizationLifecycleStates()
+        #expect(states.primary?.isPaused == false)
+        #expect(states.renderedWarning?.isPaused == false)
+        #expect(states.renderedIQHistory?.isPaused == false)
+        await runtime.stop()
+        #expect(!(await runtime.clearHistory()))
+    }
+
+    @MainActor
+    @Test("failed history deletion resumes every coordinator and preserves truthful memory")
+    func failedHistoryDeletionResumesSynchronization() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-FailedClear-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let warning = try runtimeWarning(capturedAt: Date(timeIntervalSince1970: 100))
+        let iq = try runtimeIQHistory(capturedAt: Date(timeIntervalSince1970: 100))
+        let warningReader = RuntimeWarningReader(result: .success(warning))
+        let iqReader = RuntimeIQReader(results: [.success(iq), .success(iq)])
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            renderedWarningReaderFactory: { warningReader },
+            renderedIQHistoryReaderFactory: { iqReader },
+            deleteNormalizedHistory: { _, _ in throw RuntimeDeletionError.injected }
+        )
+        await runtime.start()
+        for _ in 0..<200 where warningReader.readCount < 1 || iqReader.readCount < 1 { await Task.yield() }
+        let projectionBefore = try #require(runtime.projection)
+        let benchmarkCountBefore = runtime.benchmarkHistory.count
+
+        #expect(!(await runtime.clearHistory()))
+
+        #expect(runtime.projection?.benchmark.value == projectionBefore.benchmark.value)
+        #expect(runtime.benchmarkHistory.count == benchmarkCountBefore)
+        #expect(runtime.renderedWarningProjection?.value == warning)
+        #expect(runtime.renderedIQHistoryProjection?.value == iq)
+        #expect(runtime.lifecycleState == .running)
+        let states = await runtime.synchronizationLifecycleStates()
+        #expect(states.primary?.isPaused == false)
+        #expect(states.renderedWarning?.isPaused == false)
+        #expect(states.renderedIQHistory?.isPaused == false)
+
+        await runtime.refresh()
+        for _ in 0..<200 where warningReader.readCount < 2 || iqReader.readCount < 2 { await Task.yield() }
+        #expect(warningReader.readCount == 2)
+        #expect(iqReader.readCount == 2)
+        await runtime.stop()
+    }
 }
 
 private enum RuntimeWarningError: Error {
     case unavailable
+}
+
+private enum RuntimeDeletionError: Error { case injected }
+
+private actor RuntimeDeletionProbe {
+    private(set) var callCount = 0
+    private var started = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+    private var released = false
+
+    func delete(repository: RadarRepository, sourceID: RadarSourceID) async throws {
+        callCount += 1
+        started = true
+        startWaiters.forEach { $0.resume() }
+        startWaiters.removeAll()
+        if !released { await withCheckedContinuation { releaseWaiters.append($0) } }
+        try await repository.deleteNormalizedHistory(sourceID: sourceID)
+    }
+
+    func waitUntilStarted() async {
+        if started { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func release() {
+        released = true
+        releaseWaiters.forEach { $0.resume() }
+        releaseWaiters.removeAll()
+    }
 }
 
 @MainActor
