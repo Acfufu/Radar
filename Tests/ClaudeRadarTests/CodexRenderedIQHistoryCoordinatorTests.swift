@@ -9,6 +9,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("a successful render is persisted and published")
     func successfulRender() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
         let reader = IQReaderProbe(results: [.success(snapshot)])
         let publications = IQPublicationRecorder()
@@ -36,6 +37,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("duplicate success refreshes metadata without adding history")
     func duplicateSuccess() async throws {
         let fixture = try iqCoordinatorFixture(now: Date(timeIntervalSince1970: 100))
+        defer { fixture.cleanup() }
         let original = try renderedIQHistory(capturedAt: Date(timeIntervalSince1970: 10))
         let duplicate = try renderedIQHistory(capturedAt: fixture.clock.now())
         _ = try await fixture.repository.insertRenderedIQHistory(original)
@@ -61,6 +63,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("a trigger burst joins one in-flight render")
     func triggerBurstCoalesces() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
         let gate = IQReadGate()
         let reader = GatedIQReader(gate: gate)
@@ -88,6 +91,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("a coalesced manual trigger overrides periodic backoff")
     func strongestTriggerWins() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
         try await fixture.repository.recordBackoff(
             sourceID: .codexRadar,
@@ -114,6 +118,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("failure publishes typed error with LKG")
     func failurePublishesLKG() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let prior = try renderedIQHistory(capturedAt: fixture.clock.now().addingTimeInterval(-10))
         _ = try await fixture.repository.insertRenderedIQHistory(prior)
         let publications = IQPublicationRecorder()
@@ -139,6 +144,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("persisted projection loads without reading")
     func loadPersistedProjection() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let prior = try renderedIQHistory(capturedAt: fixture.clock.now().addingTimeInterval(-10))
         _ = try await fixture.repository.insertRenderedIQHistory(prior)
         let reader = IQReaderProbe(results: [])
@@ -164,6 +170,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("periodic obeys backoff while manual bypasses it")
     func backoffAndManualPriority() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
         let reader = IQReaderProbe(results: [
             .failure(IQTestError.offline),
@@ -187,6 +194,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     @Test("stop during a suspended read fences late persistence and publication")
     func stopDuringRead() async throws {
         let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
         let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
         let gate = IQReadGate()
         let reader = GatedIQReader(gate: gate)
@@ -214,6 +222,149 @@ struct CodexRenderedIQHistoryCoordinatorTests {
         ) == 0)
         #expect(await publications.count == 0)
         #expect(reader.cancelCount == 1)
+    }
+
+    @MainActor
+    @Test("paused facade rejects triggers without reading")
+    func pausedFacadeRejectsTriggers() async throws {
+        let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
+        let reader = IQReaderProbe(results: [.success(snapshot)])
+        let coordinator = CodexRenderedIQHistoryCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock
+        )
+
+        await coordinator.pauseAndDrain()
+        let paused = await coordinator.lifecycleState()
+        await coordinator.refresh(trigger: .startup)
+        await coordinator.refresh(trigger: .manual)
+
+        #expect(paused.isPaused)
+        #expect(!paused.isStopped)
+        #expect(reader.readCount == 0)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedIQHistory,
+            sourceID: .codexRadar
+        ) == 0)
+    }
+
+    @MainActor
+    @Test("resume permits a later manual refresh through the IQ adapter")
+    func resumePermitsManualRefresh() async throws {
+        let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
+        let reader = IQReaderProbe(results: [.success(snapshot)])
+        let coordinator = CodexRenderedIQHistoryCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock
+        )
+
+        await coordinator.pauseAndDrain()
+        await coordinator.refresh(trigger: .manual)
+        await coordinator.resume()
+        await coordinator.refresh(trigger: .manual)
+
+        let lifecycle = await coordinator.lifecycleState()
+        let metadata = try await fixture.repository.metadata(
+            sourceID: .codexRadar,
+            datasetType: .renderedIQHistory
+        )
+        #expect(!lifecycle.isPaused)
+        #expect(reader.readCount == 1)
+        #expect(try await fixture.repository.renderedIQHistoryHistory(sourceID: .codexRadar) == [snapshot])
+        #expect(metadata.lastSuccessfulAt == snapshot.capturedAt)
+        print("IQ_RESUME_COUNTERS read=\(reader.readCount) history=1 dataset=\(RadarDatasetType.renderedIQHistory.rawValue)")
+    }
+
+    @MainActor
+    @Test("pause and drain fences a gated read and cancels the IQ reader")
+    func pauseAndDrainDuringRead() async throws {
+        let fixture = try iqCoordinatorFixture()
+        defer { fixture.cleanup() }
+        let snapshot = try renderedIQHistory(capturedAt: fixture.clock.now())
+        let gate = IQReadGate()
+        let reader = GatedIQReader(gate: gate)
+        let publications = IQPublicationRecorder()
+        let coordinator = CodexRenderedIQHistoryCoordinator(
+            reader: reader,
+            repository: fixture.repository,
+            clock: fixture.clock,
+            projectionDidChange: { state, history in
+                await publications.append(state: state, history: history)
+            }
+        )
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await gate.waitUntilStarted()
+
+        let pausing = Task { await coordinator.pauseAndDrain() }
+        while !(await coordinator.lifecycleState()).isPaused { await Task.yield() }
+        await coordinator.refresh(trigger: .manual)
+        await gate.succeed(snapshot)
+        await pausing.value
+        await refresh.value
+
+        let lifecycle = await coordinator.lifecycleState()
+        #expect(lifecycle.isPaused)
+        #expect(!lifecycle.hasActiveTask)
+        #expect(await gate.readCount == 1)
+        #expect(reader.cancelCount == 1)
+        #expect(try await fixture.repository.snapshotCount(
+            datasetType: .renderedIQHistory,
+            sourceID: .codexRadar
+        ) == 0)
+        #expect(await publications.count == 0)
+        print("IQ_PAUSE_COUNTERS read=\(await gate.readCount) cancel=\(reader.cancelCount) insert=0 publication=\(await publications.count)")
+    }
+
+    @MainActor
+    @Test("typed cancellation is suppressed and navigation timeout is network")
+    func typedErrorMapping() async throws {
+        let cancelledFixture = try iqCoordinatorFixture()
+        defer { cancelledFixture.cleanup() }
+        let cancelledCoordinator = CodexRenderedIQHistoryCoordinator(
+            reader: IQReaderProbe(results: [
+                .failure(CodexRenderedIQHistoryPageReaderError.cancelled),
+            ]),
+            repository: cancelledFixture.repository,
+            clock: cancelledFixture.clock
+        )
+
+        await cancelledCoordinator.refresh(trigger: .manual)
+
+        let cancelledMetadata = try await cancelledFixture.repository.metadata(
+            sourceID: .codexRadar,
+            datasetType: .renderedIQHistory
+        )
+        #expect(cancelledMetadata.lastError == nil)
+        #expect(cancelledMetadata.consecutiveFailures == nil)
+        #expect(cancelledMetadata.backoffUntil == nil)
+
+        let timeoutFixture = try iqCoordinatorFixture()
+        defer { timeoutFixture.cleanup() }
+        let timeoutCoordinator = CodexRenderedIQHistoryCoordinator(
+            reader: IQReaderProbe(results: [
+                .failure(CodexRenderedIQHistoryPageReaderError.navigationTimeout),
+            ]),
+            repository: timeoutFixture.repository,
+            clock: timeoutFixture.clock
+        )
+
+        await timeoutCoordinator.refresh(trigger: .manual)
+
+        let timeoutMetadata = try await timeoutFixture.repository.metadata(
+            sourceID: .codexRadar,
+            datasetType: .renderedIQHistory
+        )
+        #expect(timeoutMetadata.lastError?.kind == .network)
+        #expect(timeoutMetadata.lastError?.message == "The rendered Codex IQ history page could not be read")
+        #expect(timeoutMetadata.consecutiveFailures == 1)
+        #expect(timeoutMetadata.backoffUntil != nil)
+        print("IQ_ERROR_COUNTERS cancelledFailures=\(cancelledMetadata.consecutiveFailures ?? -1) timeoutFailures=\(timeoutMetadata.consecutiveFailures ?? -1) timeoutKind=\(timeoutMetadata.lastError?.kind.rawValue ?? "nil")")
     }
 }
 
@@ -306,8 +457,13 @@ private final class GatedIQReader: CodexRenderedIQHistoryReading {
 }
 
 private struct IQCoordinatorFixture {
+    let root: URL
     let repository: RadarRepository
     let clock: IQTestClock
+
+    func cleanup() {
+        try? FileManager.default.removeItem(at: root)
+    }
 }
 
 private func iqCoordinatorFixture(
@@ -319,6 +475,7 @@ private func iqCoordinatorFixture(
         configuration: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     return IQCoordinatorFixture(
+        root: root,
         repository: RadarRepository(container: container, metadataStore: SyncMetadataStore(root: root)),
         clock: IQTestClock(now)
     )
