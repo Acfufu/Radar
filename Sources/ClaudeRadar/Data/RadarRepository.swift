@@ -9,12 +9,22 @@ struct SnapshotInsertion: Equatable, Sendable {
 actor RadarRepository {
     let container: ModelContainer
     private let metadataStore: SyncMetadataStore
+    private let deletionLeaseCheckpoint: (@Sendable () async -> Void)?
+    private let leaseWaiterDidSuspend: (@Sendable () -> Void)?
     private var activeExportSnapshot: ActiveExportSnapshot?
+    private var deletionLeaseReservations: [UUID] = []
     private var exportLeaseWaiters: [UUID: CheckedContinuation<Void, Error>] = [:]
 
-    init(container: ModelContainer, metadataStore: SyncMetadataStore) {
+    init(
+        container: ModelContainer,
+        metadataStore: SyncMetadataStore,
+        deletionLeaseCheckpoint: (@Sendable () async -> Void)? = nil,
+        leaseWaiterDidSuspend: (@Sendable () -> Void)? = nil
+    ) {
         self.container = container
         self.metadataStore = metadataStore
+        self.deletionLeaseCheckpoint = deletionLeaseCheckpoint
+        self.leaseWaiterDidSuspend = leaseWaiterDidSuspend
         Self.repairChronology(in: container)
     }
 
@@ -391,7 +401,11 @@ actor RadarRepository {
     }
 
     func deleteNormalizedHistory(sourceID: RadarSourceID) async throws {
-        try await waitForExportLease()
+        let leaseID = UUID()
+        deletionLeaseReservations.append(leaseID)
+        defer { releaseDeletionLease(leaseID) }
+        try await waitForDeletionLease(leaseID)
+        await deletionLeaseCheckpoint?()
         try await metadataStore.delete(sourceID: sourceID)
 
         // ponytail: metadata and SwiftData are not transactional; metadata-first preserves normalized rows on a later save failure. Add a journal only if cross-store atomicity becomes required.
@@ -435,6 +449,15 @@ actor RadarRepository {
     func endExportSnapshot(_ token: ExportSnapshotToken) {
         guard activeExportSnapshot?.token == token else { return }
         activeExportSnapshot = nil
+        resumeLeaseWaiters()
+    }
+
+    private func releaseDeletionLease(_ id: UUID) {
+        deletionLeaseReservations.removeAll { $0 == id }
+        resumeLeaseWaiters()
+    }
+
+    private func resumeLeaseWaiters() {
         let waiters = exportLeaseWaiters.values
         exportLeaseWaiters.removeAll()
         waiters.forEach { $0.resume(returning: ()) }
@@ -520,21 +543,33 @@ actor RadarRepository {
     }
 
     private func waitForExportLease() async throws {
-        while activeExportSnapshot != nil {
-            let id = UUID()
-            try await withTaskCancellationHandler {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    if Task.isCancelled {
-                        continuation.resume(throwing: CancellationError())
-                    } else {
-                        exportLeaseWaiters[id] = continuation
-                    }
-                }
-            } onCancel: {
-                Task { await self.cancelExportLeaseWaiter(id) }
-            }
+        while activeExportSnapshot != nil || !deletionLeaseReservations.isEmpty {
+            try await suspendForLease()
         }
         try Task.checkCancellation()
+    }
+
+    private func waitForDeletionLease(_ id: UUID) async throws {
+        while activeExportSnapshot != nil || deletionLeaseReservations.first != id {
+            try await suspendForLease()
+        }
+        try Task.checkCancellation()
+    }
+
+    private func suspendForLease() async throws {
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    exportLeaseWaiters[id] = continuation
+                    leaseWaiterDidSuspend?()
+                }
+            }
+        } onCancel: {
+            Task { await self.cancelExportLeaseWaiter(id) }
+        }
     }
 
     private func cancelExportLeaseWaiter(_ id: UUID) {

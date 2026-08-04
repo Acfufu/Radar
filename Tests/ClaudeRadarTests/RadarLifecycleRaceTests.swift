@@ -404,6 +404,57 @@ struct RadarLifecycleRaceTests {
         print("G028_MANUAL_QA persistence_benchmark=0 persistence_community=0 persistence_status=0 publication=0 cancel=1 paused=\(lifecycle.isPaused) stopped=\(lifecycle.isStopped) active=\(lifecycle.hasActiveTask)")
     }
 
+    @Test("early resume cannot reopen triggers until pause drain completes")
+    func earlyResumeWaitsForPauseDrain() async throws {
+        let fixture = try repositoryFixture()
+        let gate = LifecycleGate()
+        let probe = EarlyResumeProbe()
+        let triggers = LifecycleTriggerRecorder()
+        let transport = LifecycleTransport(routes: [
+            benchmarkURL: .json(url: benchmarkURL, body: try fixtureData("claude-radar-valid")),
+            communityURL: .json(url: communityURL, body: try fixtureData("claude-radar-community-valid")),
+        ])
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
+            repository: fixture.repository,
+            persistenceCheckpoint: { await gate.pause() },
+            triggerObserver: { trigger in
+                Task {
+                    await triggers.append(trigger)
+                    await probe.recordAcceptedIfArmed()
+                }
+            }
+        )
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await gate.waitUntilPaused()
+        await triggers.waitForCount(1)
+        let pausing = Task { await coordinator.pauseAndDrain() }
+        while !(await coordinator.lifecycleState()).isPaused { await Task.yield() }
+        await probe.arm()
+
+        await coordinator.resume()
+        let earlyRefresh = Task {
+            await coordinator.refresh(trigger: .manual)
+            await probe.recordReturned()
+        }
+        let earlyOutcome = await probe.waitForFirstOutcome()
+
+        #expect(earlyOutcome == .returned)
+        #expect((await coordinator.lifecycleState()).isPaused)
+        await gate.release()
+        await pausing.value
+        await refresh.value
+        await earlyRefresh.value
+        await probe.disarm()
+
+        await coordinator.resume()
+        await coordinator.refresh(trigger: .manual)
+        await triggers.waitForCount(2)
+        let resumed = await coordinator.lifecycleState()
+        #expect(!resumed.isPaused)
+        #expect(await triggers.count == 2)
+    }
+
     private var benchmarkURL: URL { URL(string: "https://lifecycle.invalid/benchmark")! }
     private var communityURL: URL { URL(string: "https://lifecycle.invalid/community")! }
     private var configuration: ClaudeRadarConfiguration {
@@ -723,6 +774,53 @@ private actor LifecycleCompletion {
             try? await clock.sleep(for: .milliseconds(2))
         }
         return isFinished
+    }
+}
+
+private actor EarlyResumeProbe {
+    enum Outcome: Equatable { case accepted, returned }
+    private var armed = false
+    private var firstOutcome: Outcome?
+    private var waiters: [CheckedContinuation<Outcome, Never>] = []
+
+    func arm() { armed = true }
+    func disarm() { armed = false }
+
+    func recordAcceptedIfArmed() {
+        guard armed else { return }
+        record(.accepted)
+    }
+
+    func recordReturned() { record(.returned) }
+
+    func waitForFirstOutcome() async -> Outcome {
+        if let firstOutcome { return firstOutcome }
+        return await withCheckedContinuation { waiters.append($0) }
+    }
+
+    private func record(_ outcome: Outcome) {
+        guard firstOutcome == nil else { return }
+        firstOutcome = outcome
+        waiters.forEach { $0.resume(returning: outcome) }
+        waiters.removeAll()
+    }
+}
+
+private actor LifecycleTriggerRecorder {
+    private var triggers: [SyncTrigger] = []
+    private var waiters: [(Int, CheckedContinuation<Void, Never>)] = []
+    var count: Int { triggers.count }
+
+    func append(_ trigger: SyncTrigger) {
+        triggers.append(trigger)
+        let ready = waiters.filter { triggers.count >= $0.0 }
+        waiters.removeAll { triggers.count >= $0.0 }
+        ready.forEach { $0.1.resume() }
+    }
+
+    func waitForCount(_ count: Int) async {
+        if triggers.count >= count { return }
+        await withCheckedContinuation { waiters.append((count, $0)) }
     }
 }
 

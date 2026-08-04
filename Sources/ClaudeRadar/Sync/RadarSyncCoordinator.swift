@@ -225,7 +225,7 @@ actor RadarSyncCoordinator {
     }
 
     func resume() {
-        guard !isStopped else { return }
+        guard !isStopped, pauseOperation == nil else { return }
         isPaused = false
     }
 
