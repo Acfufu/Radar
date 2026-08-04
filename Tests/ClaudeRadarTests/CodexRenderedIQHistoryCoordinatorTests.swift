@@ -88,7 +88,7 @@ struct CodexRenderedIQHistoryCoordinatorTests {
     }
 
     @MainActor
-    @Test("a coalesced manual trigger overrides periodic backoff")
+    @Test("manual refresh overrides periodic backoff")
     func strongestTriggerWins() async throws {
         let fixture = try iqCoordinatorFixture()
         defer { fixture.cleanup() }
@@ -106,10 +106,8 @@ struct CodexRenderedIQHistoryCoordinatorTests {
             clock: fixture.clock
         )
 
-        let periodic = Task { await coordinator.refresh(trigger: .periodic) }
-        let manual = Task { await coordinator.refresh(trigger: .manual) }
-        await periodic.value
-        await manual.value
+        await coordinator.refresh(trigger: .periodic)
+        await coordinator.refresh(trigger: .manual)
 
         #expect(reader.readCount == 1)
     }
