@@ -9,6 +9,7 @@ struct RadarSyncProjection: Sendable {
 
 struct SyncLifecycleState: Sendable {
     let isStopped: Bool
+    let isPaused: Bool
     let hasActiveTask: Bool
 }
 
@@ -47,12 +48,14 @@ actor RadarSyncCoordinator {
     private var periodicTask: Task<Void, Never>?
     private var periodicRefreshStarted = false
     var isStopped = false
+    var isPaused = false
     var failureCount = 0
     var backoffDeadline: Date?
     var lifecycleGeneration = 0
     private var lifecycleTriggersStarted = false
     var persistenceTasks: [Int: Task<Void, Never>] = [:]
     var nextPersistenceID = 0
+    private var pauseOperation: Task<Void, Never>?
     private var stopOperation: Task<Void, Never>?
 
     init(
@@ -78,18 +81,19 @@ actor RadarSyncCoordinator {
     }
 
     func refresh(trigger: SyncTrigger) async {
+        guard !isStopped, !isPaused else { return }
         triggerObserver?(trigger)
         await refresh(trigger: trigger, eligibilityLimit: nil)
     }
 
     private func refresh(trigger: SyncTrigger, eligibilityLimit: SyncEndpointEligibility?) async {
-        guard !isStopped else { return }
+        guard !isStopped, !isPaused else { return }
         if let activeTask {
             let joinedID = activeRefreshID
             activeTrigger = strongest(activeTrigger ?? trigger, trigger)
             await activeTask.value
             if self.activeRefreshID == joinedID { self.activeTask = nil }
-            if trigger.isManual, !isStopped, lastManualRefreshID != joinedID {
+            if trigger.isManual, !isStopped, !isPaused, lastManualRefreshID != joinedID {
                 let performed = lastPerformedRefreshID == joinedID
                     ? lastPerformedEligibility
                     : SyncEndpointEligibility(shared: false, community: false)
@@ -106,8 +110,10 @@ actor RadarSyncCoordinator {
         activeTrigger = trigger
         let task = Task {
             await Task.yield()
+            guard self.lifecycleAllowsWork(generation) else { return }
             let selectedTrigger = self.selectedTrigger(fallback: trigger)
             var eligibility = await self.eligibleEndpoints(for: selectedTrigger)
+            guard self.lifecycleAllowsWork(generation) else { return }
             if let eligibilityLimit {
                 eligibility = eligibility.intersecting(eligibilityLimit)
             }
@@ -195,10 +201,46 @@ actor RadarSyncCoordinator {
         await operation.value
     }
 
+    func pauseAndDrain() async {
+        if let pauseOperation {
+            await pauseOperation.value
+            return
+        }
+        guard !isStopped, !isPaused else { return }
+        isPaused = true
+        lifecycleGeneration += 1
+        let refresh = activeTask
+        activeTask = nil
+        activeTrigger = nil
+        refresh?.cancel()
+        let registeredPersistence = Array(persistenceTasks.values)
+        let operation = Task { [source] in
+            await source.cancelAll()
+            if let refresh { await refresh.value }
+            for task in registeredPersistence { await task.value }
+        }
+        pauseOperation = operation
+        await operation.value
+        pauseOperation = nil
+    }
+
+    func resume() {
+        guard !isStopped else { return }
+        isPaused = false
+    }
+
+    func lifecycleAllowsWork(_ generation: Int) -> Bool {
+        !isStopped && !isPaused && generation == lifecycleGeneration
+    }
+
     func lifecycleState() -> SyncLifecycleState {
         SyncLifecycleState(
             isStopped: isStopped,
-            hasActiveTask: activeTask != nil || periodicTask != nil || !persistenceTasks.isEmpty
+            isPaused: isPaused,
+            hasActiveTask: activeTask != nil
+                || periodicTask != nil
+                || pauseOperation != nil
+                || !persistenceTasks.isEmpty
         )
     }
 

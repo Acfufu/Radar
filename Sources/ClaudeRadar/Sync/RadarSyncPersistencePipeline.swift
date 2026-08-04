@@ -13,6 +13,7 @@ extension RadarSyncCoordinator {
         let sharedCacheIsClean = benchmarkState?.value != nil && benchmarkState?.error == nil
             && (!source.supportsSourceStatusSegment || (statusState?.value != nil && statusState?.error == nil))
         let communityCacheIsClean = communityState?.value != nil && communityState?.error == nil
+        guard lifecycleAllowsWork(generation) else { return }
         await source.beginAcquisition(
             validators: sharedCacheIsClean
                 ? HTTPValidators(etag: benchmarkMetadata?.etag, lastModified: benchmarkMetadata?.lastModified)
@@ -21,10 +22,11 @@ extension RadarSyncCoordinator {
                 ? HTTPValidators(etag: communityMetadata?.etag, lastModified: communityMetadata?.lastModified)
                 : .empty
         )
+        guard lifecycleAllowsWork(generation) else { return }
         async let envelope = captureEnvelope(if: eligibility.shared)
         async let community = captureCommunity(if: eligibility.community)
         let results = await (envelope, community)
-        guard !Task.isCancelled, !isStopped, generation == lifecycleGeneration else { return }
+        guard !Task.isCancelled, lifecycleAllowsWork(generation) else { return }
         guard let persistence = registerPersistence(results, attemptedAt: attemptedAt, generation: generation) else { return }
         await persistence.value
     }
@@ -34,7 +36,7 @@ extension RadarSyncCoordinator {
         attemptedAt: Date,
         generation: Int
     ) -> Task<Void, Never>? {
-        guard !isStopped, generation == lifecycleGeneration else { return nil }
+        guard lifecycleAllowsWork(generation) else { return nil }
         nextPersistenceID += 1
         let persistenceID = nextPersistenceID
         let task = Task {
@@ -51,18 +53,30 @@ extension RadarSyncCoordinator {
         generation: Int
     ) async {
         await persistenceCheckpoint?()
-        if let envelope = results.0 { _ = await applyEnvelope(envelope, attemptedAt: attemptedAt) }
-        if let community = results.1 { _ = await applyCommunity(community, attemptedAt: attemptedAt) }
+        guard lifecycleAllowsWork(generation) else { return }
+        if let envelope = results.0 {
+            guard lifecycleAllowsWork(generation) else { return }
+            _ = await applyEnvelope(envelope, attemptedAt: attemptedAt)
+        }
+        if let community = results.1 {
+            guard lifecycleAllowsWork(generation) else { return }
+            _ = await applyCommunity(community, attemptedAt: attemptedAt)
+        }
         var attemptedTypes: Set<RadarDatasetType> = []
         if results.0 != nil {
             attemptedTypes.insert(.benchmark)
             if source.supportsSourceStatusSegment { attemptedTypes.insert(.sourceStatus) }
         }
         if results.1 != nil { attemptedTypes.insert(.community) }
-        await refreshSegmentBackoff(attemptedAt: attemptedAt, attemptedTypes: attemptedTypes)
-        guard !isStopped, generation == lifecycleGeneration else { return }
+        guard lifecycleAllowsWork(generation) else { return }
+        await refreshSegmentBackoff(
+            attemptedAt: attemptedAt,
+            attemptedTypes: attemptedTypes,
+            generation: generation
+        )
+        guard lifecycleAllowsWork(generation) else { return }
         if let projectionDidChange, let current = try? await projection() {
-            guard !isStopped, generation == lifecycleGeneration else { return }
+            guard lifecycleAllowsWork(generation) else { return }
             await projectionDidChange(current)
         }
     }
@@ -83,11 +97,16 @@ extension RadarSyncCoordinator {
         catch { return .failure(error) }
     }
 
-    private func refreshSegmentBackoff(attemptedAt: Date, attemptedTypes: Set<RadarDatasetType>) async {
+    private func refreshSegmentBackoff(
+        attemptedAt: Date,
+        attemptedTypes: Set<RadarDatasetType>,
+        generation: Int
+    ) async {
         var maximumFailureCount = 0
         var maximumDeadline: Date?
         for type in [RadarDatasetType.benchmark, .community, .sourceStatus] {
             guard let metadata = try? await repository.metadata(sourceID: sourceID, datasetType: type) else { continue }
+            guard lifecycleAllowsWork(generation) else { return }
             let count = metadata.lastError == nil ? 0 : max(metadata.consecutiveFailures ?? 0, 1)
             let deadline = count == 0 ? nil : attemptedAt.addingTimeInterval(policy.backoff(failureCount: count))
             if attemptedTypes.contains(type) {
@@ -101,6 +120,7 @@ extension RadarSyncCoordinator {
             maximumFailureCount = max(maximumFailureCount, count)
             if let deadline { maximumDeadline = max(maximumDeadline ?? deadline, deadline) }
         }
+        guard lifecycleAllowsWork(generation) else { return }
         failureCount = maximumFailureCount
         backoffDeadline = maximumDeadline
     }

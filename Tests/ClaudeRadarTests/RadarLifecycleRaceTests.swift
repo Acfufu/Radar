@@ -226,7 +226,7 @@ struct RadarLifecycleRaceTests {
         }
     }
 
-    @Test("stop drains registered persistence and freezes all observable counts")
+    @Test("stop drains and fences registered persistence and freezes all observable counts")
     func coordinatorStopDrainsPersistence() async throws {
         // Given
         let fixture = try repositoryFixture()
@@ -271,12 +271,65 @@ struct RadarLifecycleRaceTests {
         await coordinator.refresh(trigger: .manual)
         let afterCallbacks = try await counts(fixture.repository, projections: projections)
         #expect(frozen == afterCallbacks)
-        #expect(frozen == LifecycleCounts(benchmark: 1, community: 1, status: 1, projections: 0))
+        #expect(frozen == LifecycleCounts(benchmark: 0, community: 0, status: 0, projections: 0))
         #expect(network.startCount == 1)
         #expect(network.stopCount == 1)
         #expect(wake.startCount == 1)
         #expect(wake.stopCount == 1)
         #expect(await transport.cancelCount == 1)
+    }
+
+    @Test("concurrent pauses join acquisition and registered persistence without late mutation or publication")
+    func concurrentPauseDrainsPersistence() async throws {
+        // Given
+        let fixture = try repositoryFixture()
+        let gate = LifecycleGate()
+        let firstCompletion = LifecycleCompletion()
+        let secondCompletion = LifecycleCompletion()
+        let projections = LifecycleProjectionRecorder()
+        let transport = LifecycleTransport(routes: [
+            benchmarkURL: .json(url: benchmarkURL, body: try fixtureData("claude-radar-valid")),
+            communityURL: .json(url: communityURL, body: try fixtureData("claude-radar-community-valid")),
+        ])
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
+            repository: fixture.repository,
+            projectionDidChange: { projection in await projections.append(projection) },
+            persistenceCheckpoint: { await gate.pause() }
+        )
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await gate.waitUntilPaused()
+
+        // When
+        let firstPause = Task {
+            await coordinator.pauseAndDrain()
+            await firstCompletion.finish()
+        }
+        while !(await coordinator.lifecycleState()).isPaused { await Task.yield() }
+        let secondPause = Task {
+            await coordinator.pauseAndDrain()
+            await secondCompletion.finish()
+        }
+        await Task.yield()
+
+        // Then
+        #expect(!(await firstCompletion.isFinished))
+        #expect(!(await secondCompletion.isFinished))
+        await gate.release()
+        await firstPause.value
+        await secondPause.value
+        await refresh.value
+        #expect(try await counts(fixture.repository, projections: projections) == LifecycleCounts(
+            benchmark: 0,
+            community: 0,
+            status: 0,
+            projections: 0
+        ))
+        #expect(await transport.cancelCount == 1)
+        let lifecycle = await coordinator.lifecycleState()
+        #expect(lifecycle.isPaused)
+        #expect(!lifecycle.hasActiveTask)
+        print("G028_MANUAL_QA persistence_benchmark=0 persistence_community=0 persistence_status=0 publication=0 cancel=1 paused=\(lifecycle.isPaused) stopped=\(lifecycle.isStopped) active=\(lifecycle.hasActiveTask)")
     }
 
     private var benchmarkURL: URL { URL(string: "https://lifecycle.invalid/benchmark")! }
