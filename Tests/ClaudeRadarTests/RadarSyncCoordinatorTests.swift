@@ -5,6 +5,139 @@ import Testing
 
 @Suite("RadarSyncCoordinatorTests", .serialized)
 struct RadarSyncCoordinatorTests {
+    @Test("pause installs before suspension and rejects every trigger without observer fan-out")
+    func pauseRejectsTriggersSynchronously() async throws {
+        // Given
+        let fixture = try repositoryFixture()
+        let transport = GatedRoutingTransport(routes: [
+            benchmarkURL: [.json(url: benchmarkURL, body: try fixtureData("claude-radar-valid"))],
+            communityURL: [.json(url: communityURL, body: try fixtureData("claude-radar-community-valid"))],
+        ])
+        let recorder = SyncTriggerRecorder()
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
+            repository: fixture.repository,
+            triggerObserver: { trigger in Task { await recorder.append(trigger) } }
+        )
+
+        // When
+        await coordinator.pauseAndDrain()
+        for trigger in [SyncTrigger.manual, .periodic, .networkRecovery, .sleepRecovery] {
+            await coordinator.refresh(trigger: trigger)
+        }
+
+        // Then
+        let lifecycle = await coordinator.lifecycleState()
+        #expect(lifecycle.isPaused)
+        #expect(!lifecycle.isStopped)
+        #expect(await recorder.values.isEmpty)
+        #expect(await transport.requestCount(for: benchmarkURL) == 0)
+        #expect(await transport.requestCount(for: communityURL) == 0)
+    }
+
+    @Test("resume only clears pause and the next manual refresh acquires once")
+    func resumeAllowsManualRefreshWithoutSynthesizingWork() async throws {
+        // Given
+        let fixture = try repositoryFixture()
+        let transport = GatedRoutingTransport(routes: [
+            benchmarkURL: [.json(url: benchmarkURL, body: try fixtureData("claude-radar-valid"))],
+            communityURL: [.json(url: communityURL, body: try fixtureData("claude-radar-community-valid"))],
+        ])
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
+            repository: fixture.repository
+        )
+        await coordinator.pauseAndDrain()
+
+        // When
+        await coordinator.resume()
+        let resumed = await coordinator.lifecycleState()
+        let beforeManual = await transport.requestCount(for: benchmarkURL)
+        await coordinator.refresh(trigger: .manual)
+
+        // Then
+        #expect(!resumed.isPaused)
+        #expect(!resumed.isStopped)
+        #expect(beforeManual == 0)
+        #expect(await transport.requestCount(for: benchmarkURL) == 1)
+        #expect(await transport.requestCount(for: communityURL) == 1)
+        print("G028_MANUAL_QA resume paused=\(resumed.isPaused) stopped=\(resumed.isStopped) acquisition_benchmark=1 acquisition_community=1")
+    }
+
+    @Test("stop while paused stays terminal and resume cannot reopen it")
+    func stopWhilePausedIsTerminal() async throws {
+        // Given
+        let fixture = try repositoryFixture()
+        let transport = GatedRoutingTransport(routes: [
+            benchmarkURL: [.json(url: benchmarkURL, body: try fixtureData("claude-radar-valid"))],
+            communityURL: [.json(url: communityURL, body: try fixtureData("claude-radar-community-valid"))],
+        ])
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
+            repository: fixture.repository
+        )
+        await coordinator.pauseAndDrain()
+
+        // When
+        await coordinator.stop()
+        await coordinator.stop()
+        await coordinator.resume()
+        await coordinator.refresh(trigger: .manual)
+
+        // Then
+        let lifecycle = await coordinator.lifecycleState()
+        #expect(lifecycle.isStopped)
+        #expect(lifecycle.isPaused)
+        #expect(!lifecycle.hasActiveTask)
+        #expect(await transport.requestCount(for: benchmarkURL) == 0)
+        #expect(await transport.requestCount(for: communityURL) == 0)
+        print("G028_MANUAL_QA stop paused=\(lifecycle.isPaused) stopped=\(lifecycle.isStopped) active=\(lifecycle.hasActiveTask) acquisition_benchmark=0 acquisition_community=0")
+    }
+
+    @Test("pause cancels and joins an acquisition that ignores task cancellation")
+    func pauseJoinsCancellationIgnoringAcquisition() async throws {
+        // Given
+        let fixture = try repositoryFixture()
+        let transport = CancellationIgnoringTransport(
+            response: .json(url: benchmarkURL, body: try fixtureData("claude-radar-valid"))
+        )
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(
+                configuration: ClaudeRadarConfiguration(
+                    benchmarkURL: benchmarkURL,
+                    communityURL: nil,
+                    sourceStatusURL: nil
+                ),
+                transport: transport
+            ),
+            repository: fixture.repository
+        )
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await transport.waitUntilRequestCount(1)
+        let completion = CompletionFlag()
+
+        // When
+        let pausing = Task {
+            await coordinator.pauseAndDrain()
+            await completion.markCompleted()
+        }
+        while !(await coordinator.lifecycleState()).isPaused { await Task.yield() }
+        while await transport.cancelAllCount == 0 { await Task.yield() }
+
+        // Then
+        #expect(!(await completion.isCompleted))
+        #expect(await transport.requestCount == 1)
+        #expect(await transport.cancelAllCount == 1)
+        await transport.releaseAll()
+        await pausing.value
+        await refresh.value
+        let lifecycle = await coordinator.lifecycleState()
+        #expect(lifecycle.isPaused)
+        #expect(!lifecycle.hasActiveTask)
+        #expect(try await fixture.repository.snapshotCount(datasetType: .benchmark, sourceID: .claudeCodeRadar) == 0)
+        print("G028_MANUAL_QA acquisition=1 cancel=1 persistence=0 publication=0 paused=\(lifecycle.isPaused) stopped=\(lifecycle.isStopped) active=\(lifecycle.hasActiveTask)")
+    }
+
     @Test("the public refresh entry observes every existing trigger exactly once")
     func observesExistingTriggerStream() async throws {
         let fixture = try repositoryFixture()
