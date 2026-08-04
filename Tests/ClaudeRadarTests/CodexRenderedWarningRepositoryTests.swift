@@ -134,14 +134,14 @@ struct CodexRenderedWarningRepositoryTests {
         #expect(try await fixture.repository.snapshotCount(datasetType: .renderedWarnings, sourceID: .codexRadar) == 257)
     }
 
-    @Test("deleteAll clears warning rows and metadata while preserving raw samples")
-    func deleteAllPreservesRawSamples() async throws {
+    @Test("source deletion clears warning rows and metadata while preserving raw samples")
+    func sourceDeletionPreservesRawSamples() async throws {
         let fixture = try repositoryFixture()
         _ = try await fixture.repository.insertRenderedWarning(try warning(capturedAt: Date(timeIntervalSince1970: 10)))
         let rawStore = RawSampleStore(dataRoot: fixture.root)
         try await rawStore.save(Data("raw".utf8), sourceID: .codexRadar, outcome: .success, at: Date(timeIntervalSince1970: 11))
 
-        try await fixture.repository.deleteAll()
+        try await fixture.repository.deleteNormalizedHistory(sourceID: .codexRadar)
 
         #expect(try await fixture.repository.snapshotCount(datasetType: .renderedWarnings, sourceID: .codexRadar) == 0)
         #expect(try await fixture.repository.metadata(sourceID: .codexRadar, datasetType: .renderedWarnings) == .empty)
