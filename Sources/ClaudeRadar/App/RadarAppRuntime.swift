@@ -111,6 +111,7 @@ final class RadarAppRuntime {
         let activeCoordinator = coordinator
         let activeRenderedWarningCoordinator = renderedWarningCoordinator
         let activeRenderedIQHistoryCoordinator = renderedIQHistoryCoordinator
+        let activeClear = clearHistoryOperation
         let activeExports = Array(exportOperations.values)
         starting?.cancel()
         activeExports.forEach { $0.cancel() }
@@ -118,6 +119,7 @@ final class RadarAppRuntime {
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
             for export in activeExports { _ = try? await export.value }
+            if let activeClear { _ = await activeClear.value }
             if let activeRenderedIQHistoryCoordinator { await activeRenderedIQHistoryCoordinator.stop() }
             if let activeRenderedWarningCoordinator { await activeRenderedWarningCoordinator.stop() }
             if let activeCoordinator { await activeCoordinator.stop() }

@@ -160,6 +160,45 @@ struct RadarLifecycleRaceTests {
     }
 
     @MainActor
+    @Test("runtime stop waits for an in-flight history clear")
+    func runtimeStopJoinsHistoryClear() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarLifecycleRaceTests-StopClear-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let deletion = LifecycleBlockingDeletion()
+        let stopCompletion = LifecycleCompletion()
+        let clearCompletion = LifecycleCompletion()
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false),
+            deleteNormalizedHistory: { repository, sourceID in
+                try await deletion.delete(repository: repository, sourceID: sourceID)
+            }
+        )
+        await runtime.start()
+        let clearing = Task {
+            let result = await runtime.clearHistory()
+            await clearCompletion.finish()
+            return result
+        }
+        await deletion.waitUntilStarted()
+
+        let stopping = Task {
+            await runtime.stop()
+            await stopCompletion.finish()
+        }
+
+        while runtime.lifecycleState == .running { await Task.yield() }
+        #expect(runtime.lifecycleState == .stopping)
+        #expect(!(await stopCompletion.isFinished))
+        #expect(!(await clearCompletion.isFinished))
+        await deletion.release()
+        #expect(await clearing.value)
+        await stopping.value
+        #expect(runtime.lifecycleState == .stopped)
+        #expect(!(await runtime.clearHistory()))
+    }
+
+    @MainActor
     @Test("startup failure stops and cancels the Codex warning coordinator")
     func codexStartupFailureCleansWarningCoordinator() async throws {
         let root = FileManager.default.temporaryDirectory
@@ -455,6 +494,38 @@ struct RadarLifecycleRaceTests {
         #expect(await triggers.count == 2)
     }
 
+    @Test("primary stop waits for an in-flight pause operation")
+    func coordinatorStopJoinsPauseOperation() async throws {
+        let fixture = try repositoryFixture()
+        let transport = LifecycleBlockingTransport(routes: [
+            benchmarkURL: .json(url: benchmarkURL, body: try fixtureData("claude-radar-valid")),
+            communityURL: .json(url: communityURL, body: try fixtureData("claude-radar-community-valid")),
+        ])
+        let coordinator = RadarSyncCoordinator(
+            source: ClaudeCodeRadarSource(configuration: configuration, transport: transport),
+            repository: fixture.repository
+        )
+        let refresh = Task { await coordinator.refresh(trigger: .manual) }
+        await transport.waitUntilStarted()
+        let pausing = Task { await coordinator.pauseAndDrain() }
+        while !(await coordinator.lifecycleState()).isPaused { await Task.yield() }
+        let stopCompletion = LifecycleCompletion()
+        let stopping = Task {
+            await coordinator.stop()
+            await stopCompletion.finish()
+        }
+
+        while !(await coordinator.lifecycleState()).isStopped { await Task.yield() }
+        #expect(!(await stopCompletion.isFinished))
+        await transport.release()
+        await stopping.value
+        await pausing.value
+        await refresh.value
+        let lifecycle = await coordinator.lifecycleState()
+        #expect(lifecycle.isStopped)
+        #expect(!lifecycle.hasActiveTask)
+    }
+
     private var benchmarkURL: URL { URL(string: "https://lifecycle.invalid/benchmark")! }
     private var communityURL: URL { URL(string: "https://lifecycle.invalid/community")! }
     private var configuration: ClaudeRadarConfiguration {
@@ -631,6 +702,32 @@ private actor LifecycleNthGate {
 private actor LifecycleDeletionRecorder {
     private(set) var callCount = 0
     func record() { callCount += 1 }
+}
+
+private actor LifecycleBlockingDeletion {
+    private var started = false
+    private var released = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func delete(repository: RadarRepository, sourceID: RadarSourceID) async throws {
+        started = true
+        startWaiters.forEach { $0.resume() }
+        startWaiters.removeAll()
+        if !released { await withCheckedContinuation { releaseWaiters.append($0) } }
+        try await repository.deleteNormalizedHistory(sourceID: sourceID)
+    }
+
+    func waitUntilStarted() async {
+        if started { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func release() {
+        released = true
+        releaseWaiters.forEach { $0.resume() }
+        releaseWaiters.removeAll()
+    }
 }
 
 @MainActor
@@ -842,6 +939,38 @@ private actor LifecycleTransport: HTTPTransport {
     }
 
     func cancelAll() async { cancelCount += 1 }
+}
+
+private actor LifecycleBlockingTransport: HTTPTransport {
+    private let routes: [URL: HTTPTransportResponse]
+    private var started = false
+    private var released = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+
+    init(routes: [URL: HTTPTransportResponse]) { self.routes = routes }
+
+    func data(for request: URLRequest) async throws -> HTTPTransportResponse {
+        started = true
+        startWaiters.forEach { $0.resume() }
+        startWaiters.removeAll()
+        if !released { await withCheckedContinuation { releaseWaiters.append($0) } }
+        guard let url = request.url, let response = routes[url] else { throw URLError(.badURL) }
+        return response
+    }
+
+    func waitUntilStarted() async {
+        if started { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func release() {
+        released = true
+        releaseWaiters.forEach { $0.resume() }
+        releaseWaiters.removeAll()
+    }
+
+    func cancelAll() async {}
 }
 
 private final class LifecycleNetworkMonitor: NetworkMonitoring, @unchecked Sendable {

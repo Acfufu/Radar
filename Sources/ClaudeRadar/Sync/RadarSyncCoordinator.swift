@@ -192,9 +192,14 @@ actor RadarSyncCoordinator {
         task?.cancel()
         networkMonitor?.stop()
         sleepNotifier?.stop()
+        let pausing = pauseOperation
         let registeredPersistence = Array(persistenceTasks.values)
         let operation = Task { [source] in
-            await source.cancelAll()
+            if let pausing {
+                await pausing.value
+            } else {
+                await source.cancelAll()
+            }
             for task in registeredPersistence { await task.value }
         }
         stopOperation = operation
