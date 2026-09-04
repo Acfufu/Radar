@@ -50,6 +50,9 @@ enum DebugUISeed {
             try await populateExport(repository: repository, base: base)
             return
         }
+        if sourceID == .codexRadar {
+            try await populateStationStatus(repository: repository, now: now, stale: state == "stale")
+        }
         if sourceID == .codexRadar, state == "analytics" {
             try await populateAnalytics(repository: repository, now: now)
             return
@@ -542,7 +545,7 @@ enum DebugUISeed {
         agentSteps: Int? = 14
     ) -> ModelBenchmark {
         let id = ModelID(sourceID: sourceID, upstreamKey: key)
-        return .init(
+        return ModelBenchmark(
             id: id,
             descriptor: .init(id: id, upstreamName: name, displayName: name),
             qualityScore: quality,
@@ -563,7 +566,7 @@ enum DebugUISeed {
 
     private static func adjusted(_ models: [ModelBenchmark], by delta: Decimal, passedBy passedDelta: Int = 0) -> [ModelBenchmark] {
         models.map { value in
-            .init(
+            ModelBenchmark(
                 id: value.id,
                 descriptor: value.descriptor,
                 qualityScore: value.qualityScore.map { $0 + delta },
@@ -585,7 +588,7 @@ enum DebugUISeed {
 
     private static func replacingQuality(in models: [ModelBenchmark], with quality: Decimal?) -> [ModelBenchmark] {
         models.map { value in
-            .init(
+            ModelBenchmark(
                 id: value.id,
                 descriptor: value.descriptor,
                 qualityScore: quality,
@@ -603,6 +606,60 @@ enum DebugUISeed {
                 cacheHitPercent: value.cacheHitPercent
             )
         }
+    }
+
+    /// Codex station-status seed (spec §5.1): a small synthetic snapshot with
+    /// all D13 verbatim fields, used by fixture UI launches so the banner,
+    /// prediction and Tibo surfaces render with data.
+    private static func populateStationStatus(
+        repository: RadarRepository,
+        now: Date,
+        stale: Bool
+    ) async throws {
+        let dataset = CodexStationStatusDataset(
+            sourceID: .codexRadar,
+            fetchedAt: stale ? now.addingTimeInterval(-9 * 60 * 60) : now,
+            monitoredAt: "2026-07-15T16:00:00+08:00",
+            timezone: "Asia/Shanghai",
+            windowOpen: true,
+            status: "community_confirmed",
+            recommendedAction: "ready",
+            window: .init(
+                isOpen: true,
+                status: "community_confirmed",
+                action: "ready",
+                message: "速蹬窗口已开启（fixture）",
+                title: "Codex 用量限制重置",
+                scope: "Codex 用户",
+                openedAt: nil,
+                closedAt: nil,
+                sourceURL: "https://codexradar.com/"
+            ),
+            prediction: .init(
+                level: "low",
+                probability24h: 0.14,
+                probability48h: 0.27,
+                summary: "上一轮硬重置刚完成。",
+                summaryEN: "Latest hard reset complete.",
+                updatedAt: nil
+            ),
+            tiboPresence: .init(
+                timezone: "America/Los_Angeles",
+                locationLabelZH: "旧金山湾区 / PT",
+                locationLabelEN: "San Francisco Bay Area / PT",
+                probability: 0.2,
+                confidence: "low",
+                evidenceSummaryZH: "所提供的公开帖子未明确披露当前国家或地区。",
+                evidenceSummaryEN: "Public posts do not disclose the region.",
+                sourceURLs: ["https://x.com/thsottiaux/status/2079647758869475531"],
+                shouldDisplay: true,
+                safetyNoteZH: "仅基于公开发帖做国家/时区级推测，不展示住址。",
+                safetyNoteEN: "Region-level inference only.",
+                observedAt: nil,
+                updatedAt: nil
+            )
+        )
+        _ = try await repository.insertStationStatus(dataset)
     }
 }
 #endif

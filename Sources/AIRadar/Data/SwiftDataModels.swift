@@ -17,6 +17,7 @@ enum RadarModelSchema {
             SourceStatusSnapshotEntity.self,
             CodexRenderedWarningSnapshotEntity.self,
             CodexRenderedIQHistorySnapshotEntity.self,
+            CodexRadarStatusSnapshotEntity.self,
         ])
     }
 
@@ -200,5 +201,27 @@ final class CodexRenderedIQHistorySnapshotEntity {
             fingerprint: try ContentFingerprint.renderedIQHistory(persistedSnapshot),
             encodedSnapshot: encodedSnapshot
         )
+    }
+}
+
+/// Codex station status snapshot (spec §5.1): window/prediction/Tibo state
+/// from current.json schema 2.0. Persisted on the source-status main chain
+/// (no new RadarDatasetType case); additive store schema change.
+@Model
+final class CodexRadarStatusSnapshotEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var contentFingerprint: String
+    var fetchedAt: Date
+    var encodedDataset: Data
+
+    init(dataset: CodexStationStatusDataset, fingerprint: String, encodedDataset: Data) {
+        dedupeKey = "\(dataset.sourceID.rawValue)|codex-station-status|\(fingerprint)"
+        id = UUID()
+        sourceID = dataset.sourceID.rawValue
+        contentFingerprint = fingerprint
+        self.fetchedAt = dataset.fetchedAt
+        self.encodedDataset = encodedDataset
     }
 }

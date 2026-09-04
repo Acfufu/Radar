@@ -1,0 +1,194 @@
+{
+  "schema_version": "2.0",
+  "service": "codex-reset-radar",
+  "monitored_at": "2026-07-15T16:00:00+08:00",
+  "api_access": {
+    "status": "public_summary",
+    "full_api_status": "authorization_required",
+    "requirements": {
+      "attribution_required": true,
+      "attribution_text": "数据来自 Codex 雷达 codexradar.com",
+      "site": "https://codexradar.com"
+    }
+  },
+  "model_iq": {
+    "latest": {
+      "date": "2026-07-15-pm",
+      "score": 120.0,
+      "status": "green",
+      "passed": 8,
+      "tasks": 10,
+      "invalid": 0,
+      "total_tokens": 1100,
+      "input_tokens": 1000,
+      "cached_input_tokens": 800,
+      "output_tokens": 100,
+      "wall_seconds": 3600,
+      "wall_time_human": "1小时",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "max",
+      "valid_tasks": 10,
+      "cost_usd": 12.5
+    },
+    "comparisons": {
+      "gpt_56_sol_high": {
+        "label": "GPT-5.6 Sol high",
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "high",
+        "latest": {
+          "date": "2026-07-15-pm",
+          "score": 90.0,
+          "status": "yellow",
+          "passed": 6,
+          "tasks": 10,
+          "invalid": 0,
+          "total_tokens": 550,
+          "input_tokens": 500,
+          "cached_input_tokens": 250,
+          "output_tokens": 50,
+          "wall_seconds": 1800,
+          "wall_time_human": "30分钟",
+          "model": "gpt-5.6-sol",
+          "reasoning_effort": "high",
+          "valid_tasks": 10,
+          "cost_usd": 6.25
+        },
+        "recent_days": []
+      }
+    },
+    "recent_days": [],
+    "quota_radar": {
+      "date": "2026-07-15-pm",
+      "source": "fixture-deepswe-10-v1",
+      "updated_at": "2026-07-15T08:00:00Z",
+      "basis_window": "secondary_7d",
+      "basis_window_label": "7d",
+      "rows": [
+        {
+          "tier": "20x Pro",
+          "basis": "measured 7d",
+          "five_h": 300.0,
+          "seven_d": 1800.0
+        },
+        {
+          "tier": "5x Pro",
+          "basis": "model /4",
+          "five_h": 75.0,
+          "seven_d": 450.0
+        }
+      ],
+      "trend": [
+        {
+          "date": "2026-07-14",
+          "five_h_5x": "72",
+          "five_h_20x": "300",
+          "five_h_plus": "1200",
+          "rate": "0.8",
+          "offset": "+1%"
+        },
+        {
+          "date": "2026-07-15",
+          "five_h_5x": "75",
+          "five_h_20x": "305",
+          "five_h_plus": "1210",
+          "rate": "0.8",
+          "offset": "0%"
+        }
+      ]
+    },
+    "data_source": {
+      "type": "deep_swe_bench",
+      "url": "https://codexradar.com/data/source",
+      "selection": "latest-per-model",
+      "checked_at": "2026-07-15T08:00:00Z",
+      "valid_cells": 42
+    },
+    "quota_calibration": {
+      "schema_version": "1.0",
+      "date": "2026-07-15",
+      "source": "fixture",
+      "status": "calibrated",
+      "primary_window": "5h",
+      "calibration_policy": {
+        "primary_window": "5h",
+        "self_probe_offset_percent": 15,
+        "reset_at_drift_tolerance_seconds": 300,
+        "description": "fixture policy"
+      },
+      "global_concurrency": 3,
+      "checked_at_before": "2026-07-15T07:00:00Z",
+      "checked_at_after": "2026-07-15T08:00:00Z",
+      "tasks": 30,
+      "valid_tasks": 30,
+      "cost_usd": 4.5,
+      "base_cost_usd": 4.2,
+      "estimated_cache_write_tokens": 1200,
+      "estimated_cache_write_surcharge_usd": 0.3,
+      "cost_basis": "fixture",
+      "total_tokens": 9000,
+      "windows": {
+        "primary_5h": {},
+        "secondary_7d": {}
+      }
+    },
+    "quota_check": {
+      "schema_version": "1.0",
+      "date": "2026-07-15",
+      "source": "fixture",
+      "status": "ok",
+      "checked_at": "2026-07-15T08:00:00Z",
+      "plan_type": "pro",
+      "rate_limit_reset_credits_available_count": 250,
+      "limit_reached": false,
+      "allowed": true,
+      "windows": {
+        "primary_5h": {},
+        "secondary_7d": {}
+      }
+    }
+  },
+  "timezone": "Asia/Shanghai",
+  "window_open": false,
+  "status": "community_confirmed",
+  "recommended_action": "wait",
+  "window": {
+    "open": false,
+    "status": "community_confirmed",
+    "action": "wait",
+    "message": "当前没有开启的速蹬窗口",
+    "title": "Codex 用量限制重置",
+    "scope": "Codex 用户",
+    "opened_at": null,
+    "closed_at": "2026-08-31T10:34:27+08:00",
+    "source_url": "https://x.com/thsottiaux/status/2094252447271366730"
+  },
+  "prediction": {
+    "level": "low",
+    "probability_24h": 0.14,
+    "probability_48h": 0.27,
+    "summary": "上一轮硬重置刚完成。",
+    "summary_en": "Latest hard reset complete.",
+    "updated_at": "2026-07-13T22:08:06+08:00"
+  },
+  "tibo_presence": {
+    "schema_version": "1.0",
+    "mode": "default",
+    "timezone": "America/Los_Angeles",
+    "location_label_zh": "旧金山湾区 / PT",
+    "location_label_en": "San Francisco Bay Area / PT",
+    "probability": 0.2,
+    "confidence": "low",
+    "evidence_summary_zh": "所提供的公开帖子未明确披露当前国家或地区。",
+    "evidence_summary_en": "Public posts do not disclose the region.",
+    "source_urls": [
+      "https://x.com/thsottiaux/status/2079647758869475531"
+    ],
+    "should_display": true,
+    "safety_note_zh": "仅基于公开发帖做国家/时区级推测，不展示住址。",
+    "safety_note_en": "Region-level inference only.",
+    "observed_at": "2026-07-21T19:20:38Z",
+    "updated_at": "2026-07-21T22:57:35Z",
+    "stale_at": null,
+    "observations_considered": 12
+  }
+}

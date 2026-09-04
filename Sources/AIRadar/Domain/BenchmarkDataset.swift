@@ -14,6 +14,7 @@ struct BenchmarkDataset: Hashable, Codable, Sendable {
     let benchmarkVersion: String?
     let seriesRevision: String
     let models: [ModelBenchmark]
+    var dataSource: BenchmarkDataSourceInfo? = nil
 }
 
 struct ModelBenchmark: Identifiable, Hashable, Codable, Sendable {
@@ -32,4 +33,9 @@ struct ModelBenchmark: Identifiable, Hashable, Codable, Sendable {
     let elapsedSeconds: Double?
     let agentSteps: Int?
     let cacheHitPercent: Decimal?
+    var wallTimeHuman: String? = nil
+    var averageCostUSD: Decimal? = nil
+    var averageTaskSeconds: Double? = nil
+    var averageTaskTimeHuman: String? = nil
+    var costUSDBasis: String? = nil
 }

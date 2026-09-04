@@ -97,6 +97,35 @@ actor RadarRepository {
         return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
     }
 
+    func insertStationStatus(_ dataset: CodexStationStatusDataset) async throws -> SnapshotInsertion {
+        try await waitForExportLease()
+        let fingerprint = try ContentFingerprint.stationStatus(dataset)
+        let context = ModelContext(container)
+        let existing = try context.fetch(FetchDescriptor<CodexRadarStatusSnapshotEntity>()).contains {
+            $0.sourceID == dataset.sourceID.rawValue && $0.contentFingerprint == fingerprint
+        }
+        if !existing {
+            context.insert(CodexRadarStatusSnapshotEntity(
+                dataset: dataset,
+                fingerprint: fingerprint,
+                encodedDataset: try JSONEncoder.radar.encode(dataset)
+            ))
+            try context.save()
+        }
+        return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
+    }
+
+    func latestStationStatus(sourceID: RadarSourceID) async throws -> CodexStationStatusDataset? {
+        let context = ModelContext(container)
+        let entities = try context.fetch(
+            FetchDescriptor<CodexRadarStatusSnapshotEntity>(
+                sortBy: [SortDescriptor(\.fetchedAt, order: .reverse)]
+            )
+        )
+        guard let entity = entities.first(where: { $0.sourceID == sourceID.rawValue }) else { return nil }
+        return try JSONDecoder.radar.decode(CodexStationStatusDataset.self, from: entity.encodedDataset)
+    }
+
     func insertRenderedWarning(_ snapshot: CodexRenderedWarningSnapshot) async throws -> SnapshotInsertion {
         try await waitForExportLease()
         let fingerprint = try ContentFingerprint.renderedWarning(snapshot)
@@ -423,6 +452,9 @@ actor RadarRepository {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<CodexRadarStatusSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
         try context.save()

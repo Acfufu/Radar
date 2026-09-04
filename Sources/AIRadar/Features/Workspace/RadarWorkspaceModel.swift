@@ -52,7 +52,8 @@ final class RadarWorkspaceModel {
             source: runtime.descriptor,
             renderedWarningState: runtime.renderedWarningProjection,
             renderedWarningHistory: runtime.renderedWarningHistory,
-            renderedIQHistoryState: runtime.renderedIQHistoryProjection
+            renderedIQHistoryState: runtime.renderedIQHistoryProjection,
+            stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil
         )
     }
     var history: [BenchmarkDataset] { runtime?.benchmarkHistory ?? [] }
@@ -88,7 +89,8 @@ final class RadarWorkspaceModel {
                 source: runtime.descriptor,
                 renderedWarningState: runtime.renderedWarningProjection,
                 renderedWarningHistory: runtime.renderedWarningHistory,
-                renderedIQHistoryState: runtime.renderedIQHistoryProjection
+                renderedIQHistoryState: runtime.renderedIQHistoryProjection,
+                stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil
             )
         })
     }
@@ -116,7 +118,8 @@ final class RadarWorkspaceModel {
             source: runtime.descriptor,
             renderedWarningState: runtime.renderedWarningProjection,
             renderedWarningHistory: runtime.renderedWarningHistory,
-            renderedIQHistoryState: runtime.renderedIQHistoryProjection
+            renderedIQHistoryState: runtime.renderedIQHistoryProjection,
+            stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil
         )
     }
 

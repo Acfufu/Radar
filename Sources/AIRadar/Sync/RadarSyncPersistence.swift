@@ -12,6 +12,11 @@ extension RadarSyncCoordinator {
             let statusSaved = source.supportsSourceStatusSegment
                 ? await saveStatus(envelope.sourceStatus, validators: validators, attemptedAt: attemptedAt)
                 : false
+            // Spec §5.1: station-status snapshot rides the source-status main
+            // chain (no separate dataset type); failures never block it.
+            if let stationStatus = envelope.stationStatus, let dataset = stationStatus.value {
+                _ = try? await repository.insertStationStatus(dataset)
+            }
             return benchmarkSaved || statusSaved
         case .failure(let error):
             if let http = error as? RadarHTTPError, http.kind == .notModified {

@@ -12,6 +12,7 @@ struct WorkspaceProjection: Sendable {
     let supportLevel: SupportLevel
     let source: RadarSourceDescriptor
     let renderedWarningPresentation: CodexRenderedWarningPresentation?
+    var stationStatus: CodexStationStatusDataset? = nil
     let renderedIQHistoryPresentation: CodexRenderedIQHistoryPresentation?
 
     init(
@@ -21,7 +22,8 @@ struct WorkspaceProjection: Sendable {
         source: RadarSourceDescriptor = ClaudeRadarConfiguration.descriptor,
         renderedWarningState: SegmentState<CodexRenderedWarningSnapshot>? = nil,
         renderedWarningHistory: [CodexRenderedWarningSnapshot] = [],
-        renderedIQHistoryState: SegmentState<CodexRenderedIQHistorySnapshot>? = nil
+        renderedIQHistoryState: SegmentState<CodexRenderedIQHistorySnapshot>? = nil,
+        stationStatus: CodexStationStatusDataset? = nil
     ) {
         self.sync = sync
         self.lifecycle = lifecycle
@@ -36,6 +38,7 @@ struct WorkspaceProjection: Sendable {
             sourceID: source.id,
             state: renderedIQHistoryState
         )
+        self.stationStatus = stationStatus
     }
 
     var benchmarkState: WorkspaceState { state(sync?.benchmark, lifecycle: lifecycle) }

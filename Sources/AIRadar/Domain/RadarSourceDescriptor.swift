@@ -33,6 +33,17 @@ protocol RadarSource: Sendable {
 struct RadarEnvelopeProjection: Sendable {
     let benchmark: SegmentProjection<BenchmarkDataset>
     let sourceStatus: SegmentProjection<SourceStatusDataset>
+    var stationStatus: SegmentProjection<CodexStationStatusDataset>?
+
+    init(
+        benchmark: SegmentProjection<BenchmarkDataset>,
+        sourceStatus: SegmentProjection<SourceStatusDataset>,
+        stationStatus: SegmentProjection<CodexStationStatusDataset>? = nil
+    ) {
+        self.benchmark = benchmark
+        self.sourceStatus = sourceStatus
+        self.stationStatus = stationStatus
+    }
 }
 
 protocol RadarPayloadParser: Sendable {

@@ -17,6 +17,9 @@ struct CodexSpeedOverviewPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
+                // Spec §4.2: announcement banner renders only when the
+                // upstream window snapshot exists.
+                AnnouncementBanner(content: bannerContent)
                 OverviewView(
                     projection: projection,
                     history: history,
@@ -26,6 +29,16 @@ struct CodexSpeedOverviewPage: View {
             }
             .radarPage()
         }
+    }
+
+    private var bannerContent: AnnouncementBanner.Content? {
+        guard let window = projection.stationStatus?.window else { return nil }
+        return .init(
+            title: window.title ?? "Codex 用量限制重置",
+            message: window.message,
+            isOpen: window.isOpen ?? false,
+            statusWord: projection.stationStatus?.recommendedAction
+        )
     }
 
     private var modelListCard: some View {
@@ -105,10 +118,35 @@ struct AlertsRecommendationsPage: View {
         .radarAccentCard(accent: palette.green, soft: palette.greenSoft)
     }
 
-    /// Prediction card (spec §5.1 `prediction`, P2① data; hidden while the
-    /// fields are absent).
-    private var predictionCard: some View {
-        EmptyView()
+    /// Prediction card (spec §5.1 `prediction`): hidden while the fields
+    /// are absent; summaries are upstream text verbatim.
+    @ViewBuilder private var predictionCard: some View {
+        if let prediction = projection.stationStatus?.prediction, prediction.level != nil || prediction.probability24h != nil {
+            VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+                Label("重置预测", systemImage: "waveform.path.ecg")
+                    .font(.headline)
+                    .foregroundStyle(palette.blue.color)
+                if let level = prediction.level {
+                    Text("等级：\(level)").font(.subheadline)
+                }
+                if let p24 = prediction.probability24h, let p48 = prediction.probability48h {
+                    Text("24h \(Int((p24 * 100).rounded()))% · 48h \(Int((p48 * 100).rounded()))%")
+                        .font(.subheadline)
+                        .monospacedDigit()
+                }
+                if let summary = prediction.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText.color)
+                        .textSelection(.enabled)
+                }
+                Text(projection.source.attributionText)
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .radarAccentCard(accent: palette.blue, soft: palette.blueSoft)
+        }
     }
 }
 
@@ -244,15 +282,49 @@ struct CodexHistoryComparisonPage: View {
 /// `tibo_presence` (P2①, spec D13); empty state until then.
 struct CodexTiboRadarPage: View {
     @Environment(\.radarPalette) private var palette
+    let projection: WorkspaceProjection
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
-            ViewHeader(title: "Tibo 雷达", subtitle: "基于上游对公开帖的时区级观测；Radar 原文转存，不做本地推断")
-            Text("暂无 Tibo 观测数据；current.json tibo_presence 接入后在此显示。")
-                .foregroundStyle(palette.secondaryText.color)
+        ScrollView {
+            VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
+                ViewHeader(title: "Tibo 雷达", subtitle: "基于上游对公开帖的时区级观测；Radar 原文转存，不做本地推断")
+                if let presence = projection.stationStatus?.tiboPresence, presence.shouldDisplay == true {
+                    presenceCard(presence)
+                } else {
+                    Text("暂无 Tibo 观测数据。")
+                        .foregroundStyle(palette.secondaryText.color)
+                }
+            }
+            .radarPage()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .radarPage()
+    }
+
+    /// D13: verbatim upstream observation fields; safety note and
+    /// should_display gate travel with the card.
+    private func presenceCard(_ presence: CodexStationStatusDataset.TiboPresence) -> some View {
+        VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+            Label("时区级存在观测", systemImage: "globe")
+                .font(.headline)
+            if let location = presence.locationLabelZH ?? presence.locationLabelEN {
+                Text(location).font(.subheadline)
+            }
+            if let probability = presence.probability {
+                Text("概率 \(Int((probability * 100).rounded()))%").font(.caption).monospacedDigit()
+            }
+            if let summary = presence.evidenceSummaryZH ?? presence.evidenceSummaryEN {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryText.color)
+                    .textSelection(.enabled)
+            }
+            if let safety = presence.safetyNoteZH ?? presence.safetyNoteEN {
+                Text(safety)
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarAccentCard(accent: palette.blue, soft: palette.blueSoft)
     }
 }
 

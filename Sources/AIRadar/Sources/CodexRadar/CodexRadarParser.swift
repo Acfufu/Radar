@@ -10,7 +10,8 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
         }
         return RadarEnvelopeProjection(
             benchmark: benchmarkProjection(dto, fetchedAt: fetchedAt),
-            sourceStatus: statusProjection(dto.modelIQ.quotaRadar, fetchedAt: fetchedAt)
+            sourceStatus: statusProjection(dto, fetchedAt: fetchedAt),
+            stationStatus: stationStatusProjection(dto, fetchedAt: fetchedAt)
         )
     }
 
@@ -72,7 +73,16 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                 benchmarkName: "Codex Radar IQ",
                 benchmarkVersion: dto.schemaVersion,
                 seriesRevision: CodexRadarConfiguration.seriesRevision,
-                models: models
+                models: models,
+                dataSource: dto.modelIQ.dataSource.map { source in
+                    BenchmarkDataSourceInfo(
+                        type: source.type,
+                        url: source.url,
+                        selection: source.selection,
+                        checkedAt: source.checkedAt,
+                        validCells: source.validCells
+                    )
+                }
             ))
         } catch let error as SegmentError {
             return .failure(error)
@@ -82,10 +92,10 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
     }
 
     private func statusProjection(
-        _ quota: CodexRadarDTO.QuotaRadar?,
+        _ dto: CodexRadarDTO,
         fetchedAt: Date
     ) -> SegmentProjection<SourceStatusDataset> {
-        guard let quota else {
+        guard let quota = dto.modelIQ.quotaRadar else {
             return .failure(SegmentError(kind: .decoding, message: "Codex Radar quota summary is unavailable"))
         }
         do {
@@ -111,13 +121,116 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                 sourceID: .codexRadar,
                 sourceUpdatedAt: parseDate(quota.updatedAt),
                 fetchedAt: fetchedAt,
-                quotaEstimates: estimates
+                quotaEstimates: estimates,
+                trend: quota.trend.map { points in
+                    points.map { point in
+                        QuotaTrendPoint(
+                            date: point.date,
+                            fiveH5x: point.fiveH5x?.value,
+                            fiveH20x: point.fiveH20x?.value,
+                            fiveHPlus: point.fiveHPlus?.value,
+                            rate: point.rate?.value,
+                            offset: point.offset?.value
+                        )
+                    }
+                },
+                check: dto.modelIQ.quotaCheck.map { check in
+                    QuotaCheckInfo(
+                        planType: check.planType,
+                        creditsAvailable: check.creditsAvailable,
+                        limitReached: check.limitReached,
+                        allowed: check.allowed
+                    )
+                },
+                calibration: dto.modelIQ.quotaCalibration.map { calibration in
+                    QuotaCalibrationInfo(
+                        date: calibration.date,
+                        status: calibration.status,
+                        primaryWindow: calibration.primaryWindow,
+                        globalConcurrency: calibration.globalConcurrency,
+                        checkedAt: calibration.checkedAt
+                    )
+                }
             ))
         } catch let error as SegmentError {
             return .failure(error)
         } catch {
             return .failure(ClaudeRadarValidator.validation("Codex Radar quota projection failed validation"))
         }
+    }
+
+    private func stationStatusProjection(
+        _ dto: CodexRadarDTO,
+        fetchedAt: Date
+    ) -> SegmentProjection<CodexStationStatusDataset>? {
+        // Spec §5.1: optional station-status surface; failure here never
+        // blocks the benchmark/source-status main chain.
+        guard dto.window != nil || dto.prediction != nil || dto.tiboPresence != nil
+            || dto.status != nil || dto.timezone != nil else {
+            return nil
+        }
+        do {
+            let dataset = try decodeStationStatus(dto, fetchedAt: fetchedAt)
+            return .success(dataset)
+        } catch {
+            return .failure(SegmentError(kind: .decoding, message: "Codex Radar station status could not be decoded"))
+        }
+    }
+
+    private func decodeStationStatus(
+        _ dto: CodexRadarDTO,
+        fetchedAt: Date
+    ) throws -> CodexStationStatusDataset {
+        CodexStationStatusDataset(
+            sourceID: .codexRadar,
+            fetchedAt: fetchedAt,
+            monitoredAt: dto.monitoredAt,
+            timezone: dto.timezone,
+            windowOpen: dto.windowOpen,
+            status: dto.status,
+            recommendedAction: dto.recommendedAction,
+            window: dto.window.map { window in
+                .init(
+                    isOpen: window.isOpen,
+                    status: window.status,
+                    action: window.action,
+                    message: window.message,
+                    title: window.title,
+                    scope: window.scope,
+                    openedAt: window.openedAt,
+                    closedAt: window.closedAt,
+                    sourceURL: window.sourceURL
+                )
+            },
+            prediction: dto.prediction.map { prediction in
+                .init(
+                    level: prediction.level,
+                    probability24h: prediction.probability24h,
+                    probability48h: prediction.probability48h,
+                    summary: prediction.summary,
+                    summaryEN: prediction.summaryEN,
+                    updatedAt: prediction.updatedAt
+                )
+            },
+            tiboPresence: dto.tiboPresence.map { presence in
+                // D13: upstream observations stored verbatim; never inferred.
+                .init(
+                    timezone: presence.timezone,
+                    locationLabelZH: presence.locationLabelZH,
+                    locationLabelEN: presence.locationLabelEN,
+                    probability: presence.probability,
+                    confidence: presence.confidence,
+                    evidenceSummaryZH: presence.evidenceSummaryZH,
+                    evidenceSummaryEN: presence.evidenceSummaryEN,
+                    sourceURLs: presence.sourceURLs,
+                    shouldDisplay: presence.shouldDisplay,
+                    safetyNoteZH: presence.safetyNoteZH,
+                    safetyNoteEN: presence.safetyNoteEN,
+                    observedAt: presence.observedAt,
+                    updatedAt: presence.updatedAt
+                )
+            }
+        )
     }
 
     private func candidates(_ modelIQ: CodexRadarDTO.ModelIQ) throws -> [Candidate] {
@@ -169,7 +282,12 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
             totalTokens: candidate.run.totalTokens,
             elapsedSeconds: candidate.run.wallSeconds,
             agentSteps: nil,
-            cacheHitPercent: cacheHitPercent
+            cacheHitPercent: cacheHitPercent,
+            wallTimeHuman: candidate.run.wallTimeHuman,
+            averageCostUSD: candidate.run.averageCostUSD?.value,
+            averageTaskSeconds: candidate.run.averageTaskSeconds,
+            averageTaskTimeHuman: candidate.run.averageTaskTimeHuman,
+            costUSDBasis: candidate.run.costUSDBasis
         )
         try ClaudeRadarValidator.validateBenchmark(model)
         return model

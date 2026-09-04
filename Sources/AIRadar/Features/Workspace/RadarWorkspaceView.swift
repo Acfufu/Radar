@@ -214,7 +214,7 @@ struct RadarWorkspaceView: View {
         case .historyComparison:
             CodexHistoryComparisonPage(projection: projection, history: history)
         case .tiboRadar:
-            CodexTiboRadarPage()
+            CodexTiboRadarPage(projection: projection)
         case .communityHub:
             CodexCommunityHubPage()
         case .sourceStatus:

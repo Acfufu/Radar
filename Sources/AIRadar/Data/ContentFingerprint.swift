@@ -17,7 +17,8 @@ enum ContentFingerprint {
             benchmarkName: dataset.benchmarkName,
             benchmarkVersion: dataset.benchmarkVersion,
             seriesRevision: dataset.seriesRevision,
-            models: dataset.models.sorted { modelKey($0.id) < modelKey($1.id) }
+            models: dataset.models.sorted { modelKey($0.id) < modelKey($1.id) },
+            dataSource: dataset.dataSource
         )
         return try make(normalized, datasetType: .benchmark, seriesRevision: seriesRevision ?? dataset.seriesRevision)
     }
@@ -43,9 +44,20 @@ enum ContentFingerprint {
             sourceID: dataset.sourceID,
             sourceUpdatedAt: dataset.sourceUpdatedAt,
             fetchedAt: dataset.fetchedAt,
-            quotaEstimates: dataset.quotaEstimates.sorted { $0.id < $1.id }
+            quotaEstimates: dataset.quotaEstimates.sorted { $0.id < $1.id },
+            trend: dataset.trend,
+            check: dataset.check,
+            calibration: dataset.calibration
         )
         return try make(normalized, datasetType: .sourceStatus, seriesRevision: seriesRevision)
+    }
+
+    static func stationStatus(_ dataset: CodexStationStatusDataset) throws -> String {
+        try make(
+            dataset,
+            datasetTypeLabel: "codex-station-status",
+            seriesRevision: CodexRadarConfiguration.seriesRevision
+        )
     }
 
     static func renderedWarning(_ snapshot: CodexRenderedWarningSnapshot) throws -> String {
@@ -71,6 +83,14 @@ enum ContentFingerprint {
         datasetType: RadarDatasetType,
         seriesRevision: String
     ) throws -> String {
+        try make(value, datasetTypeLabel: datasetType.rawValue, seriesRevision: seriesRevision)
+    }
+
+    private static func make<Value: Encodable>(
+        _ value: Value,
+        datasetTypeLabel: String,
+        seriesRevision: String
+    ) throws -> String {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .millisecondsSince1970
         let encoded = try encoder.encode(value)
@@ -78,7 +98,7 @@ enum ContentFingerprint {
             throw ContentFingerprintError.invalidCanonicalObject
         }
         object.removeValue(forKey: "fetchedAt")
-        object["datasetType"] = datasetType.rawValue
+        object["datasetType"] = datasetTypeLabel
         object["seriesRevision"] = seriesRevision
         let canonical = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])
         return SHA256.hash(data: canonical).map { String(format: "%02x", $0) }.joined()

@@ -49,7 +49,7 @@ struct SettingsView: View {
                 LabeledContent("Radar", value: appVersion)
                 Link("Claude Code Radar 来源主页", destination: URL(string: "https://claudecoderadar.com/?lang=en")!)
                 Link("Codex Radar 来源主页", destination: URL(string: "https://codexradar.com/")!)
-                Text("AI Radar is an independent open-source project and is not affiliated with codexradar.com (AI 雷达); the name is an independent choice.")
+                Text("数据来自 Codex 雷达 codexradar.com；额度类数值均为来源账户估算，从不代表个人用户用量。\nAI Radar is an independent open-source project and is not affiliated with codexradar.com (AI 雷达); the name is an independent choice.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

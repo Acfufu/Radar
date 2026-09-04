@@ -21,6 +21,7 @@ final class RadarAppRuntime {
     private(set) var benchmarkHistory: [BenchmarkDataset] = []
     private(set) var renderedWarningProjection: SegmentState<CodexRenderedWarningSnapshot>?
     private(set) var renderedWarningHistory: [CodexRenderedWarningSnapshot] = []
+    private(set) var stationStatus: CodexStationStatusDataset?
     private(set) var renderedIQHistoryProjection: SegmentState<CodexRenderedIQHistorySnapshot>?
     private(set) var renderedIQHistoryHistory: [CodexRenderedIQHistorySnapshot] = []
     private(set) var refreshIntervalMinutes: Int
@@ -283,6 +284,9 @@ final class RadarAppRuntime {
             let initialHistory = try await repository.benchmarkHistory(sourceID: sourceID)
             projection = initialProjection
             benchmarkHistory = initialHistory
+            if sourceID == .codexRadar {
+                stationStatus = try? await repository.latestStationStatus(sourceID: sourceID)
+            }
             guard isStarting(generation) else { await coordinator.stop(); return }
             #if DEBUG
             try writeProjectionEvidence()
@@ -393,6 +397,7 @@ final class RadarAppRuntime {
     private func clearInMemoryHistory(projection: RadarSyncProjection?) {
         self.projection = projection
         benchmarkHistory = []
+        stationStatus = nil
         renderedWarningProjection = nil
         renderedWarningHistory = []
         renderedIQHistoryProjection = nil
@@ -458,6 +463,9 @@ final class RadarAppRuntime {
     }
 
     private func accept(_ projection: RadarSyncProjection, repository: RadarRepository, generation: Int) async {
+        if sourceID == .codexRadar {
+            stationStatus = try? await repository.latestStationStatus(sourceID: sourceID)
+        }
         let history = (try? await repository.benchmarkHistory(sourceID: sourceID)) ?? benchmarkHistory
         guard lifecycleGeneration == generation,
               lifecycleState == .starting || lifecycleState == .running else { return }

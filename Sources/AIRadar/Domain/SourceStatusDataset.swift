@@ -5,6 +5,9 @@ struct SourceStatusDataset: Hashable, Codable, Sendable {
     let sourceUpdatedAt: Date?
     let fetchedAt: Date
     let quotaEstimates: [SourceQuotaEstimate]
+    var trend: [QuotaTrendPoint]? = nil
+    var check: QuotaCheckInfo? = nil
+    var calibration: QuotaCalibrationInfo? = nil
 }
 
 struct SourceQuotaEstimate: Identifiable, Hashable, Codable, Sendable {
