@@ -72,6 +72,10 @@ struct RadarWorkspaceView: View {
         .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .task {
             #if DEBUG
+            // Scene restoration can asynchronously overwrite programmatic
+            // SceneStorage writes made before it completes, so the fixture
+            // routing hooks apply one beat later (DEBUG only).
+            try? await Task.sleep(nanoseconds: 400_000_000)
             if ProcessInfo.processInfo.environment["RADAR_UI_SOURCE"] != nil {
                 let sourceID = AppEnvironment.debugInitialSourceID(
                     fixtureMode: .ui,
