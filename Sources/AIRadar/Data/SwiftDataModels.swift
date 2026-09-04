@@ -7,6 +7,7 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case sourceStatus = "source-status"
     case renderedWarnings = "rendered-warnings"
     case renderedIQHistory = "rendered-iq-history"
+    case intelligenceEfficiency = "intelligence-efficiency"
 }
 
 enum RadarModelSchema {
@@ -18,6 +19,7 @@ enum RadarModelSchema {
             CodexRenderedWarningSnapshotEntity.self,
             CodexRenderedIQHistorySnapshotEntity.self,
             CodexRadarStatusSnapshotEntity.self,
+            IntelligenceEfficiencySnapshotEntity.self,
         ])
     }
 
@@ -222,6 +224,31 @@ final class CodexRadarStatusSnapshotEntity {
         sourceID = dataset.sourceID.rawValue
         contentFingerprint = fingerprint
         self.fetchedAt = dataset.fetchedAt
+        self.encodedDataset = encodedDataset
+    }
+}
+
+/// Upstream intelligence-efficiency snapshot (spec §5.2) from the public
+/// `/data/intelligence-efficiency.json` sidecar endpoint; additive SwiftData
+/// schema change. Each payload carries the full upstream history, so only
+/// the latest snapshot per source is retained (bounded local store).
+@Model
+final class IntelligenceEfficiencySnapshotEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var contentFingerprint: String
+    var fetchedAt: Date
+    var sourceUpdatedAtText: String?
+    var encodedDataset: Data
+
+    init(dataset: IntelligenceEfficiencyDataset, fingerprint: String, encodedDataset: Data) {
+        dedupeKey = "\(dataset.sourceID.rawValue)|\(RadarDatasetType.intelligenceEfficiency.rawValue)|\(fingerprint)"
+        id = UUID()
+        sourceID = dataset.sourceID.rawValue
+        contentFingerprint = fingerprint
+        self.fetchedAt = dataset.fetchedAt
+        sourceUpdatedAtText = dataset.sourceUpdatedAt
         self.encodedDataset = encodedDataset
     }
 }

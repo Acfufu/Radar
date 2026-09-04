@@ -4,7 +4,7 @@ struct CodexRenderedSyncAdapter<Snapshot: Sendable>: Sendable {
     let sourceID: RadarSourceID
     let datasetType: RadarDatasetType
     let read: @MainActor @Sendable () async throws -> Snapshot
-    let cancel: @MainActor @Sendable () -> Void
+    let cancel: @MainActor @Sendable () async -> Void
     let insert: @Sendable (Snapshot) async throws -> SnapshotInsertion
     let loadState: @Sendable () async throws -> SegmentState<Snapshot>
     let loadHistory: @Sendable () async throws -> [Snapshot]

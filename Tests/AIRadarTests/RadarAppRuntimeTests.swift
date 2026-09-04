@@ -275,6 +275,95 @@ struct RadarAppRuntimeTests {
     }
 
     @MainActor
+    @Test("efficiency sidecar refreshes on startup while its failure leaves primary sync green")
+    func codexEfficiencyFailureIsIndependent() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-IEFailure-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let reader = RuntimeIEReader(results: [.failure(RadarHTTPError(kind: .oversized))])
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            intelligenceEfficiencyReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.intelligenceEfficiencyState?.error == nil {
+            await Task.yield()
+        }
+
+        #expect(reader.readCount == 1)
+        #expect(runtime.lifecycleState == .running)
+        #expect(runtime.projection?.benchmark.value != nil)
+        #expect(runtime.intelligenceEfficiencyState?.value == nil)
+        #expect(runtime.intelligenceEfficiencyState?.error?.kind == .validation)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("disabled Codex loads persisted efficiency LKG without reading (zero-network isolation)")
+    func persistedEfficiencyLoadsIndependently() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-IELKG-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let repository = RadarRepository(
+            container: try environment.makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+        let cached = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertIntelligenceEfficiency(cached)
+        let reader = RuntimeIEReader(results: [.failure(RadarHTTPError(kind: .network))])
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            intelligenceEfficiencyReaderFactory: { reader }
+        )
+
+        await runtime.start()
+
+        #expect(reader.readCount == 0)
+        #expect(runtime.intelligenceEfficiencyState?.value == cached)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("manual refresh publishes efficiency snapshot and clear removes it")
+    func manualRefreshAndClearEfficiency() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-IEManual-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let initial = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 100))
+        let updated = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 200), iq: 82)
+        let reader = RuntimeIEReader(results: [.success(initial), .success(updated)])
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true)
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            intelligenceEfficiencyReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.intelligenceEfficiencyState?.value == nil {
+            await Task.yield()
+        }
+        await runtime.refresh()
+        for _ in 0..<200 where reader.readCount < 2 {
+            await Task.yield()
+        }
+        await runtime.updateRefreshInterval(minutes: 60)
+
+        #expect(reader.readCount == 2)
+        #expect(runtime.refreshIntervalMinutes == 60)
+        #expect(runtime.intelligenceEfficiencyState?.value == updated)
+        #expect(await runtime.clearHistory())
+        #expect(runtime.intelligenceEfficiencyState == nil)
+        await runtime.stop()
+        let repository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: SyncMetadataStore(root: root))
+        #expect(try await repository.snapshotCount(datasetType: .intelligenceEfficiency, sourceID: .codexRadar) == 0)
+    }
+
+    @MainActor
     @Test("concurrent history clears coalesce into one source deletion")
     func concurrentHistoryClearsCoalesce() async throws {
         let root = FileManager.default.temporaryDirectory
@@ -284,12 +373,15 @@ struct RadarAppRuntimeTests {
         let repository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: SyncMetadataStore(root: root))
         _ = try await repository.insertRenderedWarning(try runtimeWarning(capturedAt: Date(timeIntervalSince1970: 100)))
         _ = try await repository.insertRenderedIQHistory(try runtimeIQHistory(capturedAt: Date(timeIntervalSince1970: 100)))
+        let efficiency = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertIntelligenceEfficiency(efficiency)
         let deletion = RuntimeDeletionProbe()
         let runtime = RadarAppRuntime(
             environment: environment,
             sourceID: .codexRadar,
             renderedWarningReaderFactory: { RuntimeWarningReader(result: .failure(RuntimeWarningError.unavailable)) },
             renderedIQHistoryReaderFactory: { RuntimeIQReader(results: [.failure(RuntimeWarningError.unavailable)]) },
+            intelligenceEfficiencyReaderFactory: { RuntimeIEReader(results: [.failure(RadarHTTPError(kind: .network))]) },
             deleteNormalizedHistory: { repository, sourceID in
                 try await deletion.delete(repository: repository, sourceID: sourceID)
             }
@@ -307,10 +399,12 @@ struct RadarAppRuntimeTests {
         #expect(await second.value)
         #expect(await deletion.callCount == 1)
         #expect(runtime.lifecycleState == .running)
+        #expect(runtime.intelligenceEfficiencyState == nil)
         let states = await runtime.synchronizationLifecycleStates()
         #expect(states.primary?.isPaused == false)
         #expect(states.renderedWarning?.isPaused == false)
         #expect(states.renderedIQHistory?.isPaused == false)
+        #expect(states.intelligenceEfficiency?.isPaused == false)
         await runtime.stop()
         #expect(!(await runtime.clearHistory()))
     }
@@ -323,17 +417,22 @@ struct RadarAppRuntimeTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let warning = try runtimeWarning(capturedAt: Date(timeIntervalSince1970: 100))
         let iq = try runtimeIQHistory(capturedAt: Date(timeIntervalSince1970: 100))
+        let efficiency = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 100))
         let warningReader = RuntimeWarningReader(result: .success(warning))
         let iqReader = RuntimeIQReader(results: [.success(iq), .success(iq)])
+        let efficiencyReader = RuntimeIEReader(results: [.success(efficiency), .success(efficiency)])
         let runtime = RadarAppRuntime(
             environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
             sourceID: .codexRadar,
             renderedWarningReaderFactory: { warningReader },
             renderedIQHistoryReaderFactory: { iqReader },
+            intelligenceEfficiencyReaderFactory: { efficiencyReader },
             deleteNormalizedHistory: { _, _ in throw RuntimeDeletionError.injected }
         )
         await runtime.start()
-        for _ in 0..<200 where warningReader.readCount < 1 || iqReader.readCount < 1 { await Task.yield() }
+        for _ in 0..<200 where warningReader.readCount < 1 || iqReader.readCount < 1 || efficiencyReader.readCount < 1 {
+            await Task.yield()
+        }
         let projectionBefore = try #require(runtime.projection)
         let benchmarkCountBefore = runtime.benchmarkHistory.count
 
@@ -343,11 +442,13 @@ struct RadarAppRuntimeTests {
         #expect(runtime.benchmarkHistory.count == benchmarkCountBefore)
         #expect(runtime.renderedWarningProjection?.value == warning)
         #expect(runtime.renderedIQHistoryProjection?.value == iq)
+        #expect(runtime.intelligenceEfficiencyState?.value == efficiency)
         #expect(runtime.lifecycleState == .running)
         let states = await runtime.synchronizationLifecycleStates()
         #expect(states.primary?.isPaused == false)
         #expect(states.renderedWarning?.isPaused == false)
         #expect(states.renderedIQHistory?.isPaused == false)
+        #expect(states.intelligenceEfficiency?.isPaused == false)
 
         await runtime.refresh()
         for _ in 0..<200 where warningReader.readCount < 2 || iqReader.readCount < 2 { await Task.yield() }
@@ -444,6 +545,35 @@ private final class RuntimeIQReader: CodexRenderedIQHistoryReading {
     func cancel() {
         cancelCount += 1
     }
+}
+
+@MainActor
+private final class RuntimeIEReader: IntelligenceEfficiencyReading {
+    private var results: [Result<IntelligenceEfficiencyDataset, Error>]
+    private(set) var readCount = 0
+
+    init(results: [Result<IntelligenceEfficiencyDataset, Error>]) {
+        self.results = results
+    }
+
+    func read() async throws -> IntelligenceEfficiencyDataset {
+        readCount += 1
+        return try results.removeFirst().get()
+    }
+
+    func cancel() async {}
+}
+
+private func runtimeEfficiency(fetchedAt: Date, iq: Double = 81.25) throws -> IntelligenceEfficiencyDataset {
+    IntelligenceEfficiencyDataset(
+        sourceID: .codexRadar,
+        fetchedAt: fetchedAt,
+        type: IntelligenceEfficiencyParser.expectedType,
+        points: [
+            .init(model: "gpt-5.6-sol", effort: "low", harness: "codex", iq: iq),
+        ],
+        history: []
+    )
 }
 
 private func runtimeWarning(capturedAt: Date) throws -> CodexRenderedWarningSnapshot {

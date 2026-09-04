@@ -151,9 +151,10 @@ struct AlertsRecommendationsPage: View {
 }
 
 /// Main axis row 3: efficiency PK. Hosts the three analysis panels moved out
-/// of the former intelligence center; the upstream intelligence-efficiency
-/// dataset (P2②) feeds the ranking section below once available.
+/// of the former intelligence center plus the upstream intelligence-efficiency
+/// ranking (spec §5.2, P2②) with its own run-level columns.
 struct CodexEfficiencyPKPage: View {
+    @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
 
@@ -181,9 +182,7 @@ struct CodexEfficiencyPKPage: View {
                 CodexScenarioRecommendationsPanel(
                     recommendations: CodexScenarioRecommendations.project(points: projection.intelligenceEfficiency)
                 )
-                Text("上游效能排行数据接入后在此显示（IntelligenceEfficiencyDataset，P2②）。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                upstreamRankingCard
                 Text(projection.source.attributionText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -191,6 +190,128 @@ struct CodexEfficiencyPKPage: View {
             }
             .radarPage()
         }
+    }
+
+    /// Upstream distributed intelligence-efficiency ranking: displayed as
+    /// published (upstream point order preserved, method text verbatim);
+    /// Radar adds no local scoring on top.
+    @ViewBuilder private var upstreamRankingCard: some View {
+        if let dataset = projection.intelligenceEfficiencyDataset {
+            VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+                ViewHeader(
+                    title: "上游效能排行",
+                    subtitle: dataset.sourceUpdatedAt ?? RadarFormat.date(dataset.fetchedAt)
+                )
+                summaryRow(dataset)
+                rankingTable(dataset)
+                if let method = dataset.method {
+                    methodFootnotes(method)
+                }
+                Text(projection.source.attributionText)
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+                    .textSelection(.enabled)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .radarPanel()
+        } else {
+            Text("暂无上游效能排行数据；数据接入后在此显示（IntelligenceEfficiencyDataset）。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func summaryRow(_ dataset: IntelligenceEfficiencyDataset) -> some View {
+        HStack(spacing: RadarStyle.cardSpacing) {
+            summaryItem("模型", RadarFormat.integer(dataset.models))
+            summaryItem("24h 运行", RadarFormat.integer(dataset.runs24hTotal))
+            summaryItem("48h 运行", RadarFormat.integer(dataset.runs48hTotal))
+            summaryItem("累计运行", RadarFormat.integer(dataset.runsTotal))
+        }
+    }
+
+    private func summaryItem(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption2).foregroundStyle(palette.secondaryText.color)
+            Text(value).font(.subheadline.weight(.medium)).monospacedDigit()
+        }
+    }
+
+    /// Run-level columns come from the upstream rows verbatim (spec §5.1
+    /// human-readable dispositions); "—" marks fields the row omits.
+    private func rankingTable(_ dataset: IntelligenceEfficiencyDataset) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            rankingHeaderRow
+            ForEach(Array(dataset.points.enumerated()), id: \.offset) { _, point in
+                rankingRow(point)
+                Divider().overlay(palette.divider.color)
+            }
+        }
+    }
+
+    private var rankingHeaderRow: some View {
+        HStack {
+            Text("模型").frame(minWidth: 150, alignment: .leading)
+            Text("IQ").frame(width: 56, alignment: .trailing)
+            Text("通过/有效").frame(width: 80, alignment: .trailing)
+            Text("均价").frame(width: 72, alignment: .trailing)
+            Text("均时长").frame(width: 72, alignment: .trailing)
+            Text("均 Tokens").frame(width: 88, alignment: .trailing)
+            Text("缓存命中").frame(width: 72, alignment: .trailing)
+            Text("24h").frame(width: 48, alignment: .trailing)
+            Text("总运行").frame(width: 64, alignment: .trailing)
+        }
+        .font(.caption2)
+        .foregroundStyle(palette.secondaryText.color)
+    }
+
+    private func rankingRow(_ point: IntelligenceEfficiencyDataset.Point) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(point.model ?? "—").font(.caption.weight(.medium))
+                Text([point.effort, point.harness].compactMap { $0 }.joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+            }
+            .frame(minWidth: 150, alignment: .leading)
+            Text(RadarFormat.decimal(point.iq.map { Decimal($0) })).frame(width: 56, alignment: .trailing).monospacedDigit()
+            Text(ratio(point.passed, point.validTasks)).frame(width: 80, alignment: .trailing).monospacedDigit()
+            Text(RadarFormat.decimal(point.averagePriceUSD, suffix: " $")).frame(width: 72, alignment: .trailing).monospacedDigit()
+            Text(RadarFormat.decimal(point.averageMinutes.map { Decimal($0) }, suffix: " 分")).frame(width: 72, alignment: .trailing).monospacedDigit()
+            Text(RadarFormat.decimal(point.averageTotalTokens.map { Decimal($0) })).frame(width: 88, alignment: .trailing).monospacedDigit()
+            Text(percent(point.cacheHitRate)).frame(width: 72, alignment: .trailing).monospacedDigit()
+            Text(RadarFormat.integer(point.runs24h)).frame(width: 48, alignment: .trailing).monospacedDigit()
+            Text(RadarFormat.integer(point.runsTotal)).frame(width: 64, alignment: .trailing).monospacedDigit()
+        }
+        .font(.caption)
+        .padding(.vertical, 6)
+    }
+
+    private func methodFootnotes(_ method: IntelligenceEfficiencyDataset.Method) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let iq = method.iq, !iq.isEmpty {
+                Text("IQ 口径：\(iq)")
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+                    .textSelection(.enabled)
+            }
+            if let price = method.price, !price.isEmpty {
+                Text("价格口径：\(price)")
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
+    private func ratio(_ passed: Double?, _ valid: Double?) -> String {
+        guard let passed, let valid, valid > 0 else { return "—" }
+        return String(format: "%.0f/%.0f", passed, valid)
+    }
+
+    private func percent(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        return String(format: "%.1f%%", value * 100)
     }
 }
 

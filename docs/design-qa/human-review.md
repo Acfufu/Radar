@@ -83,3 +83,9 @@ requires this list to have zero PENDING items.
 | swe-bench-verified__qushi__亮色__stale.png | 484107 | 483729 | 待人工（并排目视） |
 | swe-bench-verified__qushi__暗色__fresh.png | 503918 | 502654 | 待人工（并排目视） |
 | swe-bench-verified__qushi__暗色__stale.png | 503848 | 503392 | 待人工（并排目视） |
+
+## P2② efficiency ranking card (added 2026-09-05)
+
+- [HR-3][P2②] Efficiency-PK upstream ranking card visual review / 效能 PK 页「上游效能排行」卡目视核验 — 产物: 种子截图（本地留档，不入库）`/tmp/airadar-shots/codex-radar__xiaoneng__暗色__fresh.png`、`/tmp/airadar-shots/codex-radar__xiaoneng__亮色__fresh.png`、`/tmp/airadar-shots/codex-radar__xiaoneng-ranking__暗色__fresh.png`；渲染数据另有 AX 树结构化证据（摘要 17 模型 / 24h 267 / 48h 375 / 累计 42,903；明细行 gpt-5.6-sol·xhigh 88.4、gpt-5.6-terra·max 84.2、deepseek-v4-flash·off 71.6 含 Run 级列），记录于 issue #2 / 建议方法: 执行
+  `defaults write com.acfufu.ClaudeRadar appearance '暗色'; rm -rf /tmp/AIRadar-Demo; RADAR_FIXTURE_MODE=ui RADAR_DATA_ROOT=/tmp/AIRadar-Demo RADAR_UI_STATE=fresh RADAR_UI_SOURCE=codexRadar RADAR_UI_DESTINATION="效能 PK" .build/app/AIRadar.app/Contents/MacOS/AIRadar`
+  启动后手动滚动到页面底部，核对「上游效能排行」卡：摘要四项、表格 Run 级列（通过/有效、均价、均时长、均 Tokens、缓存命中、24h、总运行）、method 口径脚注（fixture 文案以「fixture：」开头为预期）、来源行署名「数据来自 Codex 雷达 codexradar.com」；说明：执行环境无法自动滚动（后台滚轮事件不达 SwiftUI ScrollView、AXScrollDownByPage 无实现、抢前台会干扰在用会话），故卡片像素留档待人工 / 状态: PENDING

@@ -53,7 +53,8 @@ final class RadarWorkspaceModel {
             renderedWarningState: runtime.renderedWarningProjection,
             renderedWarningHistory: runtime.renderedWarningHistory,
             renderedIQHistoryState: runtime.renderedIQHistoryProjection,
-            stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil
+            stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
+            intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil
         )
     }
     var history: [BenchmarkDataset] { runtime?.benchmarkHistory ?? [] }
@@ -90,7 +91,8 @@ final class RadarWorkspaceModel {
                 renderedWarningState: runtime.renderedWarningProjection,
                 renderedWarningHistory: runtime.renderedWarningHistory,
                 renderedIQHistoryState: runtime.renderedIQHistoryProjection,
-                stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil
+                stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
+                intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil
             )
         })
     }
@@ -119,7 +121,8 @@ final class RadarWorkspaceModel {
             renderedWarningState: runtime.renderedWarningProjection,
             renderedWarningHistory: runtime.renderedWarningHistory,
             renderedIQHistoryState: runtime.renderedIQHistoryProjection,
-            stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil
+            stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil,
+            intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil
         )
     }
 

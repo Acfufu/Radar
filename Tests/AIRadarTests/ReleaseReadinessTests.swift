@@ -72,6 +72,28 @@ struct ReleaseReadinessTests {
         #expect(history.first?.models.first?.descriptor.displayName == "Release Upgrade Model")
     }
 
+    /// P2② increment (spec §5.2): the additive intelligence-efficiency
+    /// entity survives a store reopen under the current schema.
+    @MainActor
+    @Test("intelligence-efficiency snapshot survives an upgrade reopen")
+    func upgradePreservesIntelligenceEfficiency() async throws {
+        let dataRoot = temporaryRoot("upgrade-efficiency")
+        defer { try? FileManager.default.removeItem(at: dataRoot) }
+        let dataset = IntelligenceEfficiencyDataset(
+            sourceID: .codexRadar,
+            fetchedAt: Date(timeIntervalSince1970: 1_752_566_500),
+            type: IntelligenceEfficiencyParser.expectedType,
+            points: [.init(model: "m", effort: "high", harness: "codex", iq: 80)]
+        )
+        let first = try repository(at: dataRoot)
+        _ = try await first.insertIntelligenceEfficiency(dataset)
+
+        let reopened = try repository(at: dataRoot)
+        let state = try await reopened.intelligenceEfficiencyState(sourceID: .codexRadar)
+        #expect(state.value == dataset)
+        #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .intelligenceEfficiency).lastSuccessfulAt != nil)
+    }
+
     @MainActor
     private func verifyHistoryClearPreservesRaw() async throws {
         let dataRoot = temporaryRoot("clear-history")

@@ -60,6 +60,17 @@ enum ContentFingerprint {
         )
     }
 
+    /// Order-preserving by design: the payload's point order is the upstream
+    /// ranking and history is chronological, so reordering is a content
+    /// change worth a new snapshot (unlike benchmark's sorted canonical form).
+    static func intelligenceEfficiency(_ dataset: IntelligenceEfficiencyDataset) throws -> String {
+        try make(
+            dataset,
+            datasetType: .intelligenceEfficiency,
+            seriesRevision: CodexRadarConfiguration.seriesRevision
+        )
+    }
+
     static func renderedWarning(_ snapshot: CodexRenderedWarningSnapshot) throws -> String {
         try CodexRenderedWarningSemanticFingerprint.make(
             sourceTimeLabel: snapshot.sourceTimeLabel,

@@ -38,7 +38,10 @@ struct ClaudeRadarApp: App {
                 exportArchiver: exportArchiver,
                 refreshIntervalMinutes: settings.refreshIntervalMinutes,
                 renderedWarningReaderFactory: { CodexRenderedWarningPageReader() },
-                renderedIQHistoryReaderFactory: { CodexRenderedIQHistoryPageReader() }
+                renderedIQHistoryReaderFactory: { CodexRenderedIQHistoryPageReader() },
+                intelligenceEfficiencyReaderFactory: {
+                    IntelligenceEfficiencyAdapter.production(dataRoot: environment.dataRoot)
+                }
             ),
             RadarSourceID.sweBenchVerified: RadarAppRuntime(
                 environment: environment,

@@ -52,6 +52,7 @@ enum DebugUISeed {
         }
         if sourceID == .codexRadar {
             try await populateStationStatus(repository: repository, now: now, stale: state == "stale")
+            try await populateIntelligenceEfficiency(repository: repository, now: now, stale: state == "stale")
         }
         if sourceID == .codexRadar, state == "analytics" {
             try await populateAnalytics(repository: repository, now: now)
@@ -660,6 +661,169 @@ enum DebugUISeed {
             )
         )
         _ = try await repository.insertStationStatus(dataset)
+    }
+
+    /// Spec §5.2 fixture seed for the efficiency-PK ranking card. Fixture
+    /// text only — never upstream copy.
+    private static func populateIntelligenceEfficiency(
+        repository: RadarRepository,
+        now: Date,
+        stale: Bool
+    ) async throws {
+        let dataset = IntelligenceEfficiencyDataset(
+            sourceID: .codexRadar,
+            fetchedAt: stale ? now.addingTimeInterval(-9 * 60 * 60) : now,
+            schema: 2,
+            mode: "equal_latest_3",
+            type: IntelligenceEfficiencyParser.expectedType,
+            // Provenance shape only: the seed never carries the real
+            // protected-API host (spec §5.0 forbid-domain scan stays total).
+            source: "https://api.fixture.invalid/v1/table",
+            metricsSource: "https://api.fixture.invalid/v1/intelligence-efficiency",
+            sourceUpdatedAt: "2026-09-05T01:27:38+08:00",
+            models: 17,
+            runs24hTotal: 267,
+            runs48hTotal: 375,
+            runsTotal: 42_903,
+            points: [
+                .init(
+                    model: "gpt-5.6-sol",
+                    effort: "xhigh",
+                    harness: "codex",
+                    iq: 88.4,
+                    passed: 291,
+                    validTasks: 336,
+                    averagePriceUSD: 4.51,
+                    priceSamples: 336,
+                    averageMinutes: 12.4,
+                    durationSamples: 330,
+                    incompleteCostSamples: 0,
+                    totalRuns: 2_104,
+                    latestGradedAt: "2026-09-04T05:38:54+00:00",
+                    averageAgentSteps: 44.1,
+                    agentStepsSamples: 328,
+                    averageTotalTokens: 2_210_400.5,
+                    tokenSamples: 336,
+                    cacheHitRate: 0.951,
+                    cacheTokenSamples: 336,
+                    averagePriceUSDBand: nil,
+                    runs24h: 9,
+                    runs48h: 15,
+                    runsTotal: 2_104,
+                    rawCombinedCost: 412.9,
+                    combinedCostIndex: 12.7
+                ),
+                .init(
+                    model: "gpt-5.6-terra",
+                    effort: "max",
+                    harness: "codex",
+                    iq: 84.2,
+                    passed: 270,
+                    validTasks: 336,
+                    averagePriceUSD: 3.02,
+                    priceSamples: 336,
+                    averageMinutes: 11.1,
+                    durationSamples: 331,
+                    incompleteCostSamples: 2,
+                    totalRuns: 1_988,
+                    latestGradedAt: "2026-09-04T05:38:54+00:00",
+                    averageAgentSteps: 41.8,
+                    agentStepsSamples: 330,
+                    averageTotalTokens: 1_988_100.25,
+                    tokenSamples: 336,
+                    cacheHitRate: 0.948,
+                    cacheTokenSamples: 336,
+                    averagePriceUSDBand: nil,
+                    runs24h: 6,
+                    runs48h: 11,
+                    runsTotal: 1_988,
+                    rawCombinedCost: 233.4,
+                    combinedCostIndex: 7.2
+                ),
+                .init(
+                    model: "deepseek-v4-flash",
+                    effort: "off",
+                    harness: "dsh",
+                    iq: 71.6,
+                    passed: 214,
+                    validTasks: 336,
+                    averagePriceUSD: 0.34,
+                    priceSamples: 300,
+                    averageMinutes: 8.9,
+                    durationSamples: 296,
+                    incompleteCostSamples: 0,
+                    totalRuns: 1_402,
+                    latestGradedAt: "2026-09-04T05:38:54+00:00",
+                    averageAgentSteps: 33.6,
+                    agentStepsSamples: 300,
+                    averageTotalTokens: 1_402_800.75,
+                    tokenSamples: 336,
+                    cacheHitRate: 0.936,
+                    cacheTokenSamples: 336,
+                    averagePriceUSDBand: .init(offPeak: 0.22, peak: 0.45),
+                    runs24h: 4,
+                    runs48h: 8,
+                    runsTotal: 1_402,
+                    rawCombinedCost: 12.1,
+                    combinedCostIndex: 0.4
+                ),
+            ],
+            history: [
+                .init(
+                    at: "2026-08-20T10:00:00+08:00",
+                    points: [
+                        .init(
+                            model: "gpt-5.6-sol",
+                            effort: "xhigh",
+                            passed: 285,
+                            validTasks: 336,
+                            iq: 86.9,
+                            averagePriceUSD: 4.40,
+                            priceSamples: 330,
+                            averageMinutes: 12.2,
+                            durationSamples: 324,
+                            averageAgentSteps: 43.7,
+                            agentStepsSamples: 322,
+                            averageTotalTokens: 2_180_900.1,
+                            tokenSamples: 330,
+                            cacheHitRate: 0.950,
+                            cacheTokenSamples: 330
+                        ),
+                    ]
+                ),
+                .init(
+                    at: "2026-09-04T01:27:38+08:00",
+                    points: [
+                        .init(
+                            model: "gpt-5.6-sol",
+                            effort: "xhigh",
+                            passed: 291,
+                            validTasks: 336,
+                            iq: 88.4,
+                            averagePriceUSD: 4.51,
+                            priceSamples: 336,
+                            averageMinutes: 12.4,
+                            durationSamples: 330,
+                            averageAgentSteps: 44.1,
+                            agentStepsSamples: 328,
+                            averageTotalTokens: 2_210_400.5,
+                            tokenSamples: 336,
+                            cacheHitRate: 0.951,
+                            cacheTokenSamples: 336
+                        ),
+                    ]
+                ),
+            ],
+            fingerprint: "seed-fingerprint-intelligence-efficiency",
+            activityFingerprint: "seed-activity-fingerprint-intelligence-efficiency",
+            method: .init(
+                iq: "fixture：每任务等权最近三个有效样本；pass_rate × 150",
+                price: "fixture：均值口径说明（种子文案，非上游原文）",
+                duration: "fixture：最近一次平均时长（分钟）",
+                combinedCost: "fixture：组合成本指数说明"
+            )
+        )
+        _ = try await repository.insertIntelligenceEfficiency(dataset)
     }
 }
 #endif

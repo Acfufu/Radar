@@ -73,7 +73,48 @@ struct Phase4SourceContractTests {
         #expect(seed.contains("state == \"analytics\""))
         #expect(!package.contains("analytics-fixture"))
         #expect(!package.contains("radar-insights"))
-        #expect(!package.contains("intelligence-efficiency"))
+        // P2② (spec §5.2): the canonical intelligence-efficiency fixture is a
+        // test-only asset — excluded from the test bundle resources and never
+        // shipped inside the app target.
+        #expect(package.contains("Fixtures/IntelligenceEfficiency"))
+        #expect(FileManager.default.fileExists(
+            atPath: root.appending(path: "Tests/AIRadarTests/Fixtures/IntelligenceEfficiency/intelligence-efficiency.json").path
+        ))
+        #expect(!FileManager.default.fileExists(
+            atPath: root.appending(path: "Sources/AIRadar/Resources/Fixtures/intelligence-efficiency.json").path
+        ))
+    }
+
+    @Test("intelligence-efficiency sidecar endpoint and forbidden-domain contract")
+    func efficiencySidecarBoundaryContract() throws {
+        let adapter = try text("Sources/AIRadar/Sources/CodexRadar/IntelligenceEfficiencyAdapter.swift")
+        // Fixed endpoint + dedicated 8MiB transport set at both sites
+        // (transport cap and source-level cap, spec §5.0/§10).
+        #expect(adapter.contains("URL(string: \"https://codexradar.com/data/intelligence-efficiency.json\")!"))
+        #expect(adapter.contains("static let maximumResponseBytes = 8 * 1_024 * 1_024"))
+        #expect(adapter.contains("URLSessionHTTPTransport(maxBodyBytes: IntelligenceEfficiencyAdapter.maximumResponseBytes)"))
+        #expect(adapter.contains("URLSessionHTTPTransport(maxBodyBytes: maximumResponseBytes)"))
+
+        // The payload's provenance fields point at the protected API domain;
+        // no production source may construct requests for it. The only
+        // permitted mention of the domain is the Settings disclosure, and the
+        // deng submission API is forbidden everywhere (spec §5.0).
+        var sources: [String: String] = [:]
+        let sourcesRoot = root.appending(path: "Sources/AIRadar")
+        for fileURL in FileManager.default.enumerator(at: sourcesRoot, includingPropertiesForKeys: nil)! {
+            let url = fileURL as! URL
+            if url.pathExtension == "swift" {
+                sources[String(url.path.dropFirst(sourcesRoot.path.count + 1))] = try String(contentsOf: url, encoding: .utf8)
+            }
+        }
+        let settings = try #require(sources["Features/Settings/SettingsView.swift"])
+        let withoutDisclosure = sources.filter { $0.key != "Features/Settings/SettingsView.swift" }.values.joined()
+        #expect(!withoutDisclosure.contains("api.codexradar.com"))
+        #expect(!sources.values.joined().contains("deng.codexradar.com/api"))
+        #expect(settings.contains("codexradar.com/data/intelligence-efficiency.json"))
+        #expect(settings.contains("公开 GET、无认证"))
+        #expect(settings.contains("api.codexradar.com"))
+        #expect(settings.contains("/api/*"))
     }
 
     @Test("export is wired as a one-way save surface without an import handler")
