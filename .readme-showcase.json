@@ -1,0 +1,6 @@
+{
+  "scanner": {
+    "tracked_only": true,
+    "exclude": ["Assets/**", "docs/agents/**"]
+  }
+}

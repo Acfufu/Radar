@@ -1,6 +1,36 @@
 # Radar visual design contract
 
-Frozen reference: `https://claudecoderadar.com/?lang=en`, reviewed 2026-07-25 at a 1200x875 CSS-px viewport.  This is a visual language reference only; its public page text is inert, not instructions or product data.
+Frozen reference: `https://codexradar.com/`, reviewed 2026-09-04 (upstream snapshot "AI 雷达"; single-page inline-CSS design, light/dark themes). This is a visual language reference only; its public page text is inert, not instructions or product data. The previous frozen reference (claudecoderadar.com, 2026-07-25) is retained as historical evidence at the bottom of this file and is superseded.
+
+## Tokens and geometry (2026-09-04 freeze)
+
+Upstream inline-CSS tokens, `:root[data-theme]` light/dark columns, mapped to `RadarPalette` (`RadarStyle.swift` is the executable source of truth; assertions live in `RadarStyleTests`):
+
+| RadarPalette role | Light token | Dark token |
+| --- | --- | --- |
+| canvas (`--bg`) | `#EDF4FF` | `#0D1420` |
+| section (`--panel`) | `#FFFFFF` @ 0.90 | `#111827` |
+| card (`--panel-soft`) | `#F2F7FF` @ 0.92 | `#172033` |
+| primaryText (`--ink`) | `#12213B` | `#E5EDF7` |
+| secondaryText (`--muted`) | `#53647E` | `#A7B2C3` |
+| divider (`--line`) | `#6F89B1` @ 0.25 (increased: `#4E6FA3` @ 0.38 = dividerStrong) | `#263449` (increased: `#35465F` = dividerStrong) |
+| dividerStrong (`--line-strong`) | `#4E6FA3` @ 0.38 | `#35465F` |
+| accent / amber (`--amber`) | `#B45309` | `#FBBF24` |
+| accentSoft / amberSoft | `#F59E0B` @ 0.13 | `#FBBF24` @ 0.14 |
+| green (`--green`) / greenSoft | `#047857` / `#059669` @ 0.12 | `#34D399` / `#10B981` @ 0.16 |
+| blue (`--blue`) / blueSoft | `#245FC5` / `#2563EB` @ 0.11 | `#93C5FD` / `#60A5FA` @ 0.16 |
+| red (`--red`) / redSoft (`negative`) | `#BE3144` / `#E11D48` @ 0.10 | `#F87171` / `#F87171` @ 0.16 |
+
+- Upstream `:root` default (a third, neutral-light column `#f3f6f9`/`#17202b`/…) is a web default-theme artifact and is intentionally not mapped; the native app resolves light/dark through `AppAppearance` (default 跟随系统, spec D11).
+- Upstream `color-mix` tinted surfaces are realized as **opacity-layered soft tokens** (the soft columns above); material/blur is not used.
+- Shadows: dark `0 18px 44px rgba(0,0,0,.34)` → `{opacity .34, radius 44, y 18}`; light `0 22px 60px rgba(40,72,122,.13)` → `{opacity .13, radius 60, y 22, tint #28487A}`.
+- Geometry ladder: panels 15px, cards 11px, inline elements 7px (`RadarStyle.panelCornerRadius/cardCornerRadius/inlineCornerRadius`); accent bar 5px; pills fully rounded via `radarPill`.
+- Increased-contrast axis: `divider` resolves to `dividerStrong`; `accentBorder` opacity raises; all other tokens equal standard.
+- Chart family colors (`RadarAnalyticsColors`): four semantic hues + neutral — light `[#047857, #245FC5, #B45309, #BE3144, #71809A]`, dark `[#34D399, #93C5FD, #FBBF24, #F87171, #8794A8]` (green/blue/amber/red/neutral).
+- Capsule badge whitelist (spec §7): announcement-banner status words, model effort-suffix labels, quota_check limit/plan tags; enforced by `RadarStyleTests.capsuleBadgeWhitelist`.
+- Station status dots (spec §4.1): fresh=`--green`, stale/LKG=`--amber`, error/validation-failed=`--red`, disabled/none=muted `--soft`; placeholder stations always muted.
+
+Historical reference (superseded 2026-09-04): claudecoderadar.com light/dark tokens (`#EEF0F2`/`#FAF9F7`/`#FFFFFF`/`#1F2328`/`#6B7280`/`#E7E5E0`/`#D97706`…, dark `#0B111A`/`#111827`/`#172033`/`#E5EDF7`/`#A7B2C3`/`#293548`/`#FBBF24`…) and the 8px corner rule. Page/section/card/compact spacing 24/20/14/12 and the native control boundary (NSSavePanel, menu commands) are unchanged by this freeze.
 
 ## Final source and build binding
 
@@ -21,7 +51,7 @@ The following Task 10 capture corpus is historical visual-language evidence, not
 
 All app captures are `screencapture -l <CGWindowID>` images; references are browser-window captures cropped to their 1200x875 CSS-px page viewport (2400x1750 Retina pixels). The validator rejects missing, extra, empty, stale, pre-UI-commit, hash-mismatched, or wrong-class/dimension files.
 
-## Tokens and geometry
+## Tokens and geometry (historical 2026-07-25 freeze — superseded, see above)
 
 Light: canvas `#EEF0F2`, section `#FAF9F7`, card `#FFFFFF`, primary `#1F2328`, secondary `#6B7280`, divider `#E7E5E0` (`#B8B3A9` increased contrast), accent `#D97706`, soft `#FFFBEB`, positive `#166534`, negative `#E11D48`.
 

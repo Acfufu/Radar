@@ -88,6 +88,14 @@ struct RadarShadow: Equatable, Sendable {
     let opacity: Double
     let radius: CGFloat
     let y: CGFloat
+    let tint: RadarColorToken
+
+    init(opacity: Double, radius: CGFloat, y: CGFloat, tint: RadarColorToken = .rgb(0x000000)) {
+        self.opacity = opacity
+        self.radius = radius
+        self.y = y
+        self.tint = tint
+    }
 }
 
 struct RadarChartMetrics: Equatable, Sendable {
@@ -140,20 +148,36 @@ struct RadarPalette: Equatable, Sendable {
     let primaryText: RadarColorToken
     let secondaryText: RadarColorToken
     let divider: RadarColorToken
+    let dividerStrong: RadarColorToken
     let accent: RadarColorToken
     let accentSoft: RadarColorToken
     let accentBorder: RadarColorToken
     let positive: RadarColorToken
     let negative: RadarColorToken
+    let green: RadarColorToken
+    let greenSoft: RadarColorToken
+    let amber: RadarColorToken
+    let amberSoft: RadarColorToken
+    let blue: RadarColorToken
+    let blueSoft: RadarColorToken
+    let red: RadarColorToken
+    let redSoft: RadarColorToken
     let shadow: RadarShadow
 }
 
 enum RadarStyle {
-    static let cornerRadius: CGFloat = 8
+    // Upstream geometry ladder (codexradar.com 2026-09-04 snapshot):
+    // panels 15px, cards 7-11px, pills fully rounded.
+    static let panelCornerRadius: CGFloat = 15
+    static let cardCornerRadius: CGFloat = 11
+    static let inlineCornerRadius: CGFloat = 7
+    /// Legacy single-radius entry point; now card-level.
+    static let cornerRadius: CGFloat = cardCornerRadius
     static let pageSpacing: CGFloat = 24
     static let sectionSpacing: CGFloat = 20
     static let cardSpacing: CGFloat = 14
     static let compactSpacing: CGFloat = 12
+    static let accentBarWidth: CGFloat = 5
     static let historyAxisMetrics = RadarHistoryAxisMetrics(
         regularWidth: 440,
         expandedWidth: 700
@@ -172,22 +196,24 @@ enum RadarStyle {
     )
 
     static func analyticsColors(for scheme: ColorScheme) -> RadarAnalyticsColors {
+        // Four semantic families + one neutral, mapped from the upstream
+        // green/blue/amber/red tokens (family mapping recorded in design-qa).
         switch scheme {
         case .dark:
             RadarAnalyticsColors(familyColors: [
-                .rgb(0x4ADE80),
-                .rgb(0xC084FC),
-                .rgb(0xFB923C),
-                .rgb(0x60A5FA),
-                .rgb(0x2DD4BF),
+                .rgb(0x34D399),
+                .rgb(0x93C5FD),
+                .rgb(0xFBBF24),
+                .rgb(0xF87171),
+                .rgb(0x8794A8),
             ])
         default:
             RadarAnalyticsColors(familyColors: [
-                .rgb(0x15803D),
-                .rgb(0x7E22CE),
-                .rgb(0xC2410C),
-                .rgb(0x1D4ED8),
-                .rgb(0x0F766E),
+                .rgb(0x047857),
+                .rgb(0x245FC5),
+                .rgb(0xB45309),
+                .rgb(0xBE3144),
+                .rgb(0x71809A),
             ])
         }
     }
@@ -205,36 +231,58 @@ enum RadarStyle {
         for scheme: ColorScheme,
         contrast: ColorSchemeContrast = .standard
     ) -> RadarPalette {
+        // Upstream tokens (codexradar.com 2026-09-04): [data-theme=light] and
+        // [data-theme=dark] columns. color-mix tinted surfaces are realized
+        // as opacity-layered soft tokens; increased contrast strengthens the
+        // divider to line-strong and raises accent-border opacity only.
         let increased = contrast == .increased
         if scheme == .dark {
             return RadarPalette(
-                canvas: .rgb(0x0B111A),
+                canvas: .rgb(0x0D1420),
                 section: .rgb(0x111827),
                 card: .rgb(0x172033),
                 primaryText: .rgb(0xE5EDF7),
                 secondaryText: .rgb(0xA7B2C3),
-                divider: .rgb(increased ? 0x52647D : 0x293548),
+                divider: .rgb(increased ? 0x35465F : 0x263449),
+                dividerStrong: .rgb(0x35465F),
                 accent: .rgb(0xFBBF24),
-                accentSoft: .rgb(0xFBBF24, opacity: 0.12),
+                accentSoft: .rgb(0xFBBF24, opacity: 0.14),
                 accentBorder: .rgb(0xFBBF24, opacity: increased ? 0.55 : 0.28),
-                positive: .rgb(0x86EFAC),
-                negative: .rgb(0xFB7185),
-                shadow: .init(opacity: 0.28, radius: 32, y: 12)
+                positive: .rgb(0x34D399),
+                negative: .rgb(0xF87171),
+                green: .rgb(0x34D399),
+                greenSoft: .rgb(0x10B981, opacity: 0.16),
+                amber: .rgb(0xFBBF24),
+                amberSoft: .rgb(0xFBBF24, opacity: 0.14),
+                blue: .rgb(0x93C5FD),
+                blueSoft: .rgb(0x60A5FA, opacity: 0.16),
+                red: .rgb(0xF87171),
+                redSoft: .rgb(0xF87171, opacity: 0.16),
+                shadow: .init(opacity: 0.34, radius: 44, y: 18)
             )
         }
         return RadarPalette(
-            canvas: .rgb(0xEEF0F2),
-            section: .rgb(0xFAF9F7),
-            card: .rgb(0xFFFFFF),
-            primaryText: .rgb(0x1F2328),
-            secondaryText: .rgb(0x6B7280),
-            divider: .rgb(increased ? 0xB8B3A9 : 0xE7E5E0),
-            accent: .rgb(0xD97706),
-            accentSoft: .rgb(0xFFFBEB),
-            accentBorder: .rgb(increased ? 0xD97706 : 0xFDE68A),
-            positive: .rgb(0x166534),
-            negative: .rgb(0xE11D48),
-            shadow: .init(opacity: 0.06, radius: 3, y: 1)
+            canvas: .rgb(0xEDF4FF),
+            section: .rgb(0xFFFFFF, opacity: 0.90),
+            card: .rgb(0xF2F7FF, opacity: 0.92),
+            primaryText: .rgb(0x12213B),
+            secondaryText: .rgb(0x53647E),
+            divider: increased ? .rgb(0x4E6FA3, opacity: 0.38) : .rgb(0x6F89B1, opacity: 0.25),
+            dividerStrong: .rgb(0x4E6FA3, opacity: increased ? 0.55 : 0.38),
+            accent: .rgb(0xB45309),
+            accentSoft: .rgb(0xF59E0B, opacity: 0.13),
+            accentBorder: .rgb(0xB45309, opacity: increased ? 0.60 : 0.30),
+            positive: .rgb(0x047857),
+            negative: .rgb(0xBE3144),
+            green: .rgb(0x047857),
+            greenSoft: .rgb(0x059669, opacity: 0.12),
+            amber: .rgb(0xB45309),
+            amberSoft: .rgb(0xF59E0B, opacity: 0.13),
+            blue: .rgb(0x245FC5),
+            blueSoft: .rgb(0x2563EB, opacity: 0.11),
+            red: .rgb(0xBE3144),
+            redSoft: .rgb(0xE11D48, opacity: 0.10),
+            shadow: .init(opacity: 0.13, radius: 60, y: 22, tint: .rgb(0x28487A))
         )
     }
 }
@@ -291,13 +339,13 @@ private struct RadarPanelModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(RadarStyle.cardSpacing)
-            .background(palette.card.color, in: .rect(cornerRadius: RadarStyle.cornerRadius))
+            .background(palette.card.color, in: .rect(cornerRadius: RadarStyle.panelCornerRadius))
             .overlay {
-                RoundedRectangle(cornerRadius: RadarStyle.cornerRadius)
+                RoundedRectangle(cornerRadius: RadarStyle.panelCornerRadius)
                     .stroke(palette.divider.color)
             }
             .shadow(
-                color: .black.opacity(palette.shadow.opacity),
+                color: palette.shadow.tint.color.opacity(palette.shadow.opacity),
                 radius: palette.shadow.radius,
                 y: palette.shadow.y
             )
@@ -315,11 +363,60 @@ private struct RadarMetricCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(RadarStyle.cardSpacing)
-            .background(palette.accentSoft.color, in: .rect(cornerRadius: RadarStyle.cornerRadius))
+            .background(palette.accentSoft.color, in: .rect(cornerRadius: RadarStyle.cardCornerRadius))
             .overlay {
-                RoundedRectangle(cornerRadius: RadarStyle.cornerRadius)
+                RoundedRectangle(cornerRadius: RadarStyle.cardCornerRadius)
                     .stroke(palette.accentBorder.color)
             }
+    }
+}
+
+private struct RadarAccentCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    let accent: RadarColorToken
+    let soft: RadarColorToken
+
+    private var palette: RadarPalette {
+        RadarStyle.palette(for: colorScheme, contrast: contrast)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .padding(RadarStyle.cardSpacing)
+            .background(soft.color, in: .rect(cornerRadius: RadarStyle.cardCornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: RadarStyle.cardCornerRadius)
+                    .stroke(accent.color.opacity(0.27))
+            }
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: RadarStyle.inlineCornerRadius)
+                    .fill(accent.color)
+                    .frame(width: RadarStyle.accentBarWidth)
+                    .padding(.vertical, RadarStyle.compactSpacing)
+                    .padding(.leading, 3)
+            }
+    }
+}
+
+private struct RadarPillModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    let accent: RadarColorToken
+    let soft: RadarColorToken
+
+    private var palette: RadarPalette {
+        RadarStyle.palette(for: colorScheme, contrast: contrast)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(accent.color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(soft.color, in: .capsule)
+            .overlay { Capsule().stroke(accent.color.opacity(0.27)) }
     }
 }
 
@@ -328,6 +425,15 @@ extension View {
     func radarPage() -> some View { modifier(RadarPageModifier()) }
     func radarPanel() -> some View { modifier(RadarPanelModifier()) }
     func radarMetricCard() -> some View { modifier(RadarMetricCardModifier()) }
+    /// Upstream accent card: left 5px accent bar over a soft tinted card.
+    func radarAccentCard(accent: RadarColorToken, soft: RadarColorToken) -> some View {
+        modifier(RadarAccentCardModifier(accent: accent, soft: soft))
+    }
+    /// Capsule badge. Whitelist (spec §7): announcement-banner status words,
+    /// model effort-suffix labels, quota_check limit/plan tags.
+    func radarPill(accent: RadarColorToken, soft: RadarColorToken) -> some View {
+        modifier(RadarPillModifier(accent: accent, soft: soft))
+    }
 }
 
 struct RadarGroupBoxStyle: GroupBoxStyle {
