@@ -39,6 +39,10 @@ enum ExportDataset: String, Codable, CaseIterable, Sendable {
     case sourceStatus = "source-status"
     case renderedWarnings = "rendered-warnings"
     case renderedIQHistory = "rendered-iq-history"
+    // P2 expanded surfaces (spec §5.5): additive, schemaVersion stays 1.
+    case codexStationStatus = "codex-station-status"
+    case intelligenceEfficiency = "intelligence-efficiency"
+    case fastRadarHistory = "fast-radar-history"
     case rawSamples = "raw-samples"
 
     static let normalized: [ExportDataset] = [
@@ -48,5 +52,8 @@ enum ExportDataset: String, Codable, CaseIterable, Sendable {
         .sourceStatus,
         .renderedWarnings,
         .renderedIQHistory,
+        .codexStationStatus,
+        .intelligenceEfficiency,
+        .fastRadarHistory,
     ]
 }

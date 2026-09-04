@@ -63,3 +63,26 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 - Credential classification from `security find-identity -v -p codesigning` and `ClaudeRadarNotary` availability, with secrets excluded.
 - Isolated install, second-build replacement, data-preservation, independent-clear, quit, and app-only uninstall evidence.
 - Gatekeeper is Pass only for a Developer ID/notarized artifact; ad-hoc rejection is expected and remains externally BLOCKED.
+
+## P2 online QA steps (recorded 2026-09-05)
+
+Executed per commit during P2①–⑤ (fixed-field receipts live in each commit
+message; this section records the re-runnable steps, it does not replace
+those receipts).
+
+1. Isolated online sync: launch with `RADAR_FIXTURE_MODE=online
+   RADAR_DATA_ROOT="$TMPDIR/AIRadar-OnlineQA-<phase>"`, wait ≤120 s for the
+   `SyncMetadata.json` rows `codex-radar|intelligence-efficiency`,
+   `codex-radar|fast-radar-history`, `codex-radar|source-status`, and
+   `codex-radar|community` to gain a non-nil `lastSuccessfulAt`, quit the
+   app, then verify store entity counts (`ZINTELLIGENCEEFFICIENCYSNAPSHOTENTITY`,
+   `ZFASTRADARRUNENTITY`, `ZCODERADARSTATUSSNAPSHOTENTITY` > 0) and that the
+   community blob contains `group`/`history` but zero `my_scores`
+   occurrences (D12). Delete the QA data root afterwards.
+2. Programmatic export (P2⑤): relaunch with `RADAR_UI_EXPORT_DESTINATION=
+   /tmp/out.zip RADAR_UI_SOURCE=codexRadar RADAR_UI_DESTINATION=导出`, press
+   导出 ZIP…, then verify `manifest.json` lists `codex-station-status`,
+   `intelligence-efficiency`, and `fast-radar-history` at schemaVersion 1
+   (additive expansion does not bump the version, spec §5.1/§5.5).
+3. The rendered-reader live readiness steps above remain BLOCKED-gated and
+   are unchanged by P2.

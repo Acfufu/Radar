@@ -397,7 +397,8 @@ struct RadarExportServiceTests {
         await #expect(throws: ExportError.invalidDestination) {
             try await service.export(request: .init(destination: traversal, datasets: [.models]))
         }
-        #expect(ExportDataset.allCases.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "rendered-warnings", "rendered-iq-history", "raw-samples"])
+        #expect(ExportDataset.allCases.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "rendered-warnings", "rendered-iq-history", "codex-station-status", "intelligence-efficiency", "fast-radar-history", "raw-samples"])
+        #expect(ExportDataset.normalized.map(\.rawValue) == ["models", "benchmark-runs", "community-ratings", "source-status", "rendered-warnings", "rendered-iq-history", "codex-station-status", "intelligence-efficiency", "fast-radar-history"])
     }
 
     @Test("zip process cancellation terminates and clears its active process")
@@ -1019,6 +1020,164 @@ private func exportIQHistory(
             parserRevision: parserRevision
         )
     )
+}
+
+@MainActor
+@Test("P2 expanded datasets export as normalized schema-v1 envelopes with source isolation")
+func expandedDatasetsProductionExportContract() async throws {
+    let root = try temporaryDirectory()
+    let fixture = try exportRepository(root: root, count: 0)
+
+    let status = CodexStationStatusDataset(
+        sourceID: .codexRadar,
+        fetchedAt: Date(timeIntervalSince1970: 15),
+        monitoredAt: "2026-09-05T03:00:00+08:00",
+        timezone: "Asia/Shanghai",
+        windowOpen: true,
+        status: "community_confirmed",
+        recommendedAction: "ready",
+        window: .init(
+            isOpen: true,
+            status: "community_confirmed",
+            action: "ready",
+            message: "message",
+            title: "title",
+            scope: "scope",
+            openedAt: nil,
+            closedAt: nil,
+            sourceURL: nil
+        ),
+        prediction: .init(level: "low", probability24h: 0.14, probability48h: 0.27, summary: "summary", summaryEN: "summary en", updatedAt: nil),
+        tiboPresence: .init(
+            timezone: "America/Los_Angeles",
+            locationLabelZH: "位置",
+            locationLabelEN: "location",
+            probability: 0.2,
+            confidence: "low",
+            evidenceSummaryZH: "摘要",
+            evidenceSummaryEN: "summary",
+            sourceURLs: ["https://example.com/post"],
+            shouldDisplay: true,
+            safetyNoteZH: "安全说明",
+            safetyNoteEN: "safety",
+            observedAt: nil,
+            updatedAt: nil
+        )
+    )
+    _ = try await fixture.repository.insertStationStatus(status)
+
+    let efficiency = IntelligenceEfficiencyDataset(
+        sourceID: .codexRadar,
+        fetchedAt: Date(timeIntervalSince1970: 16),
+        schema: 2,
+        type: IntelligenceEfficiencyParser.expectedType,
+        models: 17,
+        runsTotal: 42_903,
+        points: [.init(model: "gpt-5.6-sol", effort: "low", harness: "codex", iq: 81.25, combinedCostIndex: 0.0446)],
+        history: []
+    )
+    _ = try await fixture.repository.insertIntelligenceEfficiency(efficiency)
+
+    let fastRadar = FastRadarHistoryDataset(
+        sourceID: .codexRadar,
+        fetchedAt: Date(timeIntervalSince1970: 17),
+        schemaVersion: 1,
+        type: FastRadarHistoryParser.expectedType,
+        timezone: "Asia/Shanghai",
+        updatedAt: "2026-09-04T13:20:24+08:00",
+        runs: [
+            .init(
+                runID: "20260904-1314",
+                measuredAt: "2026-09-04T13:14:54+08:00",
+                completedAt: "2026-09-04T13:20:24+08:00",
+                cliVersion: "0.149.0",
+                models: .init(sol: .init(
+                    standard: .init(ttftSeconds: 9, tps: 56, e2eSeconds: 45),
+                    fast: .init(ttftSeconds: 3.4, tps: 69, e2eSeconds: 20.5)
+                ))
+            ),
+        ]
+    )
+    _ = try await fixture.repository.insertFastRadarHistory(fastRadar)
+
+    // Source isolation: rows from another source must not export.
+    var siblingStatus = status
+    siblingStatus = CodexStationStatusDataset(
+        sourceID: .claudeCodeRadar,
+        fetchedAt: Date(timeIntervalSince1970: 15),
+        monitoredAt: status.monitoredAt,
+        timezone: status.timezone,
+        windowOpen: status.windowOpen,
+        status: status.status,
+        recommendedAction: status.recommendedAction,
+        window: status.window,
+        prediction: status.prediction,
+        tiboPresence: status.tiboPresence
+    )
+    _ = try await fixture.repository.insertStationStatus(siblingStatus)
+
+    let destination = root.appending(path: "expanded.zip")
+    let result = try await RadarExportService(source: RadarExportSource(
+        repository: fixture.repository,
+        rawSampleStore: RawSampleStore(dataRoot: root),
+        sourceID: .codexRadar
+    )).export(
+        request: .init(
+            destination: destination,
+            datasets: [.codexStationStatus, .intelligenceEfficiency, .fastRadarHistory],
+            range: .init(start: Date(timeIntervalSince1970: 10), end: Date(timeIntervalSince1970: 20)),
+            pageSize: 100
+        ),
+        exportedAt: Date(timeIntervalSince1970: 30)
+    )
+
+    #expect(result.manifest.datasets == [
+        .init(name: "codex-station-status", schemaVersion: 1, recordCount: 1, pageCount: 1),
+        .init(name: "intelligence-efficiency", schemaVersion: 1, recordCount: 1, pageCount: 1),
+        .init(name: "fast-radar-history", schemaVersion: 1, recordCount: 1, pageCount: 1),
+    ])
+
+    let tree = try unzip(destination, into: root.appending(path: "expanded-tree"))
+
+    let statusPage = try JSONDecoder.export.decode(PageEnvelope.self, from: Data(contentsOf: tree.appending(path: "codex-station-status/page-000001.json")))
+    let statusRecord = try #require(statusPage.records.first)
+    #expect(statusRecord.fields["sourceID"] == .string(RadarSourceID.codexRadar.rawValue))
+    #expect(statusRecord.fields["windowOpen"] == .bool(true))
+    guard case let .object(tibo) = try #require(statusRecord.fields["tiboPresence"]) else {
+        Issue.record("expected tibo presence")
+        return
+    }
+    #expect(tibo["shouldDisplay"] == .bool(true))
+    #expect(tibo["safetyNoteZH"] == .string("安全说明"))
+
+    let efficiencyPage = try JSONDecoder.export.decode(PageEnvelope.self, from: Data(contentsOf: tree.appending(path: "intelligence-efficiency/page-000001.json")))
+    let efficiencyRecord = try #require(efficiencyPage.records.first)
+    guard case let .object(snapshot) = try #require(efficiencyRecord.fields["snapshot"]) else {
+        Issue.record("expected normalized efficiency snapshot")
+        return
+    }
+    #expect(snapshot["schema"] == .int(2))
+    #expect(snapshot["runsTotal"] == .int(42_903))
+    guard case let .array(points) = try #require(snapshot["points"]),
+          case let .object(firstPoint) = try #require(points.first) else {
+        Issue.record("expected points")
+        return
+    }
+    #expect(firstPoint["model"] == .string("gpt-5.6-sol"))
+    #expect(firstPoint["iq"] == .double(81.25))
+    // D12-adjacent invariant: my_scores never reach exports (community-level,
+    // asserted in CodexModelRatingsTests; here the envelope stays snapshot-only).
+    #expect(!efficiencyRecord.fields.keys.contains("myScores"))
+
+    let fastPage = try JSONDecoder.export.decode(PageEnvelope.self, from: Data(contentsOf: tree.appending(path: "fast-radar-history/page-000001.json")))
+    let fastRecord = try #require(fastPage.records.first)
+    #expect(fastRecord.fields["timezone"] == .string("Asia/Shanghai"))
+    guard case let .object(run) = try #require(fastRecord.fields["run"]) else {
+        Issue.record("expected run payload")
+        return
+    }
+    #expect(run["runID"] == .string("20260904-1314"))
+    #expect(run["cliVersion"] == .string("0.149.0"))
 }
 
 private func exportBenchmark(index: Int, fetchedAt: Date, sourceUpdatedAt: Date? = nil) -> BenchmarkDataset {

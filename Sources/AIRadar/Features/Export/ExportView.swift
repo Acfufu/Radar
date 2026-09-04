@@ -152,6 +152,9 @@ struct ExportView: View {
         case .sourceStatus: "来源状态"
         case .renderedWarnings: "Codex Radar 官网降智预警"
         case .renderedIQHistory: "Codex Radar 官网 24 小时 IQ 历史"
+        case .codexStationStatus: "Codex Radar 站点状态"
+        case .intelligenceEfficiency: "Codex Radar 效能排行"
+        case .fastRadarHistory: "Codex Radar Fast 雷达实测"
         case .rawSamples: "原始样本"
         }
     }
