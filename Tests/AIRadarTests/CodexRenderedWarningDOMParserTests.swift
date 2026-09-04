@@ -11,7 +11,7 @@ struct CodexRenderedWarningDOMParserTests {
         let snapshot = try parser.parse(fixture("four-cards"), capturedAt: capturedAt)
 
         #expect(snapshot.sourceID == .codexRadar)
-        #expect(snapshot.parserRevision == "codex-radar-rendered-dom-v1")
+        #expect(snapshot.parserRevision == "codex-radar-rendered-dom-v2")
         #expect(snapshot.finalOrigin == "https://codexradar.com")
         #expect(snapshot.sourceTimeLabel == "数据更新于 2 分钟前")
         #expect(snapshot.capturedAt == capturedAt)
@@ -61,19 +61,6 @@ struct CodexRenderedWarningDOMParserTests {
         ]
     )
     func missingAnchors(name: String, expected: CodexRenderedWarningDOMParserError) {
-        #expect(throws: expected) {
-            try parser.parse(fixture(name), capturedAt: capturedAt)
-        }
-    }
-
-    @Test(
-        "missing or duplicate metrics reject the entire segment",
-        arguments: [
-            ("duplicate-metric", CodexRenderedWarningDOMParserError.invalidMetrics(cardIndex: 0)),
-            ("missing-metric", .invalidMetrics(cardIndex: 0)),
-        ]
-    )
-    func invalidMetrics(name: String, expected: CodexRenderedWarningDOMParserError) {
         #expect(throws: expected) {
             try parser.parse(fixture(name), capturedAt: capturedAt)
         }
@@ -191,8 +178,8 @@ struct CodexRenderedWarningDOMParserTests {
     @Test("parser revision is fixed and versioned")
     func parserRevision() {
         let data = replacing(
-            "codex-radar-rendered-dom-v1",
-            with: "codex-radar-rendered-dom-v2"
+            CodexRenderedWarningDOMParser.parserRevision,
+            with: "codex-radar-rendered-dom-v1"
         )(fixture("explicit-empty"))
 
         #expect(throws: CodexRenderedWarningDOMParserError.revisionMismatch) {
@@ -242,7 +229,7 @@ struct CodexRenderedWarningDOMParserTests {
             try fingerprint(
                 sourceTimeLabel: base.sourceTimeLabel,
                 cards: base.cards,
-                parserRevision: "codex-radar-rendered-dom-v2"
+                parserRevision: "codex-radar-rendered-dom-v1"
             ),
         ] {
             #expect(changed != base.semanticFingerprint)
@@ -272,7 +259,7 @@ struct CodexRenderedWarningDOMParserTests {
         [
             "four-cards", "explicit-empty", "localized-time", "class-order-drift",
             "class-order-drift-reversed", "missing-root", "missing-grid", "missing-live-time",
-            "duplicate-metric", "missing-metric", "out-of-range", "challenge", "consent",
+            "out-of-range", "challenge", "consent",
             "off-host", "duplicate-card", "prompt-like-text",
         ]
     }
@@ -299,7 +286,7 @@ struct CodexRenderedWarningDOMParserTests {
         sourceTimeLabel: String,
         cards: [CodexRenderedWarningCard],
         finalOrigin: String = "https://codexradar.com",
-        parserRevision: String = "codex-radar-rendered-dom-v1"
+        parserRevision: String = "codex-radar-rendered-dom-v2"
     ) throws -> String {
         try CodexRenderedWarningSemanticFingerprint.make(
             sourceTimeLabel: sourceTimeLabel,

@@ -570,7 +570,7 @@ private func coreSnapshot(capturedAt: Date) throws -> CodexRenderedWarningSnapsh
         ),
     ]
     let origin = "https://codexradar.com"
-    let revision = "codex-radar-rendered-dom-v1"
+    let revision = "codex-radar-rendered-dom-v2"
     let sourceTimeLabel = "刚刚"
     return CodexRenderedWarningSnapshot(
         sourceID: .codexRadar,

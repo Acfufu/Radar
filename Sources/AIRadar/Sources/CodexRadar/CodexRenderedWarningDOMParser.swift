@@ -20,7 +20,7 @@ enum CodexRenderedWarningDOMParserError: Error, Equatable, Sendable {
 }
 
 struct CodexRenderedWarningDOMParser: Sendable {
-    static let parserRevision = "codex-radar-rendered-dom-v1"
+    static let parserRevision = "codex-radar-rendered-dom-v2"
     static let maximumBridgePayloadBytes = 16 * 1_024
 
     func parse(_ data: Data, capturedAt: Date) throws -> CodexRenderedWarningSnapshot {

@@ -232,7 +232,7 @@ These are small hand-authored projections of the public shapes, not copied live 
 
 ### Public rendered-warning page
 
-- Page: `https://codexradar.com/`; parser revision: `codex-radar-rendered-dom-v1`; exact attribution: `数据来自 Codex 雷达 codexradar.com`.
+- Page: `https://codexradar.com/`; parser revision: `codex-radar-rendered-dom-v2`; exact attribution: `数据来自 Codex 雷达 codexradar.com`.
 - Historical approval record (2026-07-16): the project owner approved this noncommercial path for observing warning values already visible after the public page renders. It is preserved for provenance, not as a current external-authorization receipt. DOM observation is not official API authorization, a license grant, or permission to access protected responses.
 - A hidden native WebKit view uses `WKWebsiteDataStore.nonPersistent()`. Page-owned JavaScript and subresource traffic may render the page, but Radar does not author, intercept, inspect, parse, replay, or persist those requests or responses.
 - The fixed extraction script returns a bounded JSON-safe projection of visible card fields. Radar never persists or exports HTML, body text, script source, cookies, browser storage/profile data, response bodies, authorization material, or endpoint/interception data.

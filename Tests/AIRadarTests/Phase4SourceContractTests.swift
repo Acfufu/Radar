@@ -149,8 +149,19 @@ struct Phase4SourceContractTests {
     func renderedWarningSourceAndPrivacyContract() throws {
         let contract = try text("docs/source-contract.md")
         let notices = try text("docs/third-party-notices.md")
+        let readerSource = try text("Sources/AIRadar/Sources/CodexRadar/CodexRenderedWarningPageReader.swift")
         #expect(contract.contains("https://codexradar.com/"))
-        #expect(contract.contains("codex-radar-rendered-dom-v1"))
+        #expect(contract.contains("codex-radar-rendered-dom-v2"))
+        // P3 v2 (spec §6): values anchor only on the four surviving
+        // degradation markers; the dead data-radar-metric fallback is gone
+        // and Cloudflare challenge detection is retained.
+        #expect(readerSource.contains("data-radar-degradation"))
+        #expect(readerSource.contains("data-radar-degradation-grid"))
+        #expect(readerSource.contains("degradation-card-score"))
+        #expect(readerSource.contains("degradation-deltas"))
+        #expect(!readerSource.contains("data-radar-metric"))
+        #expect(readerSource.contains("data-radar-challenge"))
+        #expect(readerSource.contains("cf-challenge"))
         #expect(contract.contains("数据来自 Codex 雷达 codexradar.com"))
         #expect(contract.contains("DOM observation is not official API authorization"))
         #expect(contract.contains("WKWebsiteDataStore.nonPersistent()"))

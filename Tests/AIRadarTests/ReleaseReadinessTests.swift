@@ -175,7 +175,7 @@ struct ReleaseReadinessTests {
             drop24h: 2,
             drop48h: nil
         )]
-        let parserRevision = "codex-radar-rendered-dom-v1"
+        let parserRevision = "codex-radar-rendered-dom-v2"
         let finalOrigin = "https://codexradar.com"
         let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
             sourceTimeLabel: "Updated now",

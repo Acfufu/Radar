@@ -321,11 +321,11 @@ struct CodexRenderedIQHistoryRepositoryTests {
             sourceTimeLabel: "legacy",
             cards: cards,
             finalOrigin: "https://codexradar.com",
-            parserRevision: "codex-radar-rendered-dom-v1"
+            parserRevision: "codex-radar-rendered-dom-v2"
         )
         let warning = CodexRenderedWarningSnapshot(
             sourceID: .codexRadar,
-            parserRevision: "codex-radar-rendered-dom-v1",
+            parserRevision: "codex-radar-rendered-dom-v2",
             finalOrigin: "https://codexradar.com",
             sourceTimeLabel: "legacy",
             capturedAt: Date(timeIntervalSince1970: 401),

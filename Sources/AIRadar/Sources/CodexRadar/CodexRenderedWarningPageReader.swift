@@ -160,7 +160,7 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
     static let extractionScript = #"""
     (() => {
       "use strict";
-      const revision = "codex-radar-rendered-dom-v1";
+      const revision = "codex-radar-rendered-dom-v2";
       const clean = (value) => typeof value === "string"
         ? value.replace(/\s+/g, " ").trim()
         : "";
@@ -190,15 +190,10 @@ final class CodexRenderedWarningPageReader: NSObject, CodexRenderedWarningReadin
           ? article.querySelector(".degradation-card-score strong")
           : Array.from(article.querySelectorAll(".degradation-deltas > span"))
               .find((candidate) => patterns[kind].test(clean(candidate.textContent)));
-        const nodes = Array.from(article.querySelectorAll("[data-radar-metric], [aria-label]"));
-        const node = observedNode || nodes.find((candidate) => {
-          const label = [
-            candidate.getAttribute("data-radar-metric"),
-            candidate.getAttribute("aria-label"),
-            candidate.textContent
-          ].map(clean).join(" ");
-          return patterns[kind].test(label);
-        });
+        // v2 (spec §6): the dead metric-attribute/aria-label fallback
+        // branch is gone — values anchor only on the four surviving
+        // degradation markers (degradation-card-score / degradation-deltas).
+        const node = observedNode;
         if (!node) return null;
         const value = numberFrom(
           node.getAttribute("data-value")

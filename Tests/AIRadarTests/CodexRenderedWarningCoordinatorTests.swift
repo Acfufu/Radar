@@ -641,11 +641,11 @@ private func renderedWarning(
         sourceTimeLabel: sourceTimeLabel,
         cards: cards,
         finalOrigin: "https://codexradar.com",
-        parserRevision: "codex-radar-rendered-dom-v1"
+        parserRevision: "codex-radar-rendered-dom-v2"
     )
     return CodexRenderedWarningSnapshot(
         sourceID: .codexRadar,
-        parserRevision: "codex-radar-rendered-dom-v1",
+        parserRevision: "codex-radar-rendered-dom-v2",
         finalOrigin: "https://codexradar.com",
         sourceTimeLabel: sourceTimeLabel,
         capturedAt: capturedAt,

@@ -969,7 +969,7 @@ private func exportWarning(
         drop24h: 2,
         drop48h: drop48h
     )]
-    let parserRevision = "codex-radar-rendered-dom-v1"
+    let parserRevision = "codex-radar-rendered-dom-v2"
     let finalOrigin = "https://codexradar.com"
     let fingerprint = try CodexRenderedWarningSemanticFingerprint.make(
         sourceTimeLabel: sourceTimeLabel,

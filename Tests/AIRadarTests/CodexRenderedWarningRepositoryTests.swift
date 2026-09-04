@@ -97,7 +97,7 @@ struct CodexRenderedWarningRepositoryTests {
         let otherRevision = try warning(
             sourceTimeLabel: "other-revision",
             capturedAt: Date(timeIntervalSince1970: 1),
-            parserRevision: "codex-radar-rendered-dom-v2",
+            parserRevision: CodexRenderedWarningDOMParser.parserRevision,
             iq: 1
         )
         _ = try await fixture.repository.insertRenderedWarning(otherRevision)
