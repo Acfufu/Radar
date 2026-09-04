@@ -12,11 +12,11 @@ AI and software-engineering developers and researchers who need to inspect publi
 
 ## Product Purpose
 
-Claude Radar is a native macOS menu-bar app and workspace for reading public model-benchmark snapshots. It validates, stores, analyzes, displays, and exports information already published by upstream sources. Success means that a user can move from an overview into a source-specific room, inspect current and historical evidence, understand freshness and provenance, and export the selected source's data without losing the last valid state after a refresh failure.
+AI Radar is a native macOS menu-bar app and workspace for reading public model-benchmark snapshots. It validates, stores, analyzes, displays, and exports information already published by upstream sources. Success means that a user can move from an overview into a source-specific room, inspect current and historical evidence, understand freshness and provenance, and export the selected source's data without losing the last valid state after a refresh failure.
 
 ## Positioning
 
-Claude Radar gives Claude Code Radar, Codex Radar, and SWE-bench Verified separate rooms, vocabularies, histories, analyses, and export scopes. It deliberately does not create a unified ranking, composite score, or cross-source recommendation; source boundaries are part of the product's meaning rather than an implementation detail.
+AI Radar gives Claude Code Radar, Codex Radar, and SWE-bench Verified separate rooms, vocabularies, histories, analyses, and export scopes. It deliberately does not create a unified ranking, composite score, or cross-source recommendation; source boundaries are part of the product's meaning rather than an implementation detail.
 
 ## Operating Context
 
@@ -39,16 +39,16 @@ Claude Radar gives Claude Code Radar, Codex Radar, and SWE-bench Verified separa
 
 ## Brand Commitments
 
-- Product name: Claude Radar; executable and bundle identity: ClaudeRadar.
+- Product name: AI Radar; executable identity: AIRadar; bundle identifier remains com.acfufu.ClaudeRadar to preserve user preferences and login items.
 - Preserve the exact source names Claude Code Radar, Codex Radar, and SWE-bench Verified, with source attribution and the existing non-affiliation statement.
-- Maintain the existing English and Simplified Chinese documentation surfaces and the checked-in Claude Radar icon assets.
+- Maintain the existing English and Simplified Chinese documentation surfaces and the checked-in AI Radar icon assets.
 - The project is licensed under GPL-3.0-only.
 
 ## Evidence on Hand
 
 - Product documentation: `README.md`, `README_zh.md`, `docs/source-contract.md`, `docs/implementation-status.md`, `docs/release-checklist.md`, and `docs/third-party-notices.md`.
-- Native implementation: `Sources/ClaudeRadar/`, `Package.swift`, and `Config/ClaudeRadar-Info.plist`.
-- Visual and identity assets: `Assets/ClaudeRadar.png`, `Assets/ClaudeRadar.icns`, and `Assets/readme/`.
+- Native implementation: `Sources/AIRadar/`, `Package.swift`, and `Config/AIRadar-Info.plist`.
+- Visual and identity assets: `Assets/AIRadar.png`, `Assets/AIRadar.icns`, and `Assets/readme/`.
 - Evidence is limited to implemented behavior, public source data, checked-in fixtures, and documented provenance. Do not invent testimonials, customer claims, benchmark results, pricing, or upstream affiliation.
 
 ## Product Principles

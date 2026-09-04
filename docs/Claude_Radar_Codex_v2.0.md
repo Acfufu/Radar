@@ -1,3 +1,4 @@
+><!-- ARCHIVED 2026-09-04: historical record; intentionally NOT updated for the AI Radar rename. -->
 # Claude Radar for macOS 26+ — Codex 执行蓝图 v2.0
 
 > 状态：MVP 实施基线  

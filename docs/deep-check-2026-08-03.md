@@ -1,3 +1,4 @@
+<!-- ARCHIVED 2026-09-04: historical record; intentionally NOT updated for the AI Radar rename. -->
 # ClaudeRadar 深度检查报告
 
 - **日期**：2026-08-03

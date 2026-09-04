@@ -15,12 +15,12 @@ case "$CONFIGURATION" in
 esac
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="ClaudeRadar"
+APP_NAME="AIRadar"
 APP_BUNDLE="$ROOT_DIR/.build/app/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
 MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES_DIR="$CONTENTS/Resources"
-ICON_FILE="$ROOT_DIR/Assets/ClaudeRadar.icns"
+ICON_FILE="$ROOT_DIR/Assets/AIRadar.icns"
 
 cd "$ROOT_DIR"
 swift build --configuration "$CONFIGURATION" --product "$APP_NAME"
@@ -29,14 +29,14 @@ BIN_DIR="$(swift build --configuration "$CONFIGURATION" --show-bin-path)"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$BIN_DIR/$APP_NAME" "$MACOS_DIR/$APP_NAME"
-cp "$ROOT_DIR/Config/ClaudeRadar-Info.plist" "$CONTENTS/Info.plist"
+cp "$ROOT_DIR/Config/AIRadar-Info.plist" "$CONTENTS/Info.plist"
 if [[ ! -f "$ICON_FILE" ]]; then
   echo "missing app icon: $ICON_FILE" >&2
   exit 1
 fi
 cp "$ICON_FILE" "$RESOURCES_DIR/$APP_NAME.icns"
 
-RESOURCE_BUNDLE="$BIN_DIR/ClaudeRadar_ClaudeRadar.bundle"
+RESOURCE_BUNDLE="$BIN_DIR/AIRadar_AIRadar.bundle"
 if [[ "$CONFIGURATION" == "debug" ]]; then
   if [[ ! -d "$RESOURCE_BUNDLE" ]]; then
     echo "missing SwiftPM resource bundle: $RESOURCE_BUNDLE" >&2

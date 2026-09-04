@@ -3,19 +3,19 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClaudeRadar",
+    name: "AIRadar",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "ClaudeRadar", targets: ["ClaudeRadar"]),
+        .executable(name: "AIRadar", targets: ["AIRadar"]),
     ],
     targets: [
         .executableTarget(
-            name: "ClaudeRadar",
+            name: "AIRadar",
             resources: [.process("Resources")]
         ),
         .testTarget(
-            name: "ClaudeRadarTests",
-            dependencies: ["ClaudeRadar"],
+            name: "AIRadarTests",
+            dependencies: ["AIRadar"],
             exclude: ["Fixtures/CodexRenderedWarning", "Fixtures/CodexRenderedIQHistory"]
         ),
     ],
