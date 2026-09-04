@@ -273,10 +273,14 @@ enum DebugUISeed {
             _ = try await repository.insertSourceStatus(.init(sourceID: sourceID, sourceUpdatedAt: base, fetchedAt: base, quotaEstimates: quotas), seriesRevision: "fixture-r2")
         }
         if state != "community-unavailable" {
-            let ratings = second.prefix(2).map {
-                CommunityRating(id: $0.id, model: $0.descriptor, average: 8.2, voteCount: 12, scaleMinimum: 1, scaleMaximum: 10)
+            if sourceID == .codexRadar {
+                try await populateCommunityMatrix(repository: repository, now: base)
+            } else {
+                let ratings = second.prefix(2).map {
+                    CommunityRating(id: $0.id, model: $0.descriptor, average: 8.2, voteCount: 12, scaleMinimum: 1, scaleMaximum: 10)
+                }
+                _ = try await repository.insertCommunity(.init(sourceID: sourceID, sourceUpdatedAt: base, fetchedAt: base, ratings: ratings), seriesRevision: "fixture-r2")
             }
-            _ = try await repository.insertCommunity(.init(sourceID: sourceID, sourceUpdatedAt: base, fetchedAt: base, ratings: ratings), seriesRevision: "fixture-r2")
         }
         if state == "community-error" {
             try await repository.recordFailure(sourceID: sourceID, datasetType: .community, attemptedAt: now, error: .init(kind: .http, message: "community HTTP 503"))
@@ -825,6 +829,62 @@ enum DebugUISeed {
             )
         )
         _ = try await repository.insertIntelligenceEfficiency(dataset)
+    }
+
+    /// Spec §5.4 fixture seed for the star rating matrix: groups, effort
+    /// suffixes, 7-day history buckets, and a read-only my_scores entry.
+    /// Fixture text only — never upstream copy.
+    private static func populateCommunityMatrix(
+        repository: RadarRepository,
+        now: Date
+    ) async throws {
+        func rating(_ key: String, _ name: String, group: String, average: Decimal?) -> CommunityRating {
+            let id = ModelID(sourceID: .codexRadar, upstreamKey: key)
+            return CommunityRating(
+                id: id,
+                model: ModelDescriptor(id: id, upstreamName: name, displayName: name),
+                average: average,
+                voteCount: 12,
+                scaleMinimum: 1,
+                scaleMaximum: 10,
+                group: group
+            )
+        }
+        let ratings = [
+            rating("gpt-5.6-sol-ultra", "GPT-5.6 Sol ultra（fixture）", group: "GPT-5.6 Sol", average: 8.7),
+            rating("gpt-5.6-sol-xhigh", "GPT-5.6 Sol xhigh（fixture）", group: "GPT-5.6 Sol", average: 8.1),
+            rating("gpt-5.6-terra-max", "GPT-5.6 Terra max（fixture）", group: "GPT-5.6 Terra", average: 7.9),
+            rating("gpt-5.5-high", "GPT-5.5 high（fixture）", group: "GPT-5.5", average: 7.2),
+            rating("deepseek-v4-flash-off", "DSV4 Flash off（fixture）", group: "DSV4 Flash", average: 6.4),
+        ]
+        let historyKeys = [
+            "2026-08-30", "2026-08-31", "2026-09-01", "2026-09-02",
+            "2026-09-03", "2026-09-04", "2026-09-05",
+        ]
+        let history = historyKeys.enumerated().map { index, day in
+            CommunityHistoryDay(
+                day: day,
+                updatedAt: nil,
+                ratings: ratings.map { rating in
+                    CommunityHistoryRating(
+                        id: rating.id.upstreamKey,
+                        group: rating.group,
+                        average: (rating.average ?? 7) - Decimal(index % 2),
+                        count: 10 + index
+                    )
+                }
+            )
+        }
+        let dataset = CommunityDataset(
+            sourceID: .codexRadar,
+            sourceUpdatedAt: now,
+            fetchedAt: now,
+            ratings: ratings,
+            history: history,
+            day: "2026-09-05",
+            myScores: ["gpt-5.6-sol-ultra": 8.5]
+        )
+        _ = try await repository.insertCommunity(dataset, seriesRevision: "fixture-r2")
     }
 
     /// Spec §5.3 fixture seed for the Fast radar page. Fixture text only.

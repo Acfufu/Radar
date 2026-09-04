@@ -114,8 +114,22 @@ struct StationStatusDot: View {
 /// days). Cells render a 0-5 star fill with a count suffix.
 struct StarRatingMatrix: View {
     struct Cell: Equatable, Sendable {
+        /// Verbatim upstream average (upstream scale, shown as the number).
         let average: Double
         let count: Int
+        /// Star fill in 0-5 (scale-normalized by the builder); defaults to
+        /// `average` for 0-5 scales.
+        let starFill: Double
+        /// D12: read-only "my score" from the anonymous upstream endpoint —
+        /// display-only, never persisted anywhere.
+        let mine: Double?
+
+        init(average: Double, count: Int, starFill: Double? = nil, mine: Double? = nil) {
+            self.average = average
+            self.count = count
+            self.starFill = starFill ?? average
+            self.mine = mine
+        }
 
         static let empty = Cell(average: 0, count: 0)
     }
@@ -123,11 +137,15 @@ struct StarRatingMatrix: View {
     struct Row: Equatable, Sendable {
         let title: String
         let subtitle: String?
+        /// Optional capsule-pill label rendered after the title (whitelist
+        /// spot: model effort suffixes, spec §7).
+        let pill: String?
         let cells: [Cell?]
 
-        init(title: String, subtitle: String? = nil, cells: [Cell?]) {
+        init(title: String, subtitle: String? = nil, pill: String? = nil, cells: [Cell?]) {
             self.title = title
             self.subtitle = subtitle
+            self.pill = pill
             self.cells = cells
         }
     }
@@ -168,9 +186,18 @@ struct StarRatingMatrix: View {
     private func rowView(_ row: Row) -> some View {
         HStack(spacing: RadarStyle.compactSpacing) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(palette.primaryText.color)
+                HStack(spacing: 5) {
+                    Text(row.title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(palette.primaryText.color)
+                    if let pill = row.pill {
+                        Text(pill)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 1)
+                            .radarPill(accent: palette.blue, soft: palette.blueSoft)
+                    }
+                }
                 if let subtitle = row.subtitle {
                     Text(subtitle)
                         .font(.caption2)
@@ -192,10 +219,15 @@ struct StarRatingMatrix: View {
     private func cellView(_ cell: Cell?) -> some View {
         let cell = cell ?? .empty
         return HStack(spacing: 3) {
-            stars(fill: cell.average)
+            stars(fill: cell.starFill)
             Text(cell.count > 0 ? "\(cell.average, format: .number.precision(.fractionLength(1)))" : "暂无")
                 .font(.caption2)
                 .foregroundStyle(palette.secondaryText.color)
+            if let mine = cell.mine {
+                Text("我 \(mine, format: .number.precision(.fractionLength(1)))")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(palette.blue.color)
+            }
         }
     }
 

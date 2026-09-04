@@ -38,7 +38,9 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                     average: item.average?.value,
                     voteCount: item.count,
                     scaleMinimum: ClaudeRadarValidator.communityScaleMinimum,
-                    scaleMaximum: ClaudeRadarValidator.communityScaleMaximum
+                    scaleMaximum: ClaudeRadarValidator.communityScaleMaximum,
+                    // Open set (spec §5.4): preserved verbatim, no closed enum.
+                    group: item.group
                 )
                 try ClaudeRadarValidator.validateCommunity(rating)
                 return rating
@@ -51,7 +53,25 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                 sourceID: .codexRadar,
                 sourceUpdatedAt: parseDate(dto.updatedAt),
                 fetchedAt: fetchedAt,
-                ratings: ratings
+                ratings: ratings,
+                history: dto.history?.map { day in
+                    CommunityHistoryDay(
+                        day: day.day,
+                        updatedAt: day.updatedAt,
+                        ratings: (day.models ?? []).map { item in
+                            CommunityHistoryRating(
+                                id: item.id,
+                                group: item.group,
+                                average: item.average?.value,
+                                count: item.count
+                            )
+                        }
+                    )
+                },
+                day: dto.day,
+                // D12: read-only in memory; the dataset's custom encoder
+                // keeps it out of persistence and fingerprints.
+                myScores: dto.myScores?.mapValues { $0.value }
             ))
         } catch let error as SegmentError {
             return .failure(error)

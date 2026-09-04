@@ -31,7 +31,11 @@ enum ContentFingerprint {
             sourceID: dataset.sourceID,
             sourceUpdatedAt: dataset.sourceUpdatedAt,
             fetchedAt: dataset.fetchedAt,
-            ratings: dataset.ratings.sorted { modelKey($0.id) < modelKey($1.id) }
+            ratings: dataset.ratings.sorted { modelKey($0.id) < modelKey($1.id) },
+            history: dataset.history,
+            day: dataset.day,
+            // D12: myScores never participates — the custom encoder omits it.
+            myScores: nil
         )
         return try make(normalized, datasetType: .community, seriesRevision: seriesRevision)
     }

@@ -42,9 +42,21 @@ struct CodexSpeedOverviewPage: View {
     }
 
     private var modelListCard: some View {
-        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
-            ViewHeader(title: "模型档位详情", subtitle: "来源内模型配置与本地指标")
-            ModelListView(projection: projection, history: history)
+        VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
+            VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+                ViewHeader(title: "模型档位详情", subtitle: "来源内模型配置与本地指标")
+                ModelListView(projection: projection, history: history)
+            }
+            // Spec §5.4: star rating matrix (P2④), nil-data safe.
+            CodexStarMatrixCard(
+                dataset: projection.sync?.community.value ?? CommunityDataset(
+                    sourceID: projection.source.id,
+                    sourceUpdatedAt: nil,
+                    fetchedAt: .distantPast,
+                    ratings: []
+                ),
+                attributionText: projection.source.attributionText
+            )
         }
     }
 }
