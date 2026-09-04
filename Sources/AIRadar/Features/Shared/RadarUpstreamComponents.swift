@@ -286,3 +286,44 @@ struct MonthlyCountTable: View {
         return available * CGFloat(count) / CGFloat(maximum)
     }
 }
+
+/// Community knowledge list card (spec §12): title + upstream summary +
+/// external link; without an upstream summary only title and link. Never
+/// generates local copy.
+struct CommunityKnowledgeList: View {
+    struct Article: Equatable, Sendable, Identifiable {
+        let title: String
+        let summary: String?
+        let url: URL
+
+        var id: String { title + url.absoluteString }
+    }
+
+    @Environment(\.radarPalette) private var palette
+    let articles: [Article]
+
+    var body: some View {
+        if articles.isEmpty {
+            Text("暂无知识文章条目；上游文章卡接入后按「标题 + 摘要 + 外链」显示。")
+                .font(.subheadline)
+                .foregroundStyle(palette.secondaryText.color)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(RadarStyle.cardSpacing)
+        } else {
+            VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
+                ForEach(articles) { article in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Link(article.title, destination: article.url)
+                            .font(.subheadline.weight(.medium))
+                        if let summary = article.summary {
+                            Text(summary)
+                                .font(.caption)
+                                .foregroundStyle(palette.secondaryText.color)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+}

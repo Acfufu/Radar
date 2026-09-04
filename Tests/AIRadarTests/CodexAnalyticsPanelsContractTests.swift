@@ -77,19 +77,27 @@ struct CodexAnalyticsPanelsContractTests {
 
     @Test("intelligence center composes C3 C4 and C5 native panels")
     func integrationContract() throws {
-        let center = try source("Sources/AIRadar/Features/Analytics/CodexIntelligenceCenterView.swift")
+        // Spec §4.2: the former intelligence center composition is re-anchored
+        // onto the efficiency-PK and history-comparison pages; the retired
+        // intelligence-center view keeps compiling only for legacy routes.
+        let efficiency = try source("Sources/AIRadar/Features/Codex/CodexStationPages.swift")
 
-        #expect(center.contains("CodexCostVersusIQPanel("))
-        #expect(center.contains("CodexIQHistorySmallMultiplesPanel("))
-        #expect(center.contains("CodexHistoryComparisonPanel("))
-        let c3Index = try #require(center.range(of: "CodexCostVersusIQPanel(")?.lowerBound)
-        let c5Index = try #require(center.range(of: "CodexHistoryComparisonPanel(")?.lowerBound)
-        let c4Index = try #require(center.range(of: "CodexIQHistorySmallMultiplesPanel(")?.lowerBound)
-        #expect(c3Index < c5Index)
-        #expect(c5Index < c4Index)
-        #expect(!center.contains("IntelligenceCenterSlot(title: \"综合成本 × IQ\""))
-        #expect(!center.contains("IntelligenceCenterSlot(title: \"历史数据比较\""))
-        #expect(!center.contains("IntelligenceCenterSlot(title: \"IQ 历史数据\""))
+        #expect(efficiency.contains("CodexCostVersusIQPanel("))
+        #expect(efficiency.contains("CodexEfficiencyMatrixPanel("))
+        #expect(efficiency.contains("CodexScenarioRecommendationsPanel("))
+        #expect(efficiency.contains("CodexHistoryComparisonPanel("))
+        #expect(efficiency.contains("CodexIQHistorySmallMultiplesPanel("))
+        let c3Index = try #require(efficiency.range(of: "CodexCostVersusIQPanel(")?.lowerBound)
+        let matrixIndex = try #require(efficiency.range(of: "CodexEfficiencyMatrixPanel(")?.lowerBound)
+        let c2Index = try #require(efficiency.range(of: "CodexScenarioRecommendationsPanel(")?.lowerBound)
+        let historyIndex = try #require(efficiency.range(of: "struct CodexHistoryComparisonPage")?.lowerBound)
+        let smallMultiplesIndex = try #require(efficiency.range(of: "CodexIQHistorySmallMultiplesPanel(")?.lowerBound)
+        // Efficiency PK: cost-versus-IQ then matrix then scenario cards.
+        #expect(c3Index < matrixIndex)
+        #expect(matrixIndex < c2Index)
+        // History comparison page follows and hosts the small multiples.
+        #expect(c2Index < historyIndex)
+        #expect(historyIndex < smallMultiplesIndex)
         let fixture = try source("Sources/AIRadar/App/DebugUISeed.swift")
         #expect(fixture.contains("state == \"analytics-todo7-gaps\""))
         #expect(fixture.hasPrefix("#if DEBUG"))

@@ -63,12 +63,15 @@ Use 8 px corners; page/section/card/compact spacing 24/20/14/12; large-title plu
 
 The final route matrix is capability-driven rather than a declaration count:
 
-| Room | Destinations |
+| Station | Destinations (spec §4.2 matrix) |
 | --- | --- |
-| Information | Overview |
-| Claude Code Radar | Overview, Decision Lens, Models, Trends, Source Status, Export |
-| Codex Radar | Overview, Decision Lens, Models, Trends, Intelligence Center, Source Status, Export |
-| SWE-bench Verified | Models; Trends only when same-revision comparable history exists; Source Status; Export |
+| 聚合站 Aggregate | 信息总览 (status cards only; no rankings, no banner, no export — D10) |
+| Codex Radar | 概览(速览排行+模型档位详情+官网24h趋势), 预警与推荐, 效能 PK, 额度雷达, Fast 雷达, 历史对比, Tibo 雷达, 社区入口, then 工具组: 决策透镜, 趋势, 来源状态, 导出 |
+| Claude Code Radar | 概览, 决策透镜, 模型, 趋势, 来源状态, 导出 |
+| SWE-bench Verified | 模型(榜单); 趋势 only when same-revision comparable history exists; 来源与口径, 导出 |
+| DSH / ZCode / Grok / Kimi | 即将开放 placeholder (never synchronized) |
+
+The former 智力中心 (Intelligence Center) destination is retired (spec §4.2 row 3): its legacy persisted key `source:codex-radar:intelligence-center` falls back to the Codex station root, and its five panels now live on 效能 PK (C3/matrix/C2) and 历史对比 (C4/C5 small multiples).
 
 Quality vocabulary and units remain source-local: Claude and Codex use their own benchmark/IQ vocabulary, while SWE uses `% Resolved` and its published cost fields. Model columns, Decision Lens inputs, trend metrics, and accessibility labels follow the selected source instead of inventing a cross-source score. Export is implemented, one-way, and source-local: Claude offers models/benchmark/community/source status, Codex offers its normalized datasets, and SWE offers models/benchmark runs.
 

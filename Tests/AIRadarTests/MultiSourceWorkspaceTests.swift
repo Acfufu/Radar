@@ -18,16 +18,18 @@ struct MultiSourceWorkspaceTests {
             ].map { ($0, RadarAppRuntime(environment: environment, sourceID: $0)) }),
             selectedSourceID: .codexRadar
         )
+        // Spec §4.2: the intelligence center destination is retired; its
+        // persisted key falls back to the station root and no station offers
+        // it anymore. The typed case survives only for legacy-key parsing.
         let route = WorkspaceRoute.sourcePage(.codexRadar, .intelligenceCenter)
 
-        #expect(WorkspaceRoute(storageKey: route.storageKey) == route)
-        #expect(WorkspaceDestination.intelligenceCenter.title(for: .codexRadar) == "智力中心")
-        #expect(WorkspaceDestination.intelligenceCenter.icon == "brain.head.profile")
-        #expect(model.destinations(for: .codexRadar).contains(.intelligenceCenter))
+        #expect(WorkspaceRoute(storageKey: route.storageKey) == .source(.codexRadar))
+        #expect(!model.destinations(for: .codexRadar).contains(.intelligenceCenter))
         #expect(model.destinations(for: .codexRadar).last == .export)
         #expect(!model.destinations(for: .claudeCodeRadar).contains(.intelligenceCenter))
         #expect(!model.destinations(for: .sweBenchVerified).contains(.intelligenceCenter))
         #expect(WorkspaceRoute(storageKey: "source:claude-code-radar:intelligence-center") == .source(.claudeCodeRadar))
+        #expect(model.normalizedRoute(route) == .source(.codexRadar))
         #expect(WorkspaceRoute(storageKey: "source:swe-bench-verified:intelligence-center") == .source(.sweBenchVerified))
     }
 

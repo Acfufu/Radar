@@ -157,6 +157,14 @@ struct RadarWorkspaceView: View {
     ) -> some View {
         let history = model.history(for: sourceID)
         switch destination {
+        case .overview where sourceID == .codexRadar:
+            // Spec §4.2 row 1: speed overview fuses the overview with the
+            // model-tier list; official 24h trend card stays inside.
+            CodexSpeedOverviewPage(
+                projection: projection,
+                history: history,
+                refreshIntervalMinutes: model.refreshIntervalMinutes
+            )
         case .overview:
             OverviewView(
                 projection: projection,
@@ -174,7 +182,27 @@ struct RadarWorkspaceView: View {
         case .trends:
             MetricTrendChart(projection: projection, history: history)
         case .intelligenceCenter:
+            // Retired as a destination (spec §4.2); reachable only via a stale
+            // persisted key, which normalizedRoute already maps away.
             CodexIntelligenceCenterView(projection: projection, history: history)
+        case .alertsRecommendations:
+            if sourceID == .codexRadar {
+                AlertsRecommendationsPage(projection: projection)
+            } else {
+                stationPlaceholder
+            }
+        case .efficiencyPK:
+            CodexEfficiencyPKPage(projection: projection, history: history)
+        case .quotaRadar:
+            CodexQuotaRadarPage(projection: projection)
+        case .fastRadar:
+            CodexFastRadarPage()
+        case .historyComparison:
+            CodexHistoryComparisonPage(projection: projection, history: history)
+        case .tiboRadar:
+            CodexTiboRadarPage()
+        case .communityHub:
+            CodexCommunityHubPage()
         case .sourceStatus:
             if sourceID == .sweBenchVerified {
                 SWEBenchProvenanceView(projection: projection)

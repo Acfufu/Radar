@@ -75,13 +75,16 @@ struct CodexIQHistoryPanelContractTests {
 
     @Test("intelligence center composes C1 through C5 with explicit provenance")
     func integrationAndProvenanceContract() throws {
-        let center = try source("Sources/AIRadar/Features/Analytics/CodexIntelligenceCenterView.swift")
+        // Spec §4.2 row 6: the small multiples live on the history comparison
+        // page with the same local-history provenance wording.
+        let page = try source("Sources/AIRadar/Features/Codex/CodexStationPages.swift")
 
-        #expect(center.contains("CodexIQHistorySmallMultiplesPanel("))
-        #expect(!center.contains("IntelligenceCenterSlot"))
-        #expect(center.contains("C1-C3"))
-        #expect(center.contains("C4-C5"))
-        #expect(center.contains("projection.source.attributionText"))
+        #expect(page.contains("CodexIQHistorySmallMultiplesPanel("))
+        #expect(page.contains("CodexHistoryComparisonPanel("))
+        let comparisonIndex = try #require(page.range(of: "CodexHistoryComparisonPanel(")?.lowerBound)
+        let smallMultiplesIndex = try #require(page.range(of: "CodexIQHistorySmallMultiplesPanel(")?.lowerBound)
+        #expect(comparisonIndex < smallMultiplesIndex)
+        #expect(page.contains("C4-C5 使用 Codex Radar 的 Radar 本地持久化历史；不跨来源或版本比较"))
     }
 
     @Test("source contract distinguishes summary derivations from persisted history")

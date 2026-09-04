@@ -12,6 +12,7 @@ struct WorkspaceProjectionTests {
         // lands the pages and per-station destination lists).
         #expect(WorkspaceDestination.allCases == [
             .overview, .decisionLens, .models, .trends, .intelligenceCenter,
+            .alertsRecommendations, .quotaRadar,
             .efficiencyPK, .fastRadar, .historyComparison, .tiboRadar, .communityHub,
             .sourceStatus, .export,
         ])

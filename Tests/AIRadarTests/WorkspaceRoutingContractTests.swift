@@ -15,7 +15,12 @@ struct WorkspaceRoutingContractTests {
         #expect(model.defaultDestination(for: .codexRadar) == .overview)
         #expect(model.defaultDestination(for: .sweBenchVerified) == .models)
         #expect(model.destinations(for: .claudeCodeRadar) == [.overview, .decisionLens, .models, .trends, .sourceStatus, .export])
-        #expect(model.destinations(for: .codexRadar) == [.overview, .decisionLens, .models, .trends, .intelligenceCenter, .sourceStatus, .export])
+        // Spec §4.2 Codex main axis; intelligence center retired.
+        #expect(model.destinations(for: .codexRadar) == [
+            .overview, .alertsRecommendations, .efficiencyPK, .quotaRadar,
+            .fastRadar, .historyComparison, .tiboRadar, .communityHub,
+            .decisionLens, .trends, .sourceStatus, .export,
+        ])
         #expect(model.destinations(for: .sweBenchVerified) == [.models, .sourceStatus, .export])
     }
 
@@ -72,7 +77,7 @@ struct WorkspaceRoutingContractTests {
             .informationOverview,
             .source(.claudeCodeRadar),
             .sourcePage(.claudeCodeRadar, .export),
-            .sourcePage(.codexRadar, .intelligenceCenter),
+            .sourcePage(.codexRadar, .efficiencyPK),
             .sourcePage(.sweBenchVerified, .trends),
             .sourcePage(.sweBenchVerified, .export),
         ]
@@ -108,10 +113,10 @@ struct WorkspaceRoutingContractTests {
         let codex = try #require(model.runtime(for: .codexRadar))
 
         // When
-        let route = model.restoreRoute(.sourcePage(.codexRadar, .models))
+        let route = model.restoreRoute(.sourcePage(.codexRadar, .overview))
 
         // Then
-        #expect(route == .sourcePage(.codexRadar, .models))
+        #expect(route == .sourcePage(.codexRadar, .overview))
         #expect(model.selectedSourceID == .codexRadar)
         #expect(model.runtime === codex)
     }

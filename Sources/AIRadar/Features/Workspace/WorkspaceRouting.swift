@@ -6,6 +6,8 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
     case models = "模型"
     case trends = "趋势"
     case intelligenceCenter = "智力中心"
+    case alertsRecommendations = "预警与推荐"
+    case quotaRadar = "额度雷达"
     case efficiencyPK = "效能 PK"
     case fastRadar = "Fast 雷达"
     case historyComparison = "历史对比"
@@ -21,6 +23,8 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
         case .models: "list.bullet.rectangle"
         case .trends: "chart.xyaxis.line"
         case .intelligenceCenter: "brain.head.profile"
+        case .alertsRecommendations: "exclamationmark.triangle"
+        case .quotaRadar: "gauge.with.dotted.needle"
         case .efficiencyPK: "bolt.shield"
         case .fastRadar: "hare"
         case .historyComparison: "clock.arrow.circlepath"
@@ -47,6 +51,8 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
         case .models: "models"
         case .trends: "trends"
         case .intelligenceCenter: "intelligence-center"
+        case .alertsRecommendations: "alerts-recommendations"
+        case .quotaRadar: "quota-radar"
         case .efficiencyPK: "efficiency-pk"
         case .fastRadar: "fast-radar"
         case .historyComparison: "history-comparison"
@@ -64,6 +70,8 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
         case "models": self = .models
         case "trends": self = .trends
         case "intelligence-center": self = .intelligenceCenter
+        case "alerts-recommendations": self = .alertsRecommendations
+        case "quota-radar": self = .quotaRadar
         case "efficiency-pk": self = .efficiencyPK
         case "fast-radar": self = .fastRadar
         case "history-comparison": self = .historyComparison
@@ -80,7 +88,16 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
         case .claudeCodeRadar:
             [.overview, .decisionLens, .models, .trends, .sourceStatus, .export]
         case .codexRadar:
-            [.overview, .decisionLens, .models, .trends, .intelligenceCenter, .sourceStatus, .export]
+            // Spec §4.2 main axis: speed overview (row 1, includes the row-2
+            // alert/recommendation cards), efficiency PK, quota radar, Fast
+            // radar, history comparison, Tibo radar, then the tool group;
+            // community hub closes the axis. The former intelligence center
+            // destination is retired (spec §4.2 row 3).
+            [
+                .overview, .alertsRecommendations, .efficiencyPK, .quotaRadar,
+                .fastRadar, .historyComparison, .tiboRadar, .communityHub,
+                .decisionLens, .trends, .sourceStatus, .export,
+            ]
         case .sweBenchVerified:
             hasComparableHistory
                 ? [.models, .trends, .sourceStatus, .export]
