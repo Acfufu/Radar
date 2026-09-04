@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Assets/readme/hero-zh.gif" width="100%" alt="Claude Radar 将三个公开模型 Benchmark 来源保留在彼此独立的空间中">
+  <img src="./Assets/readme/hero-zh.gif" width="100%" AI Radar 将三个公开模型 Benchmark 来源保留在彼此独立的空间中">
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
   <a href="README.md">English</a> · 简体中文
 </p>
 
-Claude Radar 是一个原生 macOS 菜单栏应用与工作台，用于阅读公开的模型 Benchmark 快照。它为 **Claude Code Radar**、**Codex Radar** 与 **SWE-bench Verified** 保留彼此独立的空间、指标语言、历史、分析和导出范围。
+AI Radar 是一个原生 macOS 菜单栏应用与工作台，用于阅读公开的模型 Benchmark 快照。它为 **Claude Code Radar**、**Codex Radar** 与 **SWE-bench Verified** 保留彼此独立的空间、指标语言、历史、分析和导出范围。
 
 它明确**不提供统一排名、综合分数或跨来源推荐**。
 
@@ -23,7 +23,7 @@ Claude Radar 是一个原生 macOS 菜单栏应用与工作台，用于阅读公
 ## 三个空间，三份来源契约
 
 <p align="center">
-  <img src="./Assets/readme/workspace-codex-radar.png" width="100%" alt="Claude Radar 原生 macOS 工作台，展示彼此独立的来源导航与 Codex Radar 来源内概览">
+  <img src="./Assets/readme/workspace-codex-radar.png" width="100%" AI Radar 原生 macOS 工作台，展示彼此独立的来源导航与 Codex Radar 来源内概览">
 </p>
 
 <p align="center"><sub>原生 macOS 工作台。每个空间都保留自己的指标与来源依据。</sub></p>
@@ -66,22 +66,24 @@ git clone "https://github.com/Acfufu/Radar.git"
 cd Radar
 DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" xcrun swift test
 ./Scripts/build-app.sh debug
-RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
-  .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
+RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/AIRadar-Demo" \
+  .build/app/AIRadar.app/Contents/MacOS/AIRadar
 ```
 
-预期的 Debug fixture：原生工作台打开到“信息总览”，其中包含三个独立来源卡片。生成的应用位于 `.build/app/ClaudeRadar.app`。
+预期的 Debug fixture：原生工作台打开到“信息总览”，其中包含三个独立来源卡片。生成的应用位于 `.build/app/AIRadar.app`。
 
 使用 `./Scripts/build-app.sh release` 可构建 Release。Debug `ui` fixture 使用脱敏本地数据且不会同步；Release 启用三个已记录的公开来源 Adapter；Debug `RADAR_FIXTURE_MODE="online"` 会在隔离的 `RADAR_DATA_ROOT` 中运行这些 Adapter。两种模式都不承诺离线或无网络运行。
 
 ## 本地数据与明确边界
 
 ```text
-~/Library/Application Support/ClaudeRadar/
+~/Library/Application Support/AIRadar/
 ├── Radar.store          # 规范化 SwiftData 历史
 ├── SyncMetadata.json    # 按来源隔离的同步元数据
 └── RawSamples/          # 有上限的原始诊断样本
 ```
+
+AI Radar 更名后的首次启动会把旧目录 `~/Library/Application Support/ClaudeRadar/` 复制为 `AIRadar/`，原目录保持不变。
 
 - 已发布的公开响应会先校验，再保存到本地。
 - 规范化历史、原始诊断样本、偏好设置和导出文件都留在 Mac 上，除非你主动移动或分享。
@@ -100,6 +102,6 @@ RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
 
 ## 归属与许可证
 
-Radar 与 Claude Code Radar、Codex Radar、SWE-bench 或 Princeton University 没有隶属或背书关系。
+AI Radar 为独立开源项目，与 codexradar.com 的 AI 雷达无关联，命名系独立选择。AI Radar 仅读取、校验、存储、分析、展示与导出已公开发布的信息，与 Claude Code Radar、Codex Radar、SWE-bench 或 Princeton University 没有隶属或背书关系。
 
 Copyright © 2026 Acfufu。本项目采用 [GNU General Public License v3.0](LICENSE)（`GPL-3.0-only`）许可。

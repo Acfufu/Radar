@@ -44,22 +44,31 @@ struct AppEnvironment: Sendable {
     }
 
     static func current() -> AppEnvironment {
-        let defaultRoot = FileManager.default.urls(
+        let support = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
-        )[0].appending(path: "ClaudeRadar", directoryHint: .isDirectory)
+        )[0]
+        let legacyRoot = support.appending(path: "ClaudeRadar", directoryHint: .isDirectory)
+        let defaultRoot = support.appending(path: "AIRadar", directoryHint: .isDirectory)
 
         #if DEBUG
         let variables = ProcessInfo.processInfo.environment
         let requestedMode = variables["RADAR_FIXTURE_MODE"]
         let mode = requestedMode.flatMap(FixtureMode.init(rawValue:)) ?? .disabled
-        let dataRoot = variables["RADAR_DATA_ROOT"].map {
-            URL(filePath: $0, directoryHint: .isDirectory)
-        } ?? defaultRoot
+        if let override = variables["RADAR_DATA_ROOT"] {
+            return AppEnvironment(
+                dataRoot: URL(filePath: override, directoryHint: .isDirectory),
+                fixtureMode: mode,
+                onlineSourceEnabled: mode == .sequence || mode == .online || mode == .codex
+            )
+        }
         #else
         let mode = FixtureMode.disabled
-        let dataRoot = defaultRoot
         #endif
+
+        // Spec D5: copy-on-first-launch from the pre-rename directory; a
+        // DEBUG RADAR_DATA_ROOT override must never touch the real home.
+        DataDirectoryMigration.runIfSupported(legacyRoot: legacyRoot, currentRoot: defaultRoot)
 
         #if DEBUG
         let onlineSourceEnabled = mode == .sequence || mode == .online || mode == .codex
@@ -67,7 +76,7 @@ struct AppEnvironment: Sendable {
         let onlineSourceEnabled = true
         #endif
         return AppEnvironment(
-            dataRoot: dataRoot,
+            dataRoot: defaultRoot,
             fixtureMode: mode,
             onlineSourceEnabled: onlineSourceEnabled
         )

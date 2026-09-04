@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Assets/readme/hero.gif" width="100%" alt="Claude Radar keeps three public model-benchmark sources in independent rooms">
+  <img src="./Assets/readme/hero.gif" width="100%" alt="AI Radar keeps three public model-benchmark sources in independent rooms">
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
   English · <a href="README_zh.md">简体中文</a>
 </p>
 
-Claude Radar is a native macOS menu-bar app and workspace for reading public model-benchmark snapshots. It gives **Claude Code Radar**, **Codex Radar**, and **SWE-bench Verified** separate rooms, vocabulary, history, analysis, and export scope.
+AI Radar is a native macOS menu-bar app and workspace for reading public model-benchmark snapshots. It gives **Claude Code Radar**, **Codex Radar**, and **SWE-bench Verified** separate rooms, vocabulary, history, analysis, and export scope.
 
 It deliberately has **no unified ranking, composite score, or cross-source recommendation**.
 
@@ -23,7 +23,7 @@ It deliberately has **no unified ranking, composite score, or cross-source recom
 ## Three rooms, three contracts
 
 <p align="center">
-  <img src="./Assets/readme/workspace-codex-radar-en.png" width="100%" alt="Claude Radar native macOS workspace in English, showing separate source navigation and a source-local Codex Radar overview">
+  <img src="./Assets/readme/workspace-codex-radar-en.png" width="100%" AI Radar native macOS workspace in English, showing separate source navigation and a source-local Codex Radar overview">
 </p>
 
 <p align="center"><sub>Native macOS workspace. Each room keeps its own metrics and provenance.</sub></p>
@@ -66,22 +66,23 @@ git clone "https://github.com/Acfufu/Radar.git"
 cd Radar
 DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" xcrun swift test
 ./Scripts/build-app.sh debug
-RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/ClaudeRadar-Demo" \
-  .build/app/ClaudeRadar.app/Contents/MacOS/ClaudeRadar
+RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/AIRadar-Demo" \
+  .build/app/AIRadar.app/Contents/MacOS/AIRadar
 ```
 
-Expected Debug fixture: native workspace opens on Information Overview with three independent source cards. Generated app: `.build/app/ClaudeRadar.app`.
+Expected Debug fixture: native workspace opens on Information Overview with three independent source cards. Generated app: `.build/app/AIRadar.app`.
 
 Use `./Scripts/build-app.sh release` for Release build. Debug `ui` fixtures are sanitized local data and never synchronize. Release enables three documented public adapters; Debug `RADAR_FIXTURE_MODE="online"` runs them against isolated `RADAR_DATA_ROOT`. Neither mode promises network-free operation.
 
 ## Local data, explicit boundaries
 
 ```text
-~/Library/Application Support/ClaudeRadar/
+~/Library/Application Support/AIRadar/
 ├── Radar.store          # normalized SwiftData history
 ├── SyncMetadata.json    # source-scoped synchronization metadata
-└── RawSamples/          # bounded raw diagnostics
 ```
+
+First launch after the AI Radar rename copies the legacy `~/Library/Application Support/ClaudeRadar/` directory to `AIRadar/` and leaves the original untouched.
 
 - Published public responses are validated before persistence.
 - Normalized history, raw diagnostics, preferences, and exports stay on Mac unless you move or share them.
@@ -100,6 +101,6 @@ Use `./Scripts/build-app.sh release` for Release build. Debug `ui` fixtures are 
 
 ## Attribution and license
 
-Radar is not affiliated with or endorsed by Claude Code Radar, Codex Radar, SWE-bench, or Princeton University.
+AI Radar is an independent open-source project and is not affiliated with codexradar.com (AI 雷达); the name is an independent choice. AI Radar reads, validates, stores, analyzes, displays, and exports already-published information only, and is not affiliated with or endorsed by Claude Code Radar, Codex Radar, SWE-bench, or Princeton University.
 
 Copyright © 2026 Acfufu. Licensed under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`).
