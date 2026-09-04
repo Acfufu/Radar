@@ -74,6 +74,20 @@ enum StationStatusLevel: Equatable, Sendable {
     case muted
 }
 
+extension StationStatusLevel {
+    /// Status-dot mapping (design-qa table): fresh -> green; stale/LKG/
+    /// validation-failed -> amber; error -> red; loading/empty/unavailable/
+    /// disabled/none -> muted.
+    static func map(_ state: WorkspaceState) -> StationStatusLevel {
+        switch state {
+        case .fresh: .fresh
+        case .stale, .usingLastKnownGood, .validationFailed: .stale
+        case .error: .error
+        case .loading, .empty, .unavailable, .disabled: .muted
+        }
+    }
+}
+
 struct StationStatusDot: View {
     @Environment(\.radarPalette) private var palette
     let level: StationStatusLevel

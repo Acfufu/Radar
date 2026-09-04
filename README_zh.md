@@ -67,7 +67,10 @@ cd Radar
 DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" xcrun swift test
 ./Scripts/build-app.sh debug
 RADAR_FIXTURE_MODE="ui" RADAR_DATA_ROOT="/tmp/AIRadar-Demo" \
+  RADAR_UI_SOURCE=codex-radar RADAR_UI_DESTINATION=概览 \
   .build/app/AIRadar.app/Contents/MacOS/AIRadar
+
+RADAR_UI_SOURCE 接受站 raw 值：aggregate、upcoming-dsh|zcode|grok|kimi 或来源（claude-code-radar、codex-radar、swe-bench-verified）。RADAR_UI_DESTINATION 接受中文目的地标签（概览/预警与推荐/效能 PK/额度雷达/Fast 雷达/历史对比/Tibo 雷达/社区入口/决策透镜/趋势/来源状态/导出，按站可用）。
 ```
 
 预期的 Debug fixture：原生工作台打开到“信息总览”，其中包含三个独立来源卡片。生成的应用位于 `.build/app/AIRadar.app`。

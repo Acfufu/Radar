@@ -54,7 +54,10 @@ struct MenuBarView: View {
                     .font(.title2)
                     .foregroundStyle(palette.accent.color)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(model.source?.displayName ?? "—").font(.headline)
+                    HStack(spacing: 6) {
+                        StationStatusDot(level: StationStatusLevel.map(projection.benchmarkState))
+                        Text(model.source?.displayName ?? "—").font(.headline)
+                    }
                     Text(freshness).font(.caption).foregroundStyle(palette.secondaryText.color)
                 }
                 Spacer()

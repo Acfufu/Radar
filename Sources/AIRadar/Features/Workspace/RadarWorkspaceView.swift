@@ -21,16 +21,30 @@ struct RadarWorkspaceView: View {
     private var workspace: some View {
         NavigationSplitView {
             List(selection: routeBinding) {
+                // Sidebar section order is fixed by spec §4.1: aggregate first,
+                // then real stations, then the 即将开放 placeholder group.
                 Section {
-                    Label("信息总览", systemImage: "rectangle.grid.1x2")
+                    Label("聚合站", systemImage: "rectangle.grid.1x2")
                         .foregroundStyle(route == .informationOverview ? palette.accent.color : palette.primaryText.color)
                         .tag(WorkspaceRoute.informationOverview)
                 }
                 Section("来源") {
                     ForEach(model.sources) { source in
                         Label(source.displayName, systemImage: source.id == .sweBenchVerified ? "checkmark.seal" : "scope")
-                            .foregroundStyle(route == .source(source.id) ? palette.accent.color : palette.primaryText.color)
+                            .foregroundStyle(
+                                (route == .source(source.id) || route.sourceID == source.id)
+                                    ? palette.accent.color : palette.primaryText.color
+                            )
                             .tag(WorkspaceRoute.source(source.id))
+                    }
+                }
+                Section("即将开放") {
+                    ForEach(UpcomingStation.allCases) { station in
+                        Label(station.displayName, systemImage: "sparkles")
+                            .foregroundStyle(
+                                route == .upcoming(station) ? palette.accent.color : palette.secondaryText.color
+                            )
+                            .tag(WorkspaceRoute.upcoming(station))
                     }
                 }
                 if let sourceID = route.sourceID,
@@ -52,7 +66,7 @@ struct RadarWorkspaceView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             .background(palette.section.color)
-            .navigationTitle("Radar")
+            .navigationTitle("AI Radar")
             .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 250)
         } detail: {
             destinationView

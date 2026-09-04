@@ -96,6 +96,7 @@ struct InformationOverviewView: View {
             }
         return VStack(alignment: .leading, spacing: RadarStyle.compactSpacing) {
             HStack(alignment: .firstTextBaseline) {
+                StationStatusDot(level: StationStatusLevel.map(projection?.benchmarkState ?? .empty))
                 Label(source.displayName, systemImage: source.icon)
                     .font(.headline)
                 Spacer()

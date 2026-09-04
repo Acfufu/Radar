@@ -89,4 +89,44 @@ struct StationRoutingTests {
         #expect(model.selectedStation == .upcoming(.dsh))
         #expect(model.runtime == nil)
     }
+
+@Test("sidebar declares the fixed three-section order (spec §4.1)")
+    func sidebarSectionOrder() throws {
+        let view = try String(
+            contentsOf: URL(filePath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appending(path: "Sources/AIRadar/Features/Workspace/RadarWorkspaceView.swift"),
+            encoding: .utf8
+        )
+        let aggregateIndex = try #require(view.range(of: "Label(\"聚合站\"")?.lowerBound)
+        let sourcesIndex = try #require(view.range(of: "Section(\"来源\")")?.lowerBound)
+        let upcomingIndex = try #require(view.range(of: "Section(\"即将开放\")")?.lowerBound)
+        #expect(aggregateIndex < sourcesIndex)
+        #expect(sourcesIndex < upcomingIndex)
+        // Placeholder card copy: main phrase + station-name subtitle.
+        #expect(view.contains("即将开放"))
+        #expect(view.contains("station.displayName"))
+    }
+
+    @Test("status dot mapping covers the WorkspaceState spectrum")
+    func statusDotMapping() {
+        #expect(StationStatusLevel.map(.fresh) == .fresh)
+        #expect(StationStatusLevel.map(.stale) == .stale)
+        #expect(StationStatusLevel.map(.usingLastKnownGood) == .stale)
+        #expect(StationStatusLevel.map(.validationFailed(hasLastKnownGood: true)) == .stale)
+        #expect(StationStatusLevel.map(.error("x")) == .error)
+        #expect(StationStatusLevel.map(.loading) == .muted)
+        #expect(StationStatusLevel.map(.empty) == .muted)
+        #expect(StationStatusLevel.map(.unavailable("x")) == .muted)
+        #expect(StationStatusLevel.map(.disabled("x")) == .muted)
+    }
+
+    @Test("aggregate station has no export destination (spec D10)")
+    func aggregateHasNoExport() {
+        let model = RadarWorkspaceModel(runtimes: [:], selectedStation: .aggregate)
+        #expect(model.normalizedRoute(.export) == .informationOverview)
+        #expect(model.stationDisplayName == "聚合站")
+    }
 }
