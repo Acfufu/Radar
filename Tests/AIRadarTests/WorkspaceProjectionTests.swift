@@ -7,7 +7,14 @@ import Testing
 struct WorkspaceProjectionTests {
     @Test("navigation remains a fixed destination set within each source workspace")
     func navigationContract() {
-        #expect(WorkspaceDestination.allCases == [.overview, .decisionLens, .models, .trends, .intelligenceCenter, .sourceStatus, .export])
+        // Spec §4.2: Codex station gains efficiency PK / Fast radar / history
+        // comparison / Tibo radar / community hub destinations (P1a typing; P1b
+        // lands the pages and per-station destination lists).
+        #expect(WorkspaceDestination.allCases == [
+            .overview, .decisionLens, .models, .trends, .intelligenceCenter,
+            .efficiencyPK, .fastRadar, .historyComparison, .tiboRadar, .communityHub,
+            .sourceStatus, .export,
+        ])
         let decisionLensRoute = WorkspaceRoute.sourcePage(.claudeCodeRadar, .decisionLens)
         #expect(WorkspaceRoute(storageKey: decisionLensRoute.storageKey) == decisionLensRoute)
         #expect(WorkspaceDestination.models.title(for: .sweBenchVerified) == "榜单")

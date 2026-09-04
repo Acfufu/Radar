@@ -348,8 +348,9 @@ struct MultiSourceWorkspaceTests {
 
         await model.start()
 
-        #expect(model.projection.renderedIQHistoryPresentation?.capturedAt == snapshot.capturedAt)
-        #expect(model.projection.renderedIQHistoryPresentation?.selectedSeries?.displayName == "官网综合")
+        let projection = try #require(model.projection)
+        #expect(projection.renderedIQHistoryPresentation?.capturedAt == snapshot.capturedAt)
+        #expect(projection.renderedIQHistoryPresentation?.selectedSeries?.displayName == "官网综合")
         await model.stop()
     }
 

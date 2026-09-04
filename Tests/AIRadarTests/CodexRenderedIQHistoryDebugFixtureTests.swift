@@ -37,7 +37,7 @@ struct CodexRenderedIQHistoryDebugFixtureTests {
             defer { try? FileManager.default.removeItem(at: fixture.root) }
 
             // When
-            let projection = try #require(fixture.model.projection.renderedIQHistoryPresentation)
+            let projection = try #require(fixture.model.projection?.renderedIQHistoryPresentation)
 
             // Then
             #expect(fixture.reader.readCount == 0, "Unexpected IQ-history read for \(state)")

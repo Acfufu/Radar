@@ -77,16 +77,16 @@ struct RadarWorkspaceView: View {
             // routing hooks apply one beat later (DEBUG only).
             try? await Task.sleep(nanoseconds: 400_000_000)
             if ProcessInfo.processInfo.environment["RADAR_UI_SOURCE"] != nil {
-                let sourceID = AppEnvironment.debugInitialSourceID(
-                    fixtureMode: .ui,
+                let station = AppEnvironment.debugInitialStation(
                     variables: ProcessInfo.processInfo.environment
                 )
-                model.selectSource(sourceID)
-                routeRaw = WorkspaceRoute.source(sourceID).storageKey
+                model.selectSource(station)
+                routeRaw = WorkspaceRoute.storageKey(for: station)
             }
             if let requested = ProcessInfo.processInfo.environment["RADAR_UI_DESTINATION"],
-               let destination = WorkspaceDestination(rawValue: requested) {
-                routeRaw = WorkspaceRoute.sourcePage(model.selectedSourceID, destination).storageKey
+               let destination = WorkspaceDestination(rawValue: requested),
+               let sourceID = model.selectedSourceID {
+                routeRaw = WorkspaceRoute.sourcePage(sourceID, destination).storageKey
             }
             #endif
             routeRaw = model.restoreRoute(WorkspaceRoute(storageKey: routeRaw)).storageKey
@@ -105,12 +105,56 @@ struct RadarWorkspaceView: View {
         case .sourcePage(let sourceID, let destination):
             sourceView(destination, sourceID: sourceID)
         case .export:
-            sourceView(.export, sourceID: model.selectedSourceID)
+            if let sourceID = model.selectedSourceID {
+                sourceView(.export, sourceID: sourceID)
+            } else {
+                stationPlaceholder
+            }
+        case .upcoming(let station):
+            upcomingPlaceholder(station)
         }
     }
 
+    /// Placeholder for stations selected outside the real-source picker
+    /// before the P1 sidebar sections land.
+    private var stationPlaceholder: some View {
+        VStack(spacing: RadarStyle.compactSpacing) {
+            Image(systemName: "square.dashed")
+                .font(.largeTitle)
+                .foregroundStyle(palette.secondaryText.color)
+            Text("此站点在此构建中不可用")
+                .foregroundStyle(palette.secondaryText.color)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .radarPage()
+    }
+
+    private func upcomingPlaceholder(_ station: UpcomingStation) -> some View {
+        VStack(spacing: RadarStyle.compactSpacing) {
+            Image(systemName: "sparkles")
+                .font(.largeTitle)
+                .foregroundStyle(palette.accent.color)
+            Text("即将开放").font(.title2.bold())
+            Text(station.displayName)
+                .foregroundStyle(palette.secondaryText.color)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .radarPage()
+    }
+
     @ViewBuilder private func sourceView(_ destination: WorkspaceDestination, sourceID: RadarSourceID) -> some View {
-        let projection = model.projection(for: sourceID) ?? model.projection
+        if let projection = model.projection(for: sourceID) ?? model.fallbackProjection {
+            sourceContent(destination, sourceID: sourceID, projection: projection)
+        } else {
+            stationPlaceholder
+        }
+    }
+
+    @ViewBuilder private func sourceContent(
+        _ destination: WorkspaceDestination,
+        sourceID: RadarSourceID,
+        projection: WorkspaceProjection
+    ) -> some View {
         let history = model.history(for: sourceID)
         switch destination {
         case .overview:
@@ -137,7 +181,13 @@ struct RadarWorkspaceView: View {
             } else {
                 SourceStatusView(projection: projection)
             }
-        case .export: ExportView(runtime: model.runtime(for: sourceID) ?? model.runtime)
+        case .export: ExportView(runtime: model.runtime(for: sourceID) ?? model.runtime ?? model.fallbackRuntime!)
+        case .efficiencyPK, .fastRadar, .historyComparison, .tiboRadar, .communityHub:
+            // P1b lands these pages; type-level routing exists since P1a.
+            Text("\(destination.rawValue) 页面将在后续提交中提供")
+                .foregroundStyle(palette.secondaryText.color)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .radarPage()
         }
     }
 
@@ -161,9 +211,10 @@ struct RadarWorkspaceView: View {
 
     private var refreshEnabled: Bool {
         if route == .informationOverview {
-            return model.sources.contains { RefreshActionAvailability.isEnabled(supportLevel: $0.supportLevel) }
+            return model.refreshAvailable
         }
-        return RefreshActionAvailability.isEnabled(supportLevel: model.projection.supportLevel)
+        if case .upcoming = route { return false }
+        return model.refreshAvailable
     }
 
     private func refresh() async {

@@ -14,7 +14,7 @@ struct AppCommands: Commands {
             .keyboardShortcut("o")
             Button("刷新") { Task { await model.refresh() } }
                 .keyboardShortcut("r")
-                .disabled(!RefreshActionAvailability.isEnabled(supportLevel: model.projection.supportLevel))
+                .disabled(!model.refreshAvailable)
             Button("关闭工作区") {
                 WorkspaceWindowActions.closeTarget(from: NSApp.keyWindow)?.performClose(nil)
             }
