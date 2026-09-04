@@ -354,18 +354,158 @@ struct CodexQuotaRadarPage: View {
     }
 }
 
-/// Main axis row 5: Fast radar (P2③ data). Empty state until then.
+/// Main axis row 5: Fast radar (spec §4.2 row 5, P2③ data). Current
+/// comparison + run history + monthly count table; empty state without data.
 struct CodexFastRadarPage: View {
     @Environment(\.radarPalette) private var palette
+    let projection: WorkspaceProjection
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
-            ViewHeader(title: "Fast 雷达", subtitle: "standard 与 Fast 档位的 TTFT / TPS / E2E 实测对比")
-            Text("暂无 Fast 雷达实测数据；数据接入后在此显示当前对比、历史与月份计数。")
-                .foregroundStyle(palette.secondaryText.color)
+        ScrollView {
+            VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
+                ViewHeader(title: "Fast 雷达", subtitle: "standard 与 Fast 档位的 TTFT / TPS / E2E 实测对比")
+                if let dataset = projection.fastRadarDataset, !dataset.runs.isEmpty {
+                    currentComparisonCard(dataset)
+                    monthlyCountCard(dataset)
+                    historyCard(dataset)
+                    Text(projection.source.attributionText)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryText.color)
+                        .textSelection(.enabled)
+                } else {
+                    Text("暂无 Fast 雷达实测数据；数据接入后在此显示当前对比、历史与月份计数。")
+                        .foregroundStyle(palette.secondaryText.color)
+                }
+            }
+            .radarPage()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .radarPage()
+    }
+
+    /// Latest run with fast/standard pairs; ratios are Radar-derived
+    /// (fast/standard) from upstream measurements, nothing else is computed.
+    @ViewBuilder private func currentComparisonCard(_ dataset: FastRadarHistoryDataset) -> some View {
+        let latest = dataset.runs.last
+        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+            ViewHeader(
+                title: "当前对比",
+                subtitle: latest.flatMap { $0.measuredAt ?? $0.runID } ?? dataset.updatedAt ?? "—"
+            )
+            let comparisons = latest.map { FastRadarAnalysis.evaluate(run: $0) } ?? []
+            if comparisons.isEmpty {
+                Text("最近一次运行缺少成对的 standard/Fast 实测。")
+                    .font(.subheadline)
+                    .foregroundStyle(palette.secondaryText.color)
+            } else {
+                comparisonHeaderRow
+                ForEach(comparisons) { comparison in
+                    comparisonRow(comparison, run: latest)
+                    Divider().overlay(palette.divider.color)
+                }
+            }
+            if let timezone = dataset.timezone {
+                Text("时区：\(timezone)")
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarPanel()
+    }
+
+    private var comparisonHeaderRow: some View {
+        HStack {
+            Text("模型").frame(minWidth: 64, alignment: .leading)
+            Text("TTFT (std → Fast)").frame(width: 150, alignment: .trailing)
+            Text("倍率").frame(width: 64, alignment: .trailing)
+            Text("TPS (std → Fast)").frame(width: 150, alignment: .trailing)
+            Text("倍率").frame(width: 64, alignment: .trailing)
+            Text("E2E (std → Fast)").frame(width: 150, alignment: .trailing)
+            Text("倍率").frame(width: 64, alignment: .trailing)
+        }
+        .font(.caption2)
+        .foregroundStyle(palette.secondaryText.color)
+    }
+
+    private func comparisonRow(_ comparison: FastRadarTierComparison, run: FastRadarHistoryDataset.FastRadarRun?) -> some View {
+        let tiers = run?.models
+        let tier = switch comparison.model {
+        case "sol": tiers?.sol
+        case "terra": tiers?.terra
+        default: tiers?.luna
+        }
+        return HStack {
+            Text(comparison.model).frame(minWidth: 64, alignment: .leading)
+            Text(pair(tier?.standard?.ttftSeconds, tier?.fast?.ttftSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
+            Text(ratio(comparison.ttftRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
+            Text(pair(tier?.standard?.tps, tier?.fast?.tps)).frame(width: 150, alignment: .trailing).monospacedDigit()
+            Text(ratio(comparison.tpsRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
+            Text(pair(tier?.standard?.e2eSeconds, tier?.fast?.e2eSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
+            Text(ratio(comparison.e2eRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
+        }
+        .font(.caption)
+        .padding(.vertical, 6)
+    }
+
+    private func monthlyCountCard(_ dataset: FastRadarHistoryDataset) -> some View {
+        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+            ViewHeader(title: "月份计数", subtitle: "runs 按 measured_at 所在月份分桶；升序、缺月补零")
+            MonthlyCountTable(entries: FastRadarAnalysis.monthlyRunCounts(runs: dataset.runs))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarPanel()
+    }
+
+    private func historyCard(_ dataset: FastRadarHistoryDataset) -> some View {
+        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+            ViewHeader(title: "运行历史", subtitle: "\(dataset.runs.count) 次实测；E2E 为 standard → Fast（秒）")
+            HStack {
+                Text("运行").frame(minWidth: 128, alignment: .leading)
+                Text("measured_at").frame(width: 170, alignment: .leading)
+                Text("CLI").frame(width: 76, alignment: .leading)
+                Text("sol").frame(width: 130, alignment: .trailing)
+                Text("terra").frame(width: 130, alignment: .trailing)
+                Text("luna").frame(width: 130, alignment: .trailing)
+            }
+            .font(.caption2)
+            .foregroundStyle(palette.secondaryText.color)
+            ForEach(Array(dataset.runs.reversed().enumerated()), id: \.offset) { _, run in
+                historyRow(run)
+                Divider().overlay(palette.divider.color)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarPanel()
+    }
+
+    private func historyRow(_ run: FastRadarHistoryDataset.FastRadarRun) -> some View {
+        func e2e(_ tier: FastRadarHistoryDataset.FastRadarRun.Tier?) -> String {
+            guard let standard = tier?.standard?.e2eSeconds, let fast = tier?.fast?.e2eSeconds else { return "—" }
+            return "\(RadarFormat.seconds(standard)) → \(RadarFormat.seconds(fast))"
+        }
+        return HStack {
+            Text(run.runID ?? "—").frame(minWidth: 128, alignment: .leading)
+            Text(run.measuredAt ?? "—").frame(width: 170, alignment: .leading)
+            Text(run.cliVersion ?? "—").frame(width: 76, alignment: .leading)
+            Text(e2e(run.models?.sol)).frame(width: 130, alignment: .trailing).monospacedDigit()
+            Text(e2e(run.models?.terra)).frame(width: 130, alignment: .trailing).monospacedDigit()
+            Text(e2e(run.models?.luna)).frame(width: 130, alignment: .trailing).monospacedDigit()
+        }
+        .font(.caption)
+        .padding(.vertical, 5)
+    }
+
+    private func pair(_ standard: Double?, _ fast: Double?, suffix: String = "") -> String {
+        guard let standard, let fast else { return "—" }
+        return "\(value(standard, suffix: suffix)) → \(value(fast, suffix: suffix))"
+    }
+
+    private func value(_ number: Double, suffix: String) -> String {
+        String(format: "%.2f%@", number, suffix)
+    }
+
+    private func ratio(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        return String(format: "%.2f×", value)
     }
 }
 

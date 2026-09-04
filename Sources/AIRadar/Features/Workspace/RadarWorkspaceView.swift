@@ -210,7 +210,7 @@ struct RadarWorkspaceView: View {
         case .quotaRadar:
             CodexQuotaRadarPage(projection: projection)
         case .fastRadar:
-            CodexFastRadarPage()
+            CodexFastRadarPage(projection: projection)
         case .historyComparison:
             CodexHistoryComparisonPage(projection: projection, history: history)
         case .tiboRadar:

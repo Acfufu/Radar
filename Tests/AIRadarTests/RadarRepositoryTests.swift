@@ -251,7 +251,7 @@ struct RadarRepositoryTests {
         #expect(statusState.error == nil)
     }
 
-    @Test("source deletion filters all six normalized entities and metadata while preserving sibling and raw data")
+    @Test("source deletion filters all seven normalized entities and metadata while preserving sibling and raw data")
     func sourceScopedDeletion() async throws {
         let fixture = try repositoryFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
@@ -264,6 +264,7 @@ struct RadarRepositoryTests {
             _ = try await fixture.repository.insertRenderedWarning(try warning(sourceID: sourceID))
             _ = try await fixture.repository.insertRenderedIQHistory(try iqHistory(sourceID: sourceID))
             _ = try await fixture.repository.insertIntelligenceEfficiency(efficiency(sourceID: sourceID))
+            _ = try await fixture.repository.insertFastRadarHistory(fastRadar(sourceID: sourceID))
         }
         let rawStore = RawSampleStore(dataRoot: fixture.root)
         try await rawStore.save(Data("target-raw".utf8), sourceID: target, outcome: .success, at: .init(timeIntervalSince1970: 100))
@@ -282,10 +283,10 @@ struct RadarRepositoryTests {
         let metadataHashAfter = sha256(try Data(contentsOf: metadataFile))
         let rawHashAfter = try await rawHash(rawStore, sourceIDs: [target, sibling])
 
-        #expect(targetCountsBefore == [1, 1, 1, 1, 1, 1])
-        #expect(siblingCountsBefore == [1, 1, 1, 1, 1, 1])
-        #expect(targetCountsAfter == [0, 0, 0, 0, 0, 0])
-        #expect(siblingCountsAfter == [1, 1, 1, 1, 1, 1])
+        #expect(targetCountsBefore == [1, 1, 1, 1, 1, 1, 1])
+        #expect(siblingCountsBefore == [1, 1, 1, 1, 1, 1, 1])
+        #expect(targetCountsAfter == [0, 0, 0, 0, 0, 0, 0])
+        #expect(siblingCountsAfter == [1, 1, 1, 1, 1, 1, 1])
         for type in types {
             #expect(try await restarted.metadata(sourceID: target, datasetType: type) == .empty)
             #expect(try await restarted.metadata(sourceID: sibling, datasetType: type).lastSuccessfulAt != nil)
@@ -465,6 +466,15 @@ struct RadarRepositoryTests {
             fetchedAt: Date(timeIntervalSince1970: 10),
             type: IntelligenceEfficiencyParser.expectedType,
             points: [.init(model: "m", effort: "high", harness: "codex", iq: 80)]
+        )
+    }
+
+    private func fastRadar(sourceID: RadarSourceID) -> FastRadarHistoryDataset {
+        FastRadarHistoryDataset(
+            sourceID: sourceID,
+            fetchedAt: Date(timeIntervalSince1970: 10),
+            type: FastRadarHistoryParser.expectedType,
+            runs: [.init(runID: "r1", measuredAt: "2026-09-04T13:14:54+08:00")]
         )
     }
 

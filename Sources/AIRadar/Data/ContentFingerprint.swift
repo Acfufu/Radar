@@ -71,6 +71,16 @@ enum ContentFingerprint {
         )
     }
 
+    /// Fast-radar dataset fingerprint (spec §5.3): the whole run set is
+    /// replaced when this changes; chronological order preserved.
+    static func fastRadarHistory(_ dataset: FastRadarHistoryDataset) throws -> String {
+        try make(
+            dataset,
+            datasetType: .fastRadarHistory,
+            seriesRevision: CodexRadarConfiguration.seriesRevision
+        )
+    }
+
     static func renderedWarning(_ snapshot: CodexRenderedWarningSnapshot) throws -> String {
         try CodexRenderedWarningSemanticFingerprint.make(
             sourceTimeLabel: snapshot.sourceTimeLabel,

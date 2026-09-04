@@ -25,12 +25,14 @@ final class RadarAppRuntime {
     private(set) var renderedIQHistoryProjection: SegmentState<CodexRenderedIQHistorySnapshot>?
     private(set) var renderedIQHistoryHistory: [CodexRenderedIQHistorySnapshot] = []
     private(set) var intelligenceEfficiencyState: SegmentState<IntelligenceEfficiencyDataset>?
+    private(set) var fastRadarHistoryState: SegmentState<FastRadarHistoryDataset>?
     private(set) var refreshIntervalMinutes: Int
 
     private var coordinator: RadarSyncCoordinator?
     private var renderedWarningCoordinator: CodexRenderedWarningCoordinator?
     private var renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?
     private var intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?
+    private var fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
     private var repository: RadarRepository?
     #if DEBUG
     private var evidenceStages: [[String: Any]] = []
@@ -42,10 +44,12 @@ final class RadarAppRuntime {
     private let renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)?
     private let renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)?
     private let intelligenceEfficiencyReaderFactory: (@MainActor @Sendable () -> any IntelligenceEfficiencyReading)?
+    private let fastRadarHistoryReaderFactory: (@MainActor @Sendable () -> any FastRadarHistoryReading)?
     private let primaryPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let renderedWarningPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let renderedIQHistoryPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let intelligenceEfficiencyPersistenceCheckpoint: (@Sendable () async -> Void)?
+    private let fastRadarHistoryPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let deleteNormalizedHistory: @Sendable (RadarRepository, RadarSourceID) async throws -> Void
     private var lifecycleGeneration = 0
     private var historyGeneration = 0
@@ -65,10 +69,12 @@ final class RadarAppRuntime {
         renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)? = nil,
         renderedIQHistoryReaderFactory: (@MainActor @Sendable () -> any CodexRenderedIQHistoryReading)? = nil,
         intelligenceEfficiencyReaderFactory: (@MainActor @Sendable () -> any IntelligenceEfficiencyReading)? = nil,
+        fastRadarHistoryReaderFactory: (@MainActor @Sendable () -> any FastRadarHistoryReading)? = nil,
         primaryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         renderedWarningPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         renderedIQHistoryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         intelligenceEfficiencyPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
+        fastRadarHistoryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         deleteNormalizedHistory: @escaping @Sendable (RadarRepository, RadarSourceID) async throws -> Void = { repository, sourceID in
             try await repository.deleteNormalizedHistory(sourceID: sourceID)
         }
@@ -82,10 +88,12 @@ final class RadarAppRuntime {
         self.renderedWarningReaderFactory = renderedWarningReaderFactory
         self.renderedIQHistoryReaderFactory = renderedIQHistoryReaderFactory
         self.intelligenceEfficiencyReaderFactory = intelligenceEfficiencyReaderFactory
+        self.fastRadarHistoryReaderFactory = fastRadarHistoryReaderFactory
         self.primaryPersistenceCheckpoint = primaryPersistenceCheckpoint
         self.renderedWarningPersistenceCheckpoint = renderedWarningPersistenceCheckpoint
         self.renderedIQHistoryPersistenceCheckpoint = renderedIQHistoryPersistenceCheckpoint
         self.intelligenceEfficiencyPersistenceCheckpoint = intelligenceEfficiencyPersistenceCheckpoint
+        self.fastRadarHistoryPersistenceCheckpoint = fastRadarHistoryPersistenceCheckpoint
         self.deleteNormalizedHistory = deleteNormalizedHistory
         self.refreshIntervalMinutes = AppSettings.allowedIntervals.contains(refreshIntervalMinutes) ? refreshIntervalMinutes : 30
     }
@@ -121,6 +129,7 @@ final class RadarAppRuntime {
         let activeRenderedWarningCoordinator = renderedWarningCoordinator
         let activeRenderedIQHistoryCoordinator = renderedIQHistoryCoordinator
         let activeIntelligenceEfficiencyCoordinator = intelligenceEfficiencyCoordinator
+        let activeFastRadarHistoryCoordinator = fastRadarHistoryCoordinator
         let activeClear = clearHistoryOperation
         let activeExports = Array(exportOperations.values)
         starting?.cancel()
@@ -130,6 +139,7 @@ final class RadarAppRuntime {
             guard let self else { return }
             for export in activeExports { _ = try? await export.value }
             if let activeClear { _ = await activeClear.value }
+            if let activeFastRadarHistoryCoordinator { await activeFastRadarHistoryCoordinator.stop() }
             if let activeIntelligenceEfficiencyCoordinator { await activeIntelligenceEfficiencyCoordinator.stop() }
             if let activeRenderedIQHistoryCoordinator { await activeRenderedIQHistoryCoordinator.stop() }
             if let activeRenderedWarningCoordinator { await activeRenderedWarningCoordinator.stop() }
@@ -139,6 +149,7 @@ final class RadarAppRuntime {
             self.renderedWarningCoordinator = nil
             self.renderedIQHistoryCoordinator = nil
             self.intelligenceEfficiencyCoordinator = nil
+            self.fastRadarHistoryCoordinator = nil
             self.repository = nil
             self.lifecycleState = .stopped
         }
@@ -262,8 +273,33 @@ final class RadarAppRuntime {
             } else {
                 intelligenceEfficiencyCoordinator = nil
             }
+            let fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
+            if sourceID == .codexRadar, let fastRadarHistoryReaderFactory {
+                let radarCoordinator = FastRadarHistoryCoordinator(
+                    reader: fastRadarHistoryReaderFactory(),
+                    repository: repository,
+                    policy: SyncPolicy(refreshInterval: TimeInterval(refreshIntervalMinutes * 60)),
+                    projectionDidChange: { [weak self] state, history in
+                        await self?.acceptFastRadarHistory(
+                            state,
+                            history: history,
+                            generation: generation
+                        )
+                    },
+                    persistenceCheckpoint: fastRadarHistoryPersistenceCheckpoint
+                )
+                fastRadarHistoryCoordinator = radarCoordinator
+                self.fastRadarHistoryCoordinator = radarCoordinator
+                _ = try? await radarCoordinator.loadPersistedProjection()
+                guard isStarting(generation) else {
+                    await radarCoordinator.stop()
+                    return
+                }
+            } else {
+                fastRadarHistoryCoordinator = nil
+            }
             let renderedTriggerObserver: (@Sendable (SyncTrigger) -> Void)?
-            if renderedWarningCoordinator != nil || renderedIQHistoryCoordinator != nil || intelligenceEfficiencyCoordinator != nil {
+            if renderedWarningCoordinator != nil || renderedIQHistoryCoordinator != nil || intelligenceEfficiencyCoordinator != nil || fastRadarHistoryCoordinator != nil {
                 renderedTriggerObserver = { trigger in
                     if let renderedWarningCoordinator {
                         Task { await renderedWarningCoordinator.refresh(trigger: trigger) }
@@ -273,6 +309,9 @@ final class RadarAppRuntime {
                     }
                     if let intelligenceEfficiencyCoordinator {
                         Task { await intelligenceEfficiencyCoordinator.refresh(trigger: trigger) }
+                    }
+                    if let fastRadarHistoryCoordinator {
+                        Task { await fastRadarHistoryCoordinator.refresh(trigger: trigger) }
                     }
                 }
             } else {
@@ -335,6 +374,7 @@ final class RadarAppRuntime {
             startOperation = nil
         } catch {
             if let coordinator { await coordinator.stop() }
+            if let fastRadarHistoryCoordinator { await fastRadarHistoryCoordinator.stop() }
             if let intelligenceEfficiencyCoordinator { await intelligenceEfficiencyCoordinator.stop() }
             if let renderedIQHistoryCoordinator { await renderedIQHistoryCoordinator.stop() }
             if let renderedWarningCoordinator { await renderedWarningCoordinator.stop() }
@@ -343,6 +383,7 @@ final class RadarAppRuntime {
             self.renderedWarningCoordinator = nil
             self.renderedIQHistoryCoordinator = nil
             self.intelligenceEfficiencyCoordinator = nil
+            self.fastRadarHistoryCoordinator = nil
             self.repository = nil
             lifecycleState = .failed
             failureMessage = "Synchronization runtime could not start"
@@ -371,6 +412,7 @@ final class RadarAppRuntime {
         await renderedWarningCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await renderedIQHistoryCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await intelligenceEfficiencyCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
+        await fastRadarHistoryCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         if let coordinator { projection = try? await coordinator.projection() }
     }
 
@@ -382,6 +424,7 @@ final class RadarAppRuntime {
         let renderedWarningCoordinator = renderedWarningCoordinator
         let renderedIQHistoryCoordinator = renderedIQHistoryCoordinator
         let intelligenceEfficiencyCoordinator = intelligenceEfficiencyCoordinator
+        let fastRadarHistoryCoordinator = fastRadarHistoryCoordinator
         let task = Task { @MainActor [weak self] in
             guard let self else { return false }
             return await self.performClearHistory(
@@ -389,7 +432,8 @@ final class RadarAppRuntime {
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
                 renderedIQHistoryCoordinator: renderedIQHistoryCoordinator,
-                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator
+                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
+                fastRadarHistoryCoordinator: fastRadarHistoryCoordinator
             )
         }
         clearHistoryOperation = task
@@ -403,11 +447,13 @@ final class RadarAppRuntime {
         coordinator: RadarSyncCoordinator,
         renderedWarningCoordinator: CodexRenderedWarningCoordinator?,
         renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?,
-        intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?
+        intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?,
+        fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
     ) async -> Bool {
         await renderedWarningCoordinator?.pauseAndDrain()
         await renderedIQHistoryCoordinator?.pauseAndDrain()
         await intelligenceEfficiencyCoordinator?.pauseAndDrain()
+        await fastRadarHistoryCoordinator?.pauseAndDrain()
         await coordinator.pauseAndDrain()
 
         do {
@@ -417,7 +463,8 @@ final class RadarAppRuntime {
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
                 renderedIQHistoryCoordinator: renderedIQHistoryCoordinator,
-                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator
+                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
+                fastRadarHistoryCoordinator: fastRadarHistoryCoordinator
             )
             return false
         }
@@ -428,7 +475,8 @@ final class RadarAppRuntime {
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
                 renderedIQHistoryCoordinator: renderedIQHistoryCoordinator,
-                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator
+                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
+                fastRadarHistoryCoordinator: fastRadarHistoryCoordinator
             )
             return true
         } catch {
@@ -437,7 +485,8 @@ final class RadarAppRuntime {
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
                 renderedIQHistoryCoordinator: renderedIQHistoryCoordinator,
-                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator
+                intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
+                fastRadarHistoryCoordinator: fastRadarHistoryCoordinator
             )
             return false
         }
@@ -452,17 +501,20 @@ final class RadarAppRuntime {
         renderedIQHistoryProjection = nil
         renderedIQHistoryHistory = []
         intelligenceEfficiencyState = nil
+        fastRadarHistoryState = nil
     }
 
     private func resume(
         coordinator: RadarSyncCoordinator,
         renderedWarningCoordinator: CodexRenderedWarningCoordinator?,
         renderedIQHistoryCoordinator: CodexRenderedIQHistoryCoordinator?,
-        intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?
+        intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?,
+        fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
     ) async {
         await renderedWarningCoordinator?.resume()
         await renderedIQHistoryCoordinator?.resume()
         await intelligenceEfficiencyCoordinator?.resume()
+        await fastRadarHistoryCoordinator?.resume()
         await coordinator.resume()
     }
 
@@ -470,13 +522,15 @@ final class RadarAppRuntime {
         primary: SyncLifecycleState?,
         renderedWarning: CodexRenderedWarningLifecycleState?,
         renderedIQHistory: CodexRenderedIQHistoryLifecycleState?,
-        intelligenceEfficiency: IntelligenceEfficiencyLifecycleState?
+        intelligenceEfficiency: IntelligenceEfficiencyLifecycleState?,
+        fastRadarHistory: FastRadarHistoryLifecycleState?
     ) {
         (
             await coordinator?.lifecycleState(),
             await renderedWarningCoordinator?.lifecycleState(),
             await renderedIQHistoryCoordinator?.lifecycleState(),
-            await intelligenceEfficiencyCoordinator?.lifecycleState()
+            await intelligenceEfficiencyCoordinator?.lifecycleState(),
+            await fastRadarHistoryCoordinator?.lifecycleState()
         )
     }
 
@@ -557,6 +611,16 @@ final class RadarAppRuntime {
         guard lifecycleGeneration == generation,
               lifecycleState == .starting || lifecycleState == .running else { return }
         intelligenceEfficiencyState = state
+    }
+
+    private func acceptFastRadarHistory(
+        _ state: SegmentState<FastRadarHistoryDataset>,
+        history: [FastRadarHistoryDataset],
+        generation: Int
+    ) {
+        guard lifecycleGeneration == generation,
+              lifecycleState == .starting || lifecycleState == .running else { return }
+        fastRadarHistoryState = state
     }
 
     var statusTitle: String {

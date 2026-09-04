@@ -16,7 +16,7 @@ let package = Package(
         .testTarget(
             name: "AIRadarTests",
             dependencies: ["AIRadar"],
-            exclude: ["Fixtures/CodexRenderedWarning", "Fixtures/CodexRenderedIQHistory", "Fixtures/IntelligenceEfficiency"]
+            exclude: ["Fixtures/CodexRenderedWarning", "Fixtures/CodexRenderedIQHistory", "Fixtures/IntelligenceEfficiency", "Fixtures/FastRadarHistory"]
         ),
     ],
     swiftLanguageModes: [.v6]

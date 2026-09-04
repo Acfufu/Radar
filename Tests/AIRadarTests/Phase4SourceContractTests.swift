@@ -83,6 +83,14 @@ struct Phase4SourceContractTests {
         #expect(!FileManager.default.fileExists(
             atPath: root.appending(path: "Sources/AIRadar/Resources/Fixtures/intelligence-efficiency.json").path
         ))
+        // P2③: same placement contract for the fast-radar canonical fixture.
+        #expect(package.contains("Fixtures/FastRadarHistory"))
+        #expect(FileManager.default.fileExists(
+            atPath: root.appending(path: "Tests/AIRadarTests/Fixtures/FastRadarHistory/fast-radar-history.json").path
+        ))
+        #expect(!FileManager.default.fileExists(
+            atPath: root.appending(path: "Sources/AIRadar/Resources/Fixtures/fast-radar-history.json").path
+        ))
     }
 
     @Test("intelligence-efficiency sidecar endpoint and forbidden-domain contract")
@@ -115,6 +123,14 @@ struct Phase4SourceContractTests {
         #expect(settings.contains("公开 GET、无认证"))
         #expect(settings.contains("api.codexradar.com"))
         #expect(settings.contains("/api/*"))
+
+        // P2③ fast-radar sidecar: same whitelist and dual 8MiB caps.
+        let fastAdapter = try text("Sources/AIRadar/Sources/CodexRadar/FastRadarHistoryAdapter.swift")
+        #expect(fastAdapter.contains("URL(string: \"https://codexradar.com/data/fast-radar-history.json\")!"))
+        #expect(fastAdapter.contains("static let maximumResponseBytes = 8 * 1_024 * 1_024"))
+        #expect(fastAdapter.contains("URLSessionHTTPTransport(maxBodyBytes: FastRadarHistoryAdapter.maximumResponseBytes)"))
+        #expect(fastAdapter.contains("URLSessionHTTPTransport(maxBodyBytes: maximumResponseBytes)"))
+        #expect(settings.contains("codexradar.com/data/fast-radar-history.json"))
     }
 
     @Test("export is wired as a one-way save surface without an import handler")

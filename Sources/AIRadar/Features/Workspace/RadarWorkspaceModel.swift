@@ -54,7 +54,8 @@ final class RadarWorkspaceModel {
             renderedWarningHistory: runtime.renderedWarningHistory,
             renderedIQHistoryState: runtime.renderedIQHistoryProjection,
             stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
-            intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil
+            intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+            fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
         )
     }
     var history: [BenchmarkDataset] { runtime?.benchmarkHistory ?? [] }
@@ -92,7 +93,8 @@ final class RadarWorkspaceModel {
                 renderedWarningHistory: runtime.renderedWarningHistory,
                 renderedIQHistoryState: runtime.renderedIQHistoryProjection,
                 stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
-                intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil
+                intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+                fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
             )
         })
     }
@@ -122,7 +124,8 @@ final class RadarWorkspaceModel {
             renderedWarningHistory: runtime.renderedWarningHistory,
             renderedIQHistoryState: runtime.renderedIQHistoryProjection,
             stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil,
-            intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil
+            intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+            fastRadarDataset: sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
         )
     }
 

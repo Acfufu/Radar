@@ -8,6 +8,7 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case renderedWarnings = "rendered-warnings"
     case renderedIQHistory = "rendered-iq-history"
     case intelligenceEfficiency = "intelligence-efficiency"
+    case fastRadarHistory = "fast-radar-history"
 }
 
 enum RadarModelSchema {
@@ -20,6 +21,7 @@ enum RadarModelSchema {
             CodexRenderedIQHistorySnapshotEntity.self,
             CodexRadarStatusSnapshotEntity.self,
             IntelligenceEfficiencySnapshotEntity.self,
+            FastRadarRunEntity.self,
         ])
     }
 
@@ -250,5 +252,52 @@ final class IntelligenceEfficiencySnapshotEntity {
         self.fetchedAt = dataset.fetchedAt
         sourceUpdatedAtText = dataset.sourceUpdatedAt
         self.encodedDataset = encodedDataset
+    }
+}
+
+/// One upstream fast-radar run (spec §5.3). Rows are replaced as a whole set
+/// per sync: when a payload with a new dataset fingerprint arrives, all
+/// previous rows for the source are dropped — runs never accumulate across
+/// syncs and the store stays bounded. Denormalized header columns
+/// (schemaVersion/type/timezone/updatedAt) reconstruct the dataset state.
+@Model
+final class FastRadarRunEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var datasetFingerprint: String
+    var fetchedAt: Date
+    var schemaVersion: Int?
+    var payloadType: String?
+    var timezone: String?
+    var updatedAtText: String?
+    var runID: String
+    var measuredAtText: String?
+    var measuredAtDate: Date?
+    var completedAtText: String?
+    var cliVersion: String?
+    var encodedRun: Data
+
+    init(
+        dataset: FastRadarHistoryDataset,
+        fingerprint: String,
+        run: FastRadarHistoryDataset.FastRadarRun,
+        encodedRun: Data
+    ) {
+        dedupeKey = "\(dataset.sourceID.rawValue)|\(RadarDatasetType.fastRadarHistory.rawValue)|\(fingerprint)|\(run.runID ?? "")"
+        id = UUID()
+        sourceID = dataset.sourceID.rawValue
+        datasetFingerprint = fingerprint
+        self.fetchedAt = dataset.fetchedAt
+        schemaVersion = dataset.schemaVersion
+        payloadType = dataset.type
+        timezone = dataset.timezone
+        updatedAtText = dataset.updatedAt
+        runID = run.runID ?? ""
+        measuredAtText = run.measuredAt
+        measuredAtDate = FastRadarHistoryDataset.parseISO8601(run.measuredAt)
+        completedAtText = run.completedAt
+        cliVersion = run.cliVersion
+        self.encodedRun = encodedRun
     }
 }

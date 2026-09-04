@@ -189,6 +189,91 @@ actor RadarRepository {
             .sorted { $0.fetchedAt < $1.fetchedAt }
     }
 
+    /// Spec §5.3: the run set is replaced as a whole on every sync with a new
+    /// dataset fingerprint — runs never accumulate across syncs. An identical
+    /// refetch is a no-op via the dataset fingerprint.
+    func insertFastRadarHistory(_ dataset: FastRadarHistoryDataset) async throws -> SnapshotInsertion {
+        try await waitForExportLease()
+        let fingerprint = try ContentFingerprint.fastRadarHistory(dataset)
+        let context = ModelContext(container)
+        let entities = try context.fetch(FetchDescriptor<FastRadarRunEntity>())
+            .filter { $0.sourceID == dataset.sourceID.rawValue }
+        let existing = entities.contains { $0.datasetFingerprint == fingerprint }
+        if !existing {
+            entities.forEach(context.delete)
+            for run in dataset.runs {
+                context.insert(FastRadarRunEntity(
+                    dataset: dataset,
+                    fingerprint: fingerprint,
+                    run: run,
+                    encodedRun: try JSONEncoder.radar.encode(run)
+                ))
+            }
+            try context.save()
+        }
+        try await recordSuccess(
+            sourceID: dataset.sourceID,
+            datasetType: .fastRadarHistory,
+            at: dataset.fetchedAt
+        )
+        return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
+    }
+
+    /// Reconstructs the dataset from the retained run rows (single whole-set
+    /// generation; header fields are denormalized on each row).
+    func fastRadarHistoryState(
+        sourceID: RadarSourceID
+    ) async throws -> SegmentState<FastRadarHistoryDataset> {
+        let context = ModelContext(container)
+        let entities = try context.fetch(FetchDescriptor<FastRadarRunEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .sorted {
+                if $0.measuredAtDate != $1.measuredAtDate { return ($0.measuredAtDate ?? .distantPast) > ($1.measuredAtDate ?? .distantPast) }
+                return $0.runID > $1.runID
+            }
+        var decodingFailure: SegmentError?
+        var value: FastRadarHistoryDataset?
+        if let anchor = entities.first {
+            do {
+                var runs: [FastRadarHistoryDataset.FastRadarRun] = []
+                for entity in entities {
+                    runs.append(try verifiedFastRadarRun(entity))
+                }
+                runs.reverse()
+                value = FastRadarHistoryDataset(
+                    sourceID: sourceID,
+                    fetchedAt: anchor.fetchedAt,
+                    schemaVersion: anchor.schemaVersion,
+                    type: anchor.payloadType,
+                    timezone: anchor.timezone,
+                    updatedAt: anchor.updatedAtText,
+                    runs: runs
+                )
+            } catch {
+                decodingFailure = SegmentError(kind: .decoding, message: "A stored fast-radar run could not be decoded")
+            }
+        }
+        return try await state(
+            value: value,
+            successfulAt: value?.fetchedAt,
+            decodingFailure: decodingFailure,
+            sourceID: sourceID,
+            datasetType: .fastRadarHistory
+        )
+    }
+
+    /// Chronological ascending run rows for the current retained generation.
+    func fastRadarRuns(sourceID: RadarSourceID) throws -> [FastRadarHistoryDataset.FastRadarRun] {
+        let context = ModelContext(container)
+        return try context.fetch(FetchDescriptor<FastRadarRunEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .compactMap { try? verifiedFastRadarRun($0) }
+            .sorted {
+                if $0.measuredAt != $1.measuredAt { return ($0.measuredAt ?? "") < ($1.measuredAt ?? "") }
+                return ($0.runID ?? "") < ($1.runID ?? "")
+            }
+    }
+
     func insertRenderedWarning(_ snapshot: CodexRenderedWarningSnapshot) async throws -> SnapshotInsertion {
         try await waitForExportLease()
         let fingerprint = try ContentFingerprint.renderedWarning(snapshot)
@@ -394,6 +479,8 @@ actor RadarRepository {
             return try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .intelligenceEfficiency:
             return try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
+        case .fastRadarHistory:
+            return try context.fetch(FetchDescriptor<FastRadarRunEntity>()).count { $0.sourceID == sourceID.rawValue }
         }
     }
 
@@ -525,6 +612,9 @@ actor RadarRepository {
         for entity in try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
+        for entity in try context.fetch(FetchDescriptor<FastRadarRunEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
         try context.save()
     }
 
@@ -653,6 +743,22 @@ actor RadarRepository {
               candidate.sourceUpdatedAt == snapshot.sourceUpdatedAtText,
               candidate.fetchedAt == snapshot.fetchedAt,
               try ContentFingerprint.intelligenceEfficiency(candidate) == snapshot.contentFingerprint else {
+            throw RepositoryIntegrityError.mismatchedSnapshot
+        }
+        return candidate
+    }
+
+    func verifiedFastRadarRun(
+        _ snapshot: FastRadarRunEntity
+    ) throws -> FastRadarHistoryDataset.FastRadarRun {
+        let candidate = try JSONDecoder.radar.decode(
+            FastRadarHistoryDataset.FastRadarRun.self,
+            from: snapshot.encodedRun
+        )
+        guard candidate.runID ?? "" == snapshot.runID,
+              candidate.measuredAt == snapshot.measuredAtText,
+              candidate.completedAt == snapshot.completedAtText,
+              candidate.cliVersion == snapshot.cliVersion else {
             throw RepositoryIntegrityError.mismatchedSnapshot
         }
         return candidate

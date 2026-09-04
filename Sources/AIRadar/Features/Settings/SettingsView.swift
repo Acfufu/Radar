@@ -59,7 +59,7 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text("项目已允许三个公开来源自动同步、缓存规范化历史与再展示。Codex Radar 还通过非持久 WebKit 读取公开首页已渲染的官网预警；页面自有渲染请求由页面发起，Radar 不拦截或保存响应，只保存与导出规范化字段。官网预警与本地 IQ 拟合口径独立，受保护的完整 API 始终不在范围内。")
                     .fixedSize(horizontal: false, vertical: true)
-                Text("效能排行读取公开端点 codexradar.com/data/intelligence-efficiency.json（公开 GET、无认证，站点级署名适用；经专属 8MiB 通道传输）。该数据由上游基于其受保护 API 派生发布；其溯源字段指向的 api.codexradar.com 受保护域与 deng 提交端点（/api/*）一律不在 Radar 的请求范围内。")
+                Text("效能排行读取公开端点 codexradar.com/data/intelligence-efficiency.json（公开 GET、无认证，站点级署名适用；经专属 8MiB 通道传输）。该数据由上游基于其受保护 API 派生发布；其溯源字段指向的 api.codexradar.com 受保护域与 deng 提交端点（/api/*）一律不在 Radar 的请求范围内。Fast 雷达实测读取公开端点 codexradar.com/data/fast-radar-history.json（公开 GET、无认证，同一禁域边界）。")
                     .fixedSize(horizontal: false, vertical: true)
             }
             .formStyle(.grouped)

@@ -14,6 +14,7 @@ struct WorkspaceProjection: Sendable {
     let renderedWarningPresentation: CodexRenderedWarningPresentation?
     var stationStatus: CodexStationStatusDataset? = nil
     var intelligenceEfficiencyDataset: IntelligenceEfficiencyDataset? = nil
+    var fastRadarDataset: FastRadarHistoryDataset? = nil
     let renderedIQHistoryPresentation: CodexRenderedIQHistoryPresentation?
 
     init(
@@ -25,7 +26,8 @@ struct WorkspaceProjection: Sendable {
         renderedWarningHistory: [CodexRenderedWarningSnapshot] = [],
         renderedIQHistoryState: SegmentState<CodexRenderedIQHistorySnapshot>? = nil,
         stationStatus: CodexStationStatusDataset? = nil,
-        intelligenceEfficiencyDataset: IntelligenceEfficiencyDataset? = nil
+        intelligenceEfficiencyDataset: IntelligenceEfficiencyDataset? = nil,
+        fastRadarDataset: FastRadarHistoryDataset? = nil
     ) {
         self.sync = sync
         self.lifecycle = lifecycle
@@ -42,6 +44,7 @@ struct WorkspaceProjection: Sendable {
         )
         self.stationStatus = stationStatus
         self.intelligenceEfficiencyDataset = intelligenceEfficiencyDataset
+        self.fastRadarDataset = fastRadarDataset
     }
 
     var benchmarkState: WorkspaceState { state(sync?.benchmark, lifecycle: lifecycle) }

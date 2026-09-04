@@ -41,6 +41,9 @@ struct ClaudeRadarApp: App {
                 renderedIQHistoryReaderFactory: { CodexRenderedIQHistoryPageReader() },
                 intelligenceEfficiencyReaderFactory: {
                     IntelligenceEfficiencyAdapter.production(dataRoot: environment.dataRoot)
+                },
+                fastRadarHistoryReaderFactory: {
+                    FastRadarHistoryAdapter.production(dataRoot: environment.dataRoot)
                 }
             ),
             RadarSourceID.sweBenchVerified: RadarAppRuntime(

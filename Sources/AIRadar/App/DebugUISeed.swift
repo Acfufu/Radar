@@ -53,6 +53,7 @@ enum DebugUISeed {
         if sourceID == .codexRadar {
             try await populateStationStatus(repository: repository, now: now, stale: state == "stale")
             try await populateIntelligenceEfficiency(repository: repository, now: now, stale: state == "stale")
+            try await populateFastRadarHistory(repository: repository, now: now, stale: state == "stale")
         }
         if sourceID == .codexRadar, state == "analytics" {
             try await populateAnalytics(repository: repository, now: now)
@@ -824,6 +825,64 @@ enum DebugUISeed {
             )
         )
         _ = try await repository.insertIntelligenceEfficiency(dataset)
+    }
+
+    /// Spec §5.3 fixture seed for the Fast radar page. Fixture text only.
+    private static func populateFastRadarHistory(
+        repository: RadarRepository,
+        now: Date,
+        stale: Bool
+    ) async throws {
+        func measurement(ttft: Double, tps: Double, e2e: Double) -> FastRadarHistoryDataset.FastRadarRun.Measurement {
+            .init(ttftSeconds: ttft, tps: tps, e2eSeconds: e2e)
+        }
+        func tier(standard: (Double, Double, Double), fast: (Double, Double, Double)) -> FastRadarHistoryDataset.FastRadarRun.Tier {
+            .init(standard: measurement(ttft: standard.0, tps: standard.1, e2e: standard.2), fast: measurement(ttft: fast.0, tps: fast.1, e2e: fast.2))
+        }
+        let runs = [
+            FastRadarHistoryDataset.FastRadarRun(
+                runID: "20260820-0900",
+                measuredAt: "2026-08-20T09:00:00+08:00",
+                completedAt: "2026-08-20T09:06:40+08:00",
+                cliVersion: "0.147.0",
+                models: .init(
+                    sol: tier(standard: (8.1, 50.2, 48.9), fast: (3.4, 68.1, 21.0)),
+                    terra: tier(standard: (8.4, 49.0, 50.1), fast: (3.6, 66.0, 22.4))
+                )
+            ),
+            FastRadarHistoryDataset.FastRadarRun(
+                runID: "20260901-1400",
+                measuredAt: "2026-09-01T14:00:00+08:00",
+                completedAt: "2026-09-01T14:07:10+08:00",
+                cliVersion: "0.148.0",
+                models: .init(
+                    sol: tier(standard: (8.0, 50.9, 49.2), fast: (3.3, 68.8, 20.8)),
+                    terra: tier(standard: (8.3, 49.5, 50.3), fast: (3.5, 66.9, 22.1)),
+                    luna: tier(standard: (7.6, 52.4, 46.0), fast: (3.1, 70.2, 19.5))
+                )
+            ),
+            FastRadarHistoryDataset.FastRadarRun(
+                runID: "20260904-1314",
+                measuredAt: "2026-09-04T13:14:54+08:00",
+                completedAt: "2026-09-04T13:20:24+08:00",
+                cliVersion: "0.149.0",
+                models: .init(
+                    sol: tier(standard: (8.26, 51.5, 49.3), fast: (3.35, 69.4, 20.4)),
+                    terra: tier(standard: (8.5, 48.8, 50.8), fast: (3.7, 66.2, 22.6)),
+                    luna: tier(standard: (7.4, 53.0, 45.2), fast: (3.0, 71.0, 19.0))
+                )
+            ),
+        ]
+        let dataset = FastRadarHistoryDataset(
+            sourceID: .codexRadar,
+            fetchedAt: stale ? now.addingTimeInterval(-9 * 60 * 60) : now,
+            schemaVersion: 1,
+            type: FastRadarHistoryParser.expectedType,
+            timezone: "Asia/Shanghai",
+            updatedAt: "2026-09-04T13:20:24+08:00",
+            runs: runs
+        )
+        _ = try await repository.insertFastRadarHistory(dataset)
     }
 }
 #endif

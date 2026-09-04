@@ -364,6 +364,93 @@ struct RadarAppRuntimeTests {
     }
 
     @MainActor
+    @Test("fast-radar sidecar refreshes on startup while its failure leaves primary sync green")
+    func codexFastRadarFailureIsIndependent() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-FRHFailure-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let reader = RuntimeFRHReader(results: [.failure(RadarHTTPError(kind: .oversized))])
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            fastRadarHistoryReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.fastRadarHistoryState?.error == nil {
+            await Task.yield()
+        }
+
+        #expect(reader.readCount == 1)
+        #expect(runtime.lifecycleState == .running)
+        #expect(runtime.projection?.benchmark.value != nil)
+        #expect(runtime.fastRadarHistoryState?.value == nil)
+        #expect(runtime.fastRadarHistoryState?.error?.kind == .validation)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("disabled Codex loads persisted fast-radar LKG without reading (zero-network isolation)")
+    func persistedFastRadarLoadsIndependently() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-FRHLKG-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let repository = RadarRepository(
+            container: try environment.makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+        let cached = runtimeFastRadar(fetchedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertFastRadarHistory(cached)
+        let reader = RuntimeFRHReader(results: [.failure(RadarHTTPError(kind: .network))])
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            fastRadarHistoryReaderFactory: { reader }
+        )
+
+        await runtime.start()
+
+        #expect(reader.readCount == 0)
+        #expect(runtime.fastRadarHistoryState?.value == cached)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("manual refresh publishes fast-radar dataset and clear removes it")
+    func manualRefreshAndClearFastRadar() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-FRHManual-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let initial = runtimeFastRadar(fetchedAt: Date(timeIntervalSince1970: 100))
+        let updated = runtimeFastRadar(fetchedAt: Date(timeIntervalSince1970: 200), solTTFT: 8.6)
+        let reader = RuntimeFRHReader(results: [.success(initial), .success(updated)])
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true)
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            fastRadarHistoryReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.fastRadarHistoryState?.value == nil {
+            await Task.yield()
+        }
+        await runtime.refresh()
+        for _ in 0..<200 where reader.readCount < 2 {
+            await Task.yield()
+        }
+
+        #expect(reader.readCount == 2)
+        #expect(runtime.fastRadarHistoryState?.value == updated)
+        #expect(await runtime.clearHistory())
+        #expect(runtime.fastRadarHistoryState == nil)
+        await runtime.stop()
+        let repository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: SyncMetadataStore(root: root))
+        #expect(try await repository.snapshotCount(datasetType: .fastRadarHistory, sourceID: .codexRadar) == 0)
+    }
+
+    @MainActor
     @Test("concurrent history clears coalesce into one source deletion")
     func concurrentHistoryClearsCoalesce() async throws {
         let root = FileManager.default.temporaryDirectory
@@ -375,6 +462,8 @@ struct RadarAppRuntimeTests {
         _ = try await repository.insertRenderedIQHistory(try runtimeIQHistory(capturedAt: Date(timeIntervalSince1970: 100)))
         let efficiency = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 100))
         _ = try await repository.insertIntelligenceEfficiency(efficiency)
+        let fastRadar = runtimeFastRadar(fetchedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertFastRadarHistory(fastRadar)
         let deletion = RuntimeDeletionProbe()
         let runtime = RadarAppRuntime(
             environment: environment,
@@ -382,6 +471,7 @@ struct RadarAppRuntimeTests {
             renderedWarningReaderFactory: { RuntimeWarningReader(result: .failure(RuntimeWarningError.unavailable)) },
             renderedIQHistoryReaderFactory: { RuntimeIQReader(results: [.failure(RuntimeWarningError.unavailable)]) },
             intelligenceEfficiencyReaderFactory: { RuntimeIEReader(results: [.failure(RadarHTTPError(kind: .network))]) },
+            fastRadarHistoryReaderFactory: { RuntimeFRHReader(results: [.failure(RadarHTTPError(kind: .network))]) },
             deleteNormalizedHistory: { repository, sourceID in
                 try await deletion.delete(repository: repository, sourceID: sourceID)
             }
@@ -400,11 +490,13 @@ struct RadarAppRuntimeTests {
         #expect(await deletion.callCount == 1)
         #expect(runtime.lifecycleState == .running)
         #expect(runtime.intelligenceEfficiencyState == nil)
+        #expect(runtime.fastRadarHistoryState == nil)
         let states = await runtime.synchronizationLifecycleStates()
         #expect(states.primary?.isPaused == false)
         #expect(states.renderedWarning?.isPaused == false)
         #expect(states.renderedIQHistory?.isPaused == false)
         #expect(states.intelligenceEfficiency?.isPaused == false)
+        #expect(states.fastRadarHistory?.isPaused == false)
         await runtime.stop()
         #expect(!(await runtime.clearHistory()))
     }
@@ -418,19 +510,22 @@ struct RadarAppRuntimeTests {
         let warning = try runtimeWarning(capturedAt: Date(timeIntervalSince1970: 100))
         let iq = try runtimeIQHistory(capturedAt: Date(timeIntervalSince1970: 100))
         let efficiency = try runtimeEfficiency(fetchedAt: Date(timeIntervalSince1970: 100))
+        let fastRadar = runtimeFastRadar(fetchedAt: Date(timeIntervalSince1970: 100))
         let warningReader = RuntimeWarningReader(result: .success(warning))
         let iqReader = RuntimeIQReader(results: [.success(iq), .success(iq)])
         let efficiencyReader = RuntimeIEReader(results: [.success(efficiency), .success(efficiency)])
+        let fastRadarReader = RuntimeFRHReader(results: [.success(fastRadar), .success(fastRadar)])
         let runtime = RadarAppRuntime(
             environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
             sourceID: .codexRadar,
             renderedWarningReaderFactory: { warningReader },
             renderedIQHistoryReaderFactory: { iqReader },
             intelligenceEfficiencyReaderFactory: { efficiencyReader },
+            fastRadarHistoryReaderFactory: { fastRadarReader },
             deleteNormalizedHistory: { _, _ in throw RuntimeDeletionError.injected }
         )
         await runtime.start()
-        for _ in 0..<200 where warningReader.readCount < 1 || iqReader.readCount < 1 || efficiencyReader.readCount < 1 {
+        for _ in 0..<200 where warningReader.readCount < 1 || iqReader.readCount < 1 || efficiencyReader.readCount < 1 || fastRadarReader.readCount < 1 {
             await Task.yield()
         }
         let projectionBefore = try #require(runtime.projection)
@@ -443,12 +538,14 @@ struct RadarAppRuntimeTests {
         #expect(runtime.renderedWarningProjection?.value == warning)
         #expect(runtime.renderedIQHistoryProjection?.value == iq)
         #expect(runtime.intelligenceEfficiencyState?.value == efficiency)
+        #expect(runtime.fastRadarHistoryState?.value == fastRadar)
         #expect(runtime.lifecycleState == .running)
         let states = await runtime.synchronizationLifecycleStates()
         #expect(states.primary?.isPaused == false)
         #expect(states.renderedWarning?.isPaused == false)
         #expect(states.renderedIQHistory?.isPaused == false)
         #expect(states.intelligenceEfficiency?.isPaused == false)
+        #expect(states.fastRadarHistory?.isPaused == false)
 
         await runtime.refresh()
         for _ in 0..<200 where warningReader.readCount < 2 || iqReader.readCount < 2 { await Task.yield() }
@@ -548,6 +645,23 @@ private final class RuntimeIQReader: CodexRenderedIQHistoryReading {
 }
 
 @MainActor
+private final class RuntimeFRHReader: FastRadarHistoryReading {
+    private var results: [Result<FastRadarHistoryDataset, Error>]
+    private(set) var readCount = 0
+
+    init(results: [Result<FastRadarHistoryDataset, Error>]) {
+        self.results = results
+    }
+
+    func read() async throws -> FastRadarHistoryDataset {
+        readCount += 1
+        return try results.removeFirst().get()
+    }
+
+    func cancel() async {}
+}
+
+@MainActor
 private final class RuntimeIEReader: IntelligenceEfficiencyReading {
     private var results: [Result<IntelligenceEfficiencyDataset, Error>]
     private(set) var readCount = 0
@@ -573,6 +687,28 @@ private func runtimeEfficiency(fetchedAt: Date, iq: Double = 81.25) throws -> In
             .init(model: "gpt-5.6-sol", effort: "low", harness: "codex", iq: iq),
         ],
         history: []
+    )
+}
+
+private func runtimeFastRadar(fetchedAt: Date, solTTFT: Double = 8.0) -> FastRadarHistoryDataset {
+    FastRadarHistoryDataset(
+        sourceID: .codexRadar,
+        fetchedAt: fetchedAt,
+        type: FastRadarHistoryParser.expectedType,
+        runs: [
+            .init(
+                runID: "20260904-1314",
+                measuredAt: "2026-09-04T13:14:54+08:00",
+                completedAt: "2026-09-04T13:20:24+08:00",
+                cliVersion: "0.149.0",
+                models: .init(
+                    sol: .init(
+                        standard: .init(ttftSeconds: solTTFT, tps: 50, e2eSeconds: 49),
+                        fast: .init(ttftSeconds: 3.4, tps: 69, e2eSeconds: 20.5)
+                    )
+                )
+            ),
+        ]
     )
 }
 

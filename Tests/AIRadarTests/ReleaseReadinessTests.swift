@@ -94,6 +94,28 @@ struct ReleaseReadinessTests {
         #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .intelligenceEfficiency).lastSuccessfulAt != nil)
     }
 
+    /// P2③ increment (spec §5.3): the whole-run-set replacement entity
+    /// survives a store reopen under the current schema.
+    @MainActor
+    @Test("fast-radar run set survives an upgrade reopen")
+    func upgradePreservesFastRadarRuns() async throws {
+        let dataRoot = temporaryRoot("upgrade-fast-radar")
+        defer { try? FileManager.default.removeItem(at: dataRoot) }
+        let dataset = FastRadarHistoryDataset(
+            sourceID: .codexRadar,
+            fetchedAt: Date(timeIntervalSince1970: 1_752_566_500),
+            type: FastRadarHistoryParser.expectedType,
+            runs: [.init(runID: "r1", measuredAt: "2026-09-04T13:14:54+08:00")]
+        )
+        let first = try repository(at: dataRoot)
+        _ = try await first.insertFastRadarHistory(dataset)
+
+        let reopened = try repository(at: dataRoot)
+        let state = try await reopened.fastRadarHistoryState(sourceID: .codexRadar)
+        #expect(state.value == dataset)
+        #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .fastRadarHistory).lastSuccessfulAt != nil)
+    }
+
     @MainActor
     private func verifyHistoryClearPreservesRaw() async throws {
         let dataRoot = temporaryRoot("clear-history")
