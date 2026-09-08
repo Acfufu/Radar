@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "benchmark_id": "deep-swe",
+  "mode": "rolling_equal_per_task",
+  "recommendation_mode": "comprehensive_weighted_mean",
+  "generated_at": "2026-09-08T15:50:18+00:00",
+  "source_updated_at": "2026-09-08T13:53:05+00:00",
+  "software_source_updated_at": "2026-09-08T15:49:31+00:00",
+  "visual_source_updated_at": "2026-09-08T13:53:05+00:00",
+  "comprehensive_points": [
+    {
+      "model": "gpt-6-astra",
+      "effort": "low",
+      "iq": 107.9,
+      "software_iq": 100.0,
+      "visual_iq": 134.21,
+      "samples": 156
+    },
+    {
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "iq": 112.51,
+      "software_iq": 107.33,
+      "visual_iq": 138.64,
+      "samples": 139
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "iq": 100.2,
+      "software_iq": 95.4,
+      "visual_iq": 121.7,
+      "samples": 42
+    }
+  ],
+  "recommendations": [
+    {
+      "key": "daily_development",
+      "title": "日常开发",
+      "rule": "原始 IQ ≥90，不再分档；更高 IQ 至少领先 1.5 IQ，且每领先 1 IQ 可接受最多 2% 对应指标溢价；去重后取 2 个。",
+      "items": [
+        {
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "iq": 112.51,
+          "passed": 125.96,
+          "samples": 173,
+          "average_cost_usd": 1.9,
+          "cost_samples": 173,
+          "average_duration_minutes": 8.6,
+          "duration_samples": 173,
+          "combined_cost_index": 119.51,
+          "rule": "原始 IQ ≥90，不再分档"
+        },
+        {
+          "model": "gpt-6-astra",
+          "effort": "low",
+          "iq": 107.9,
+          "passed": 118.4,
+          "samples": 156,
+          "average_cost_usd": 1.75,
+          "cost_samples": 156,
+          "average_duration_minutes": 8.2,
+          "duration_samples": 156,
+          "combined_cost_index": 115.08,
+          "rule": "原始 IQ ≥90，不再分档"
+        }
+      ]
+    },
+    {
+      "key": "background_automation",
+      "title": "后台自动化",
+      "rule": "自动化任务需要足够的智力下越便宜越好，速度慢点关系不大。",
+      "items": [
+        {
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh",
+          "iq": 100.2,
+          "passed": 96.5,
+          "samples": 42,
+          "average_cost_usd": 4.81,
+          "cost_samples": 42,
+          "average_duration_minutes": 25.0,
+          "duration_samples": 42,
+          "combined_cost_index": 96.3,
+          "rule": "智力达标下成本最优"
+        }
+      ]
+    }
+  ],
+  "degradation_alerts": {
+    "rule": "每个模型档位只与自身历史比较：最近三次结果须达到任一固定阈值，且近 12 小时仍在下降；按严重度排序，最多 4 个，不足不补位。",
+    "items": []
+  }
+}

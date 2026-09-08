@@ -263,3 +263,41 @@ The documented Todo 10 path observes only the browser-visible DOM at `https://de
 
 - Official state is fresh only after the DOM projection passes every check. A challenge/consent page, schema or origin drift, wrong range, navigation failure, JavaScript/bridge failure, or navigation/total timeout is a validation/unavailable error. With a prior valid snapshot the UI may show last-known-good; without one, live readiness is **BLOCKED**, never a successful empty or current PASS.
 - The rendered history UI displays the exact attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar` as a backlink to `https://deng.codexradar.com/`. It also states that the official curve and `本地 IQ 拟合` are independent.
+
+## Codex Radar radar-insights contract
+
+### Release and authorization boundary
+
+- Homepage: `https://codexradar.com/`
+- Insights: `https://codexradar.com/api/radar-insights` (public GET, no credentials; observed 2026-09-08)
+- Source ID: `codex-radar`; series revision: `codex-radar-insights-v1`; support: planned for the v0.4.0 data plane (spec §5.6); no current external-authorization receipt is claimed here.
+- The endpoint is an unauthenticated same-origin public GET on the whitelisted host (spec §5.0 as amended by ADR-0001). The `api.codexradar.com` host and the deng `/api/*` submission endpoints remain excluded.
+- The site-level attribution obligation carries over: `数据来自 Codex 雷达 codexradar.com`.
+- `recommendations` and `degradation_alerts` are upstream-authored structured data consumed verbatim with attribution (transstorage without local derivation, mirroring the D13 discipline). The JSON alerts card and the rendered-warning reader v2 coexist and never join, validate, or replace each other.
+
+### Canonical sanitized fixtures
+
+| Fixture | Purpose | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| `radar-insights.json` | Minimal schema-1 projection: composite/software/visual IQ points, scenario recommendations with rule text, and an empty degradation-alerts item list | 2,804 | `6c2eb3aa0be2596dce8bed81285bdd959615b5ed89cde2b5f09755af72ff8466` |
+
+These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.
+
+## Codex Radar visual-spatial-reasoning contract
+
+### Release and authorization boundary
+
+- Homepage: `https://codexradar.com/`
+- Summary: `https://codexradar.com/api/visual-spatial-reasoning`; per-model history: `https://codexradar.com/api/visual-spatial-reasoning-history` (public GETs, no credentials; observed 2026-09-08)
+- Source ID: `codex-radar`; series revision: `codex-radar-vsr-v1`; support: planned for the v0.4.0 data plane (spec §5.7); no current external-authorization receipt is claimed here.
+- Both are same-origin public GETs under the ADR-0001 allowlist; `api.codexradar.com` and deng `/api/*` remain excluded. Site-level attribution: `数据来自 Codex 雷达 codexradar.com`.
+- The summary benchmark is `pompeii-adjacency` with score label `Adjacency F1`; it is an independent presentation path and is never joined to, validated against, or merged with `comprehensive_points.visual_iq` from the radar-insights contract above.
+
+### Canonical sanitized fixtures
+
+| Fixture | Purpose | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| `visual-spatial-reasoning.json` | Minimal schema-1 summary with 23-field points (nullable steps/tokens) and a small embedded history object | 1,891 | `553bc5571985f75cdde37c9cc459beaa8b3dfa864658f75b0922e1d083ad0bdc` |
+| `visual-spatial-reasoning-history.json` | `model@effort` keyed dictionary of `{ts, score, n}` per-model history entries | 483 | `7fb359c792f165a00667f8b89a9e932fa5f63a3e20bcbb65851faeb75a4c9100` |
+
+These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.
