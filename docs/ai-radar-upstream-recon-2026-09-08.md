@@ -108,3 +108,17 @@
 ## 8. 结论
 
 上游在一周内完成了从「单 Codex 站 + 静态数据文件」到「多站真实数据 + 能力分量 + IQ 历史 + 评分历史」的扩张;App 的站点化架构(P1)与 sidecar 数据面(P2)恰好接住了大部分数据,真正的拍板量集中在:**占位站转正的范围与顺序、deng v2 的三选一、同域 `/api/*` 白名单扩面、新能力维度是否本轮接入、收尾发版 v0.3.0 的时机**。以上均为访谈决策题,本档案只提供事实。
+
+---
+
+## 增勘 2026-09-08 23:3x(距首勘 ~16h)
+
+**不变(拍板基础稳固)**:8 个数据端点与 schema 完全一致;radar-insights 仍 11 keys;iem 模型集仍 17 个(四站齐全);站点菜单仍 5 项;IQ 历史数据板块仍在;品牌/lang 不变(AI 雷达 / zh-CN)。
+
+**变化**:
+
+1. **公告:「全体付费订阅用量重置」**——今日 ~12:05(北京)发生全付费计划用量重置,`current.json` window: `open=false, status="community_confirmed", closed_at=12:05:53+08:00`,source 指向 X(status/2097174560412246215)。App 侧 P2-1 站态公告横幅/窗口卡正是此数据的消费者;DTO status 全为开放 `String?`(`CodexRadarDTO.swift:8/30/111`),DebugUISeed 已用 `community_confirmed` 佐证,**无适配风险**。
+2. **Fast 雷达 cohort 切换(过渡态)**:官网 UI 改为「Astra medium · Standard → Fast」且 0 样本(「等待首次有效配对」「暂无可发布」),替换原 Sol/Terra/Luna 87-run 展示;但 `/data/fast-radar-history.json` 仍是旧结构(schema 1,`runs[].models{sol,terra,luna}` 嵌套,88 runs,08:19 更新)。上游中途切换 → App Fast 雷达页将与官网展示分叉,#3 ⑤ 实施时按新 cohort 语义核对。
+3. **Kimi「近期开放」预告文案从页面消失**(菜单仍 5 项)——#3 中「Kimi 维持占位卡」维持,留意上游是否改变开放策略。
+4. **知识分享更新**:新增「遇到降智后的自救和求救方法(New,自救/求救)」「GPT-6 Astra 长上下文与个人订阅额度:Support 回复」。
+5. **IQ 历史数据源基本锁定**:展开板块后 resource 列表无新端点 → 唯一吻合数据集是 `/data/intelligence-efficiency.json` 的 `history[]`(264 观察点、自 7/23、每点含 model×effort 的 iq/passed/price/minutes/agent_steps/tokens/cache_hit_rate)——**App P2-2 sidecar 已在同步且数据集保留全量 history**。ADR-0002 ② 的「新 sidecar」大概率不需要,退化为「既有数据集 + 趋势卡 UI 渲染」;实现期确认渲染源后即可关闭勘察项。
