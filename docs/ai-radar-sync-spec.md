@@ -1,9 +1,9 @@
 # AI Radar 全量同步重构 Spec
 
-- 状态：**定稿 v1.0**（经 R1–R5 共 5 轮双审，10 次独立审阅，全部发现已闭环）
-- 日期：2026-09-04
-- 上游快照：codexradar.com（2026-09-04 抓取；页面为动态服务端渲染，字节数随内容波动，实测约 680KB）
-- 决策人已确认：① 范围全量（P0–P3 + 重命名）② 架构可重议（对齐上游站点模型）③ 产品定名 **AI Radar**（中文界面「AI 雷达」；用户原话「AI Rader」为笔误，已更正）
+- 状态：**v1.1-draft**（v1.0 定稿经 R1–R5 共 5 轮双审，10 次独立审阅，全部发现已闭环；v1.1 为 v0.4.0 迭代修订稿——ADR-0001/0003 + grill 六题拍板落 spec，冻结后本行改「定稿 v1.1」并附冻结日期与决策人确认原文）
+- 日期：2026-09-04（v1.0 定稿）/ 2026-09-08（v1.1 修订起草）
+- 上游快照：codexradar.com（2026-09-04 抓取；页面为动态服务端渲染，字节数随内容波动，实测约 680KB；**2026-09-08 重勘增补见 `docs/ai-radar-upstream-recon-2026-09-08.md`**）
+- 决策人已确认：① 范围全量（P0–P3 + 重命名）② 架构可重议（对齐上游站点模型）③ 产品定名 **AI Radar**（中文界面「AI 雷达」；用户原话「AI Rader」为笔误，已更正）；**v1.1 新增确认：④ 同域 `/api/*` 机制性放行 ⑤ 四占位站转正 ⑥ radar-insights + visual-spatial-reasoning 接入 ⑦ v0.4.0 合并发版**（ADR-0001/0002/0003，issue #3）
 - 本文件即终版落盘：`docs/ai-radar-sync-spec.md`
 
 ---
@@ -17,8 +17,8 @@
 ### 1.1 上游调研结论（2026-09-04 实测）
 
 **品牌/架构**
-- 站点切换器：aggregate（聚合站 预览）/ codex（当前）/ dsh（预览）/ zcode（预览）/ grok（预览）+ kimi「近期开放」占位；导航为 `./?station=X` 链接 + `data-station` 属性（导航项 5 处，共 29 处 data-station 标记），纯客户端切换
-- **非 Codex 站目前无独立内容与数据端点**（`current.json?station=grok|zcode|dsh` 均忽略参数返回同一 Codex 数据；`?station=aggregate` 页面与首页字节级相同）——多站点是前瞻脚手架
+- 站点切换器：aggregate（聚合站 预览）/ codex（当前）/ dsh（预览）/ zcode（预览）/ grok（预览）+ kimi「近期开放」占位；导航为 `./?station=X` 链接 + `data-station` 属性（导航项 5 处，共 29 处 data-station 标记），纯客户端切换。**2026-09-08 增勘**：Kimi 预告文案已从页面消失（菜单仍 5 项）；菜单项 `./?station=aggregate|codex|dsh|zcode|grok` 不变
+- **~~非 Codex 站目前无独立内容与数据端点~~（2026-09-08 增勘：该结论已失效）**——四预览站均带真实数据（聚合站 4 站 40 可比档位、近 24h 运行 127），机制为**同一批端点 + 前端 station 配置的模型白名单裁剪**（`?station=` 仅前端参数，`/api/radar-insights?station=dsh` 与无参字节级一致），无独立分站端点；分站数据集 = `/api/intelligence-efficiency-metrics`（动态）与 `/data/intelligence-efficiency.json`（静态，schema 已升 2），详见 ADR-0003 与调研档案 §1.4
 - 页面为单份 HTML（2026-09-04 实测 679,867B，动态波动），全部样式内联，无外部 CSS/JS 资源（仅 Cloudflare beacon）
 
 **视觉 token（内联 CSS 提取，:root 默认 / [data-theme=light] / [data-theme=dark] 三套）**
@@ -54,8 +54,10 @@
   - `model_iq` 保留 `{latest,comparisons,quota_radar}` 核心并新增：`recent_days`（latest + 11 个 comparisons 各 10 天）、`data_source`（溯源：type/url/selection/checked_at/valid_cells/model_task_counts）、`quota_calibration`（schema_version/date/source/status/primary_window/calibration_policy/global_concurrency/cost 字段/windows.primary_5h/secondary_7d）、`quota_check`（plan_type/rate_limit_reset_credits_available_count/limit_reached/allowed/windows）、`quota_radar.trend`（10 条：five_h_20x/five_h_5x/five_h_plus/rate/offset）
   - Run 级新增：`wall_time_human/average_cost_usd/average_task_seconds/average_task_time_human/cost_usd_basis`
   - 模型换代：comparisons 11 键（gpt_56_sol_xhigh/high/medium/low、gpt_56_terra_max/xhigh_distributed/high、gpt_56_luna_max/high、gpt_55_xhigh_distributed/high_distributed）
-- 新端点 `/data/intelligence-efficiency.json`（**实测 4.07MB**，history 249 条、runs_total 42646，持续增长）：顶层 15 键 `schema/mode/type/source/metrics_source/source_updated_at/models/runs_24h_total/runs_48h_total/runs_total/points/history/fingerprint/activity_fingerprint/method`；`source/metrics_source` 指向 `api.codexradar.com/api/v1/*`（该域**不得**请求，见 §5 传输政策）；**两新端点 JSON 内容均不内嵌 attribution/requirements 要求**（实测 0 命中），attribution 义务来自 current.json 站点级声明
-- 新端点 `/data/fast-radar-history.json`（顶层 5 键 `schema_version/type/timezone/updated_at/runs`）：schema_version=1，runs[82]，run={run_id,measured_at,completed_at,cli_version,models:{sol|terra|luna:{standard|fast:{ttft_seconds,tps,e2e_seconds}}}}；页面内嵌同名 JSON（type=fast_radar_history）一致
+- 新端点 `/data/intelligence-efficiency.json`（**实测 4.07MB**，history 249 条、runs_total 42646，持续增长）：顶层 15 键 `schema/mode/type/source/metrics_source/source_updated_at/models/runs_24h_total/runs_48h_total/runs_total/points/history/fingerprint/activity_fingerprint/method`；`source/metrics_source` 指向 `api.codexradar.com/api/v1/*`（该域**不得**请求，见 §5 传输政策）；**两新端点 JSON 内容均不内嵌 attribution/requirements 要求**（实测 0 命中），attribution 义务来自 current.json 站点级声明。**2026-09-08 增勘**：schema 已升至 **2**（App 侧容错解码不受影响，P2② 已实证）；history 264 条；`points[]` 新增 `dsh-deepseek-v4-flash/pro`、`glm-5.3`、`glm-5.3-flash`、`grok-4.6` 等跨站模型与 `harness` 字段（**harness 标注不一致**：dsh 已标、glm/grok 误标 codex——分站归组不依赖它，按模型白名单，ADR-0003）
+- 新端点 `/data/fast-radar-history.json`（顶层 5 键 `schema_version/type/timezone/updated_at/runs`）：schema_version=1，runs[82]，run={run_id,measured_at,completed_at,cli_version,models:{sol|terra|luna:{standard|fast:{ttft_seconds,tps,e2e_seconds}}}}；页面内嵌同名 JSON（type=fast_radar_history）一致。**2026-09-08 增勘**：runs 增至 88；官网 UI 已切换「Astra medium」新 cohort（0 样本等待首次配对），JSON 仍为 sol/terra/luna 旧结构——**上游过渡态**，实现按新 cohort 语义核对（调研档案增勘节）
+- 新端点 `/api/radar-insights`（2026-09-08 实测 29KB，schema 1，仅 Codex 站模型）：顶层 11 键 `benchmark_id/comprehensive_points/degradation_alerts/generated_at/mode/recommendation_mode/recommendations/schema/software_source_updated_at/source_updated_at/visual_source_updated_at`；`comprehensive_points[]`={model, effort(枚举 low/medium/high/xhigh/max/ultra), iq, software_iq, visual_iq, samples}；`recommendations[]`={key(如 daily_development), title, rule, items[]}，items={model, effort, iq, passed, samples, average_cost_usd, cost_samples, average_duration_minutes, duration_samples, combined_cost_index, rule}；`degradation_alerts`={rule, items[]}（items 实测可为空，元素字段全 Optional 容错）
+- 新端点 `/api/visual-spatial-reasoning`（777KB，schema 1）与 `/api/visual-spatial-reasoning-history`（4KB）：前者顶层 12 键 `benchmark_id(=pompeii-adjacency)/history/mode(=latest_valid_per_task)/points/runs_24h_total/runs_48h_total/runs_total/schema/score_label(=Adjacency F1)/scoring_mode(=continuous-macro)/source_updated_at/type(=visual_spatial_reasoning_summary)`，`points[]` **23 键** = {model, effort, passed, valid_tasks, benchmark_tasks, iq, score_mode, average_price_usd, price_samples, average_minutes, duration_samples, incomplete_cost_samples, average_agent_steps(可 null), agent_steps_samples, average_total_tokens(可 null), token_samples, cache_hit_rate, cache_token_samples, combined_cost_index, latest_graded_at, runs_24h, runs_48h, runs_total}；后者为 `"<model>@<effort>"` 键字典（实测 25 键），值 `[{ts, score, n}]`
 - `model-ratings?history=N`（**history 参数实际生效**，返回对应天窗）：顶层 15 键 `ok/day/timezone/refresh_seconds/updated_at/models/history/my_scores/my_score_records/window/window_hours/since/until/source/cached_at`
   - `models[27]`：{id,label,group,average,count}；**group 全集 6 个**：GPT-5.6 Sol / GPT-5.6 Terra / GPT-5.6 Luna / GPT-5.5 / DSV4 Flash / DSV4 Pro；**effort 后缀全集 7 个**：ultra/max/xhigh/high/medium/low/**off**（id 形如 gpt-5.6-sol-xhigh、deepseek-v4-flash-off）
   - `history[]`：14 条逐日 {day, models, updated_at}——7 天/24h 矩阵可直接取用（见 §5.4）
@@ -70,16 +72,16 @@
 **目标**
 1. 产品更名 AI Radar（用户可见层 + Swift module/target 层全量重命名；bundle identifier 保持不变，见 D5；生产类型名去留见 §8 类型名条款）
 2. 视觉体系对齐上游 2026-09-04 快照（明暗双主题、四语义色、新几何语言）
-3. 架构站点化：聚合站 + Codex 站 + Claude Code 站 + SWE-bench 站 + 即将开放占位
+3. 架构站点化：聚合站 + Codex 站 + Claude Code 站 + SWE-bench 站 + DSH/ZCode/Grok 实站（**v1.1：占位转正**，ADR-0003）+ Kimi 即将开放占位
 4. Codex 站数据面对齐上游全部结构化板块：**4 个数据适配器（2 全新 + 2 升级）+ 1 项导出扩围**，字段处置逐项见 §5.1
 5. 渲染读取器修复/升级（deng v2、降智预警 v2）
 6. 全程保持测试基线绿（现 367 tests / 46 suites 实测；`docs/implementation-status.md` 记载的 364 为陈旧数字，收尾时对齐）
 
 **非目标**
 - 不复刻上游 web 前端代码；不搬运上游文案/图片/二维码/logo 及任何视觉资产（一律链接化）
-- 不转载上游「站长推荐」正文，不做任何本地派生推荐（见 D4 修订）
+- ~~不转载上游「站长推荐」正文，不做任何本地派生推荐~~（**v1.1 修订**：上游 `radar-insights.recommendations` 为上游自产结构化数据，按 **D13 同款「原文转存展示 + 署名」** 口径消费——不本地派生、不本地计算推荐、不撰写本地推荐文案，D4 链接卡形态保留；「不做任何本地派生推荐」继续有效）
 - 不实现打分提交、任何写操作；不接入 credential-protected API（`api_access.full_api`、`api.codexradar.com` 域与 deng 的 `/api/*` 提交端点继续排除，见 §5 传输政策）
-- 不为 dsh/zcode/grok 实现真实数据适配器（上游无数据，仅占位）
+- ~~不为 dsh/zcode/grok 实现真实数据适配器~~（**v1.1 废除**：上游已上线四预览站真实数据；转正形态 = 同一数据面 + 模型白名单视图站，无独立 sync 端点，见 ADR-0003/§4.1）
 - 不做跨源自建排名、组合分数或跨源指标对比（聚合站硬边界见 §4.1/D10）
 - 不做本地文案派生（Tibo 摘要等一律用上游自带字段原文，见 §4.2 行 7）
 
@@ -107,13 +109,16 @@
 
 | 站 | 内容 | 数据 |
 |---|---|---|
-| 聚合站 | 各站状态卡（新鲜度点）+ 导航；无统一排名、无横幅、无导出目的地（D10） | 视图层组合各站已有最新投影的状态/新鲜度 |
-| Codex 站 | §4.2 全板块 | §5 适配器全家 |
+| 聚合站 | 各站状态卡（新鲜度点）+ 导航；无统一排名、无横幅、无导出目的地（D10）；**v1.1：新增跨站同基准对比视图**（逐点标注来源站，D10 红线措辞不变） | 视图层组合各站已有最新投影的状态/新鲜度；对比视图消费 IntelligenceEfficiency sidecar 数据集（含全部跨站模型档位） |
+| Codex 站 | §4.2 全板块；**v1.1 新增**：综合智能三能力 tab（综合/软件工程/视觉空间推理，§5.6/§5.7 支撑）+ degradation_alerts 结构化卡 | §5 适配器全家 + §5.6/§5.7 两新 sidecar |
 | Claude Code 站 | 现有三房间能力原样迁移 | 现适配器不变 |
 | SWE-bench 站 | 现有数据面原样迁移 | 现适配器不变 |
-| DSH/ZCode/Grok/Kimi | 「即将开放」静态占位卡（统一文案「即将开放」，副文案列站名；**有意不逐字复刻上游「近期开放」**） | 无（无 runtime，永不同步） |
+| DSH/ZCode/Grok | **v1.1 转正：白名单视图站**——「同基准效能排行 + 模型档位详情」单目的地页，分站视图 = 同一数据面按模型白名单裁剪（与上游前端同构；归组按模型白名单，不依赖上游 harness 字段——实测标注不一致） | **无独立 runtime/sync**：复用 IntelligenceEfficiency sidecar 数据集（已含全部新站模型档位）；状态点跟随该数据集新鲜度 |
+| Kimi | 「即将开放」静态占位卡（统一文案「即将开放」；**有意不逐字复刻上游「近期开放」**） | 无（无 runtime，永不同步） |
 
-**命名约定（写死）**：Station Swift case 为 `aggregate/codex/claudeCode/sweBench/upcoming`，`upcoming(DSH|ZCode|Grok|Kimi)` 关联值为嵌套枚举；**三实站 Station rawValue 一律复用既有 `RadarSourceID` rawValue**（`claude-code-radar`/`codex-radar`/`swe-bench-verified`），占位站为 `dsh/zcode/grok/kimi`、聚合站为 `aggregate`（小写连字符）；路由 storageKey 前缀**保持 `source:` 不变**、第二段为站 rawValue（如 `source:aggregate`），保旧持久化兼容；新目的地 rawValue 沿用现有中文串惯例；`RADAR_UI_SOURCE` 新增值 `aggregate` 与 `upcoming-dsh|zcode|grok|kimi`。`WorkspaceRoute(storageKey:)` 现为非 failable、malformed 回落初始路由——**保留该语义**，契约测试同步改写。
+**v1.1 白名单视图站命名约定（写死）**：Station case `dsh/zcode/grok` 由 `upcoming(DSH|ZCode|Grok)` 占位态**就地转正**——rawValue 保持 `dsh/zcode/grok` 不变（路由 storageKey `source:dsh` 等天然兼容，旧持久化无迁移）；`upcoming` 枚举仅剩 `.kimi`。白名单映射（站→模型 ID 集合）为**静态常量**（对齐上游前端 station 配置：DSH=`dsh-deepseek-v4-flash/pro`、ZCode=`glm-5.3`、Grok=`grok-4.6`），实现期以上游实测为准核对一次；无 runtime 站旁路清单 (a)–(g)（P1 已落地）的适用范围随之收窄为聚合站 + Kimi 占位站。
+
+**命名约定（写死）**：Station Swift case 为 `aggregate/codex/claudeCode/sweBench/upcoming`，`upcoming(DSH|ZCode|Grok|Kimi)` 关联值为嵌套枚举（**v1.1 修订：DSH/ZCode/Grok 转正后仅剩 `upcoming(.kimi)`，`dsh/zcode/grok` rawValue 就地复用为白名单视图站**）；**三实站 Station rawValue 一律复用既有 `RadarSourceID` rawValue**（`claude-code-radar`/`codex-radar`/`swe-bench-verified`），占位站为 `kimi`、白名单视图站为 `dsh/zcode/grok`、聚合站为 `aggregate`（小写连字符）；路由 storageKey 前缀**保持 `source:` 不变**、第二段为站 rawValue（如 `source:aggregate`），保旧持久化兼容；新目的地 rawValue 沿用现有中文串惯例；`RADAR_UI_SOURCE` 新增值 `aggregate` 与 `upcoming-dsh|zcode|grok|kimi`。`WorkspaceRoute(storageKey:)` 现为非 failable、malformed 回落初始路由——**保留该语义**，契约测试同步改写。
 
 **无 runtime 站的旁路改造点（全清单，含强解包消费面）**：
 - (a) `RadarWorkspaceModel.runtime` 强解包：`RadarWorkspaceView.swift:109/136` 的 `?? model.projection`/`?? model.runtime` 回落链、`refresh()`（`RadarWorkspaceModel.swift:102→:15`）——全部改为可空 + 旁路
@@ -123,20 +128,20 @@
 - (e) `SettingsView.swift:11` 的 `private var runtime: RadarAppRuntime { model.runtime }` 强依赖
 - (f) `MenuBarView` 的 `model.source.displayName`/`model.projection` 消费面
 - (g) `AppCommands.swift:17` 的 `model.projection.supportLevel`
-- 工具栏刷新按钮与 App CommandMenu「刷新」语义一致：实站 → 刷新该站 runtime；聚合站 → 依次刷新三实站；占位站 → 禁用（带解释 tooltip）
+- 工具栏刷新按钮与 App CommandMenu「刷新」语义一致：实站 → 刷新该站 runtime；聚合站 → 依次刷新三实站；**白名单视图站（DSH/ZCode/Grok）→ 刷新其数据源 sidecar（与 Codex 站共享同一数据集，同刷同效）；占位站（Kimi）→ 禁用（带解释 tooltip）**
 
-**侧栏结构（写死）**：Section 顺序固定——聚合站（置顶单项）→ 三实站（站名分组，站内目的地按 §4.2 序）→ 「即将开放」组（DSH/ZCode/Grok/Kimi 按上游 nav 顺序）。
+**侧栏结构（写死；v1.1 修订）**：Section 顺序固定——聚合站（置顶单项）→ 三实站（站名分组，站内目的地按 §4.2 序）→ **「预览站」组（DSH/ZCode/Grok，按上游 nav 顺序）→ 「即将开放」组（仅 Kimi）**。
 
-**状态点四态（写死，映射表入 design-qa）**：最近同步成功且新鲜 = --green；stale/LKG = --amber；错误/校验失败 = --red；禁用或无数据 = --soft 灰；占位站恒灰。MenuBarExtra 显示各站状态点（model 已持有全部 runtimes 且有 `projection(for:)`）。
+**状态点四态（写死，映射表入 design-qa）**：最近同步成功且新鲜 = --green；stale/LKG = --amber；错误/校验失败 = --red；禁用或无数据 = --soft 灰；**Kimi 占位站恒灰；白名单视图站状态点跟随其数据源 sidecar 数据集新鲜度**。MenuBarExtra 显示各站状态点（model 已持有全部 runtimes 且有 `projection(for:)`）。
 
 ### 4.2 Codex 站页面矩阵（新页序 × 既有目的地去留）
 
-**公告横幅**挂载层级：仅 Codex 站页顶部（聚合站与占位站不挂载，D10）。**行为（写死）**：仅当 `window` 字段存在时渲染——`window_open=true` 用 --green-soft 底 + --green 左缘条，`false` 用 --amber-soft 底 + --amber 左缘条；`window`/`status` 字段整体缺失（v1 旧 payload）时横幅与状态徽章不渲染。数据驱动字段：`window`（9 键：标题/消息/开闭状态）+ `status` + `recommended_action`（来自 §5.1 状态快照实体）。
+**公告横幅**挂载层级：仅 Codex 站页顶部（聚合站、白名单视图站与 Kimi 占位站不挂载，D10——横幅为 Codex 站 status 快照语义）。**行为（写死）**：仅当 `window` 字段存在时渲染——`window_open=true` 用 --green-soft 底 + --green 左缘条，`false` 用 --amber-soft 底 + --amber 左缘条；`window`/`status` 字段整体缺失（v1 旧 payload）时横幅与状态徽章不渲染。数据驱动字段：`window`（9 键：标题/消息/开闭状态）+ `status` + `recommended_action`（来自 §5.1 状态快照实体）。
 
 | 新页序（主轴，对齐上游） | 既有目的地/面板去向 |
 |---|---|
-| 1. 速览排行（benchmark 速览 + 模型档位详情）+ **官网 24h IQ 趋势卡（官网 24h vs 本地拟合 toggle，原 Codex 概览官方区含 `OfficialOverviewTrendSections` 整体保留于此）** | 原「概览」官方区 + 原「模型」列表融合 |
-| 2. 站长推荐链接卡 + 降智预警（语义强调卡）+ **预测卡**（`prediction` 6 键：24/48h 概率 + 摘要，字段缺失时隐藏） | 原 Overview 内降智预警区升级；推荐/预测为新增卡（D4/§5.1） |
+| 1. 速览排行（benchmark 速览 + 模型档位详情）+ **官网 24h IQ 趋势卡（官网 24h vs 本地拟合 toggle，原 Codex 概览官方区含 `OfficialOverviewTrendSections` 整体保留于此）** + **v1.1：综合智能三能力 tab（🧠综合智能 / 💻软件工程能力 / 🧩视觉空间推理，数据源见 §5.6/§5.7；IQ 历史数据板块 = `ie.json` `history[]` 渲染，264 观察点——ADR-0002）** | 原「概览」官方区 + 原「模型」列表融合 |
+| 2. 站长推荐链接卡 + 降智预警（语义强调卡）+ **预测卡**（`prediction` 6 键：24/48h 概率 + 摘要，字段缺失时隐藏）+ **v1.1：站长推荐结构化卡（§5.6，原文转存展示）与 degradation_alerts 结构化卡（与渲染卡并存互不替代）** | 原 Overview 内降智预警区升级；推荐/预测为新增卡（D4/§5.1）；v1.1 两卡见 §5.6 |
 | 3. 效能 PK（intelligence-efficiency） | **「智力中心」目的地取消**；其 5 面板去向：CostVersusIQ/EfficiencyMatrix/ScenarioRecommendations → 效能 PK 页（3 个）；HistoryComparisonPanel → 历史对比页（行 6）；IQHistorySmallMultiplesPanel（**纯本地拟合数据，不含官方曲线**）→ 历史对比页（行 6） |
 | 4. 额度雷达（含 10 天 trend 图 + quota_check/quota_calibration 详情） | 原 Overview 内额度区升级扩容 |
 | 5. Fast 雷达（当前对比 + 82 run 历史 + **月份计数表**：runs 按 `measured_at` 所在月份分桶计数，列=月份、值=run 数，**按月升序、缺月补零列**） | 全新页面 |
@@ -153,18 +158,18 @@
 ## 5. 数据面（Codex 站）
 
 统一模式：DTO（容错解码）→ Validator → Repository 实体（fingerprint 去重）→ Projection → View + fixture 测试；SyncMetadata/RawSamples/Export 逐面扩围；revision 常量逐面定义。
-清单口径：**4 个数据适配器（2 全新：IntelligenceEfficiencyDataset、FastRadarHistory；2 升级：CodexCurrentV2、ModelRatings）+ 1 项导出扩围**。
+清单口径：**4 个数据适配器（2 全新：IntelligenceEfficiencyDataset、FastRadarHistory；2 升级：CodexCurrentV2、ModelRatings）+ 1 项导出扩围**；**v1.1 增量：+2 全新适配器（RadarInsights、VisualSpatialReasoning，§5.6/§5.7）**。
 **通用约束：所有新增 DTO 字段一律 Optional**——旧 payload 可解码（合成 Codable encodeIfPresent）、ContentFingerprint canonical JSON 对旧行稳定（指纹不漂移的前提）。
 
 ### 5.0 传输、接线与契约政策
 
 **接线模式（sidecar）**：主链 `RadarSyncCoordinator`→`RadarHTTPSource` 为 benchmark/community/sourceStatus 三段专用（端点资格 `SyncEndpointEligibility` 仅两标志，持具体类型非协议），**两个全新适配器不进主链**，沿用 rendered 读取器已验证的 sidecar 先例：各自独立 Coordinator + 独立 triggerObserver + `RadarDatasetType` 新 case，自行接线 raw-sample、SyncMetadata datasetType、生命周期 stop/clear/resume 与导出。**在线门控（写死）**：新 sidecar 生命周期挂入 `RadarAppRuntime.performStart`、经 triggerObserver 转发、以 `AppEnvironment.synchronizationEnabled(for:)` 为总闸（与 rendered sidecar 同法）——保证 `RADAR_FIXTURE_MODE=ui/disabled` 下零网络请求（测试断言）。
 
-**传输实例**：大小上限是传输实例级常量（`URLSessionHTTPTransport.maxBodyBytes` / source 级 `maximumResponseBytes`），无 per-endpoint 机制——IntelligenceEfficiency 与 FastRadarHistory 两个 sidecar 均使用**专属 transport 实例，两处（transport + source）均设 8MiB**（§10 统一口径）；**其余既有面维持现值（Claude/Codex 5MiB、SWE-bench 16MiB），不变**。超限按现有 raw-sample 失败路径处理（保留 LKG），配 8MiB 上限与超限→LKG 路径测试（§10）。
+**传输实例**：大小上限是传输实例级常量（`URLSessionHTTPTransport.maxBodyBytes` / source 级 `maximumResponseBytes`），无 per-endpoint 机制——IntelligenceEfficiency 与 FastRadarHistory 两个 sidecar 均使用**专属 transport 实例，两处（transport + source）均设 8MiB**（§10 统一口径）；**其余既有面维持现值（Claude/Codex 5MiB、SWE-bench 16MiB），不变**。超限按现有 raw-sample 失败路径处理（保留 LKG），配 8MiB 上限与超限→LKG 路径测试（§10）。**v1.1：传输实例级 8MiB 上限适用于全部 sidecar（无论 `/data/*` 或 `/api/*` 端点）——§5.6/§5.7 两新 sidecar 同为专属 transport 实例、两处均 8MiB**（radar-insights 实测 29KB、VSR 实测 777KB，裕度充足）。
 
 **RawSample 策略（写死）**：新 sidecar 数据集纳入既有 raw-sample prune（按源全局 3 成功/20 失败），接受样本互相挤占，不做 per-dataset 配额（与现状一致，防实现者扩 store）。
 
-**域名与端点白名单**：仅 `codexradar.com`（`/data/*` 路径）与既有端点。**明令禁止请求 `api.codexradar.com`**（intelligence-efficiency.json 的 `source/metrics_source` 指向该域）与 deng 的 `/api/*` 提交端点（Bearer-token，credential-protected）；现架构无传输层 host 黑名单，禁令落在三处：URL 构造点、sidecar 适配器测试的 transport 层 host 白名单断言（`request.host == "codexradar.com"`，防「从响应数据字段构造 URL」路径）、契约测试否定断言（§10）。
+**域名与端点白名单（v1.1 修订，ADR-0001）**：`codexradar.com` 同域合法请求 = ① `/data/*` 路径族（既有 sidecar 维持，**不迁移**——上游两路径均在服务）+ ② **同域 `/api/*` 公开 GET 机制性放行**（三条件：同域 + 公开 GET + 无凭据；覆盖 radar-insights / visual-spatial-reasoning(+history) 等，上游未来新增同域公开 GET 无须回 spec）+ ③ 既有端点（含 `communityURL` 的 `/api/model-ratings?history=14` 先例）。**明令禁止请求 `api.codexradar.com`**（**主机级**禁令，注意与同域 `/api/*` 放行严格区分——intelligence-efficiency.json 的 `source/metrics_source` 指向该域）与 deng 的 `/api/*` 提交端点（Bearer-token，credential-protected）；现架构无传输层 host 黑名单，禁令落在三处：URL 构造点、sidecar 适配器测试的 transport 层 **host+path 双断言**（`request.host == "codexradar.com"` 且 path 属白名单族，防「从响应数据字段构造 URL」路径）、契约测试否定断言（§10）。
 
 MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字取 current.json `api_access.requirements.attribution_text` 原串「数据来自 Codex 雷达 codexradar.com」（无括号），入各新面板来源行与 Settings 关于页（§8）。每个新端点的 canonical fixture（含 SHA-256）入档 `docs/source-contract.md`（收尾统一更新）。
 
@@ -202,9 +207,17 @@ MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字
 
 3 个新实体（`CodexRadarStatusSnapshotEntity`、`IntelligenceEfficiencySnapshotEntity`、`FastRadarRunEntity`）入 ExportManifest/ExportPage；**新实体导出 payload 跟随既有 per-dataset envelope 惯例**；既有 dataset 的 additive 字段不 bump schemaVersion（§5.1 决策）；导出仍按站隔离；聚合站不可导出（D10，配负向测试 §10）。
 
+### 5.6 RadarInsights 适配器（v0.4.0 全新）
+
+`/api/radar-insights`（schema 1，§1.1 全键，8MiB 上限 §5.0）；`comprehensive_points[]`（iq/software_iq/visual_iq 三分量，综合智能与软件工程能力 tab 的数据源）/ `recommendations[]`（四场景站长推荐：rule 原文 + items 行级数据）/ `degradation_alerts{rule,items[]}` 全 Optional DTO 解码入库。**degradation_alerts 与降智渲染读取器 v2 并存（写死）**：JSON 为结构化数据面、渲染读取器独立运行，两者互不合并、互不校验、互不替代（类比「官网 24h 曲线 vs 本地 IQ 拟合独立」红线）；「预警与推荐」页新增 alerts 结构化卡，渲染卡原样保留。**站长推荐消费口径（写死，§2 非目标 v1.1 修订）**：recommendations 按 D13 同款「原文转存展示 + 署名」消费——不本地派生、不本地计算推荐；D4 链接卡保留，结构化卡为数据补充。**命名避让**：新类型一律带 `Dataset/Adapter` 后缀（`RadarInsightsDataset`/`RadarInsightsAdapter`）；`Phase4SourceContractTests` 现有 `!package.contains("radar-insights")` 否定断言随新 fixture/资源入包同步改写（§10）。新实体 `RadarInsightsSnapshotEntity`（latest-only retention，同 `IntelligenceEfficiencySnapshotEntity` 惯例）；RawSample 共池（§5.0）；导出扩围预留（§5.5 惯例，实现轮决定入 manifest 与否）。支撑「预警与推荐」结构化卡与站长推荐结构化卡（§4.2 行 2 增补）。
+
+### 5.7 VisualSpatialReasoning 适配器（v0.4.0 全新）
+
+`/api/visual-spatial-reasoning` + `/api/visual-spatial-reasoning-history`（schema 1，§1.1 全键，两 URL 同 sidecar 同 transport 8MiB §5.0）；points 23 键全 Optional DTO（§1.1 实测字段表）；history 为 `model@effort` 键字典、值 `[{ts,score,n}]`。新实体 `VisualSpatialReasoningSnapshotEntity`（**每 sync 按 dataset fingerprint 整体替换、不跨 sync 累积**，同 `FastRadarRunEntity` 惯例，配替换/不累积正负向测试 §10）。支撑「综合智能」第三能力 tab（视觉空间推理，§4.2 行 1 增补）——三 tab 数据源：综合智能 = `comprehensive_points.iq`、软件工程能力 = `software_iq`（§5.6）、视觉空间推理 = 本数据集（独立 benchmark pompeii-adjacency / Adjacency F1，**与 comprehensive_points.visual_iq 不合并、不互校**，两条独立呈现路径各自署名）。命名避让与否定断言改写条款同 §5.6 句式（如既有 `!package.contains("visual-spatial-reasoning")` 断言存在则同步改写）。导出扩围预留同 §5.6。
+
 ## 6. 渲染读取器（P3）
 
-- **deng IQ 历史读取器 v2**：按新 DOM 重写 extraction script（revision `codex-radar-rendered-iq-history-v2`；**revision 字面量触点以全仓 grep `codex-radar-rendered-iq-history-v1` 为准**——2026-09-04 实测 `.swift` 9 处 + fixture JSON 10 处，fixture 随重录自然更新），展示归宿 = §4.2 行 1 官网 24h IQ 趋势卡。**隐私边界重申（写死）**：继续强制 `WKWebsiteDataStore.nonPersistent()`，仅持久化 bounded 归一化字段，净化禁词沿用现契约测试清单（含 `"<script"`、`"@"`、`"/api/"`）。fixture 处置：**仅重录 DOM 派生 fixture**（live 跑读取器取 bridge-DTO 输出 → 按净化规则脱敏 → 重算 SHA256SUMS → 更新契约测试 revision 断言）；**合成错误 fixture（challenge/off-host/oversized/partial/prompt-like-text 等）保留并按 v2 解析形态适配**。`Tests/ClaudeRadarTests/Fixtures/CodexRenderedIQHistory`（Package.swift exclude 值 `Fixtures/CodexRenderedIQHistory` 不变）为 fixture 根。注意：渲染走 WKWebView，与 `CodexFixtureTransport`（仅 current.json/model-ratings 两 URL）无关
+- **deng IQ 历史读取器（v1.1 修订，ADR-0002）**：~~按新 DOM 重写 extraction script（revision `codex-radar-rendered-iq-history-v2`…）~~——**渲染重写作废**：2026-09-08 复核 deng 数据岛维持消失（`iq-body` 空壳、`data-iq-hours`/`.total-iq` 归零），v2 无读取对象。**新处置（写死）**：v1 读取器退役（coordinator/reader/全仓 12 处 v1 触点摘除，导出数据集随实现轮处置）；官网 24h IQ 趋势卡数据源改为**官网 IQ 历史数据面 = `/data/intelligence-efficiency.json` `history[]`（264 观察点，P2② sidecar 已在同步并保留全量 history）**——趋势卡为既有数据集的纯 UI 渲染，无新 sidecar（实现期确认渲染口径后即关闭勘察项）；**若实现期证实 history[] 口径与官网曲线不可用，则下线该趋势卡**（本地 IQ 拟合不受影响，两者本就独立）。**隐私边界重申（写死）**：退役摘除不引入任何新渲染路径；净化禁词契约测试清单（含 `"<script"`、`"@"`、`"/api/"`）对存留渲染读取器（降智 v2）继续有效。`Tests/ClaudeRadarTests/Fixtures/CodexRenderedIQHistory` 目录随退役摘除（Package.swift exclude 值同步删除）。注意：渲染走 WKWebView，与 `CodexFixtureTransport`（仅 current.json/model-ratings 两 URL）无关
 - **降智预警读取器 v2**：清理 `data-radar-metric` 失效回退（`CodexRenderedWarningPageReader.swift:193-196`）；契约锚定存活的 4 个 data-radar-degradation* 标记；revision bump 至 `-v2`（触点同样以全仓 grep 为准）；Cloudflare challenge 检测逻辑保留。随回退分支删除，对应 fixture（`missing-metric.json`、`duplicate-metric.json`）与 fixtureNames 清单（位于 `CodexRenderedWarningDOMParserTests.swift:271-275`）同步移除
 - 两读取器的 origin 硬守卫（codexradar.com / deng.codexradar.com）不变
 
@@ -249,14 +262,16 @@ MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字
 | P1 | §4 架构 + 组件（拆 3 commit：①station 枚举+路由泛化+model 旁路（**含编译联动文件：ClaudeRadarApp.swift、AppEnvironment.debugInitialSourceID、MenuBarView、InformationOverviewView、AppCommands**）+ `RADAR_UI_SOURCE`/`RADAR_UI_DESTINATION` 值域扩展（含契约测试）②Codex 页矩阵重组+智力中心下线 ③聚合站+占位站+MenuBarExtra 状态点+侧栏分组+README fixture 命令更新） | §4.2 矩阵逐项可达（主轴 1–9 顺序一致，工具组 4 页保留）；占位站显示「即将开放」；侧栏 Section 三组顺序正确；MenuBarExtra 状态点四态；**aggregate/占位站选中态下 Workspace/Settings/MenuBarExtra/CommandMenu 均不崩溃（旁路 (a)–(g) 全部生效，有对应测试）**；新组件全部实现 nil-data 空态（每组件 ≥1 nil-data 单测）；路由契约测试更新绿 |
 | P2 | §5 数据面（①→⑤ 逐个，每项独立 commit） | ①CodexCurrentV2：§5.1 处置表全项落地（3 实体落点、SourceStatusDataset/BenchmarkDataset 连锁、重开迁移测试初版）②IntelligenceEfficiencyDataset ③FastRadarHistory（重开迁移测试随 **②③** 增量更新）④ModelRatings ⑤导出扩围；**①–⑤ 每项含新面板种子状态 + 种子截图（seed 名入 commit message）**；每项 fixture 测试绿；**online 验收：优先程序化代理判定（隔离 `RADAR_DATA_ROOT` 下启动，`SyncMetadata` 对应 datasetType 的 lastSuccessfulAt 非 nil 且归一化实体计数 >0，等效「面板非空」）；网络瞬时失败记 DEFERRED、发版前闭环；无法程序化处保留 manual 步骤入 release-checklist**；**fixture 隔离（自动测试）**：`ui/disabled` 模式下 sidecar 零网络请求；契约测试 + transport 层 host 白名单断言证实不触碰 `api.codexradar.com` 与 deng `/api/*` |
 | P3 | §6 读取器 | deng v2 契约测试绿（DOM 派生 fixture 重录 + 合成 fixture 适配 + revision 断言，nonPersistent 与净化清单重申落地）；降智预警 v2 绿（含回退分支删除后的 fixtureNames 收缩）；LKG 兜底行为不变 |
-| 收尾 | 文档/发版 | README/zh（D2 英文+中文声明）、**source-contract**（新端点 fixture SHA-256 与大小政策、**两新端点各补 Release and authorization boundary 条目**（公开 GET、无认证、站点级 attribution 适用、禁域明示）、my_scores 条款改写（D12）、tibo_presence 披露（D13）、additive 字段不 bump 记录、署名原串核对）、**third-party-notices**（应用名 AI Radar + 新增两端点披露（ie.json 为上游基于受保护 API 派生的公开数据，Radar 仅消费公开 /data/ JSON）+ tibo_presence 第三方观测披露 + quota 口径继承）、**release-checklist**（产物/安装/数据/偏好路径、UA 版本手动步、online QA 步骤、路由矩阵、升级步骤改 AI Radar）、**plist 版本步进（CFBundleShortVersionString→0.3.0、CFBundleVersion+1）**、implementation-status（364→实测值）、design-qa 全更新；CONTEXT.md + ADR 落盘；hero.gif/截图重录（页面清单=聚合站 + Codex 站 §4.2 九页 + MenuBarExtra，明暗双版）；发 v0.3.0 |
+| 收尾 | 文档/发版 | README/zh（D2 英文+中文声明）、**source-contract**（新端点 fixture SHA-256 与大小政策、**两新端点各补 Release and authorization boundary 条目**（公开 GET、无认证、站点级 attribution 适用、禁域明示）、my_scores 条款改写（D12）、tibo_presence 披露（D13）、additive 字段不 bump 记录、署名原串核对）、**third-party-notices**（应用名 AI Radar + 新增两端点披露（ie.json 为上游基于受保护 API 派生的公开数据，Radar 仅消费公开 /data/ JSON）+ tibo_presence 第三方观测披露 + quota 口径继承）、**release-checklist**（产物/安装/数据/偏好路径、UA 版本手动步、online QA 步骤、路由矩阵、升级步骤改 AI Radar）、**plist 版本步进（CFBundleShortVersionString→0.4.0、CFBundleVersion+1）**、implementation-status（364→实测值）、design-qa 全更新；CONTEXT.md + ADR 落盘；hero.gif/截图重录（页面清单=聚合站 + Codex 站 §4.2 九页 + MenuBarExtra，明暗双版）；**发 v0.4.0（v1.1 修订：P2/P3 成果与新功能合并发版，issue #3 拍板④）** |
 
 执行顺序：C0-pre(文档保护 docs commit) → R0(2 code commits + 基线捕获 docs commit) → P0 → P1(3 commits) → P2(①→⑤ 逐个) → P3 → 收尾；每 commit 测试绿后合入；HUMAN-PENDING 类验收项随「人工核验清单」跟踪、发版硬门清零（守则见执行计划 `docs/ai-radar-refactor-plan.md`）。
 
+**v1.1 注（2026-09-08）**：R0–P3 已按 v1.0 执行完毕（P3 完成降智 v2；deng 项按 §6 v1.1 修订处置），**已执行阶段的验收记录不追溯改写**（含 P1 验收中的「占位站显示『即将开放』」——其为彼时正确验收，v1.1 起由转正条款取代）。v1.1 增量范围 = issue #3：§5.6/§5.7 两新 sidecar、占位站转正（§4.1）、deng 退役改源（§6/ADR-0002）、白名单条款（§5.0/ADR-0001）、收尾发版 **v0.4.0**（P2/P3 成果与新功能合并发版）。
+
 ## 10. 测试影响
 
-- 必改（行为变更对应）：RadarStyleTests（token 重写 + 对比度轴）、WorkspaceRoutingContractTests（含 storageKey 回落语义）、WorkspacePresentationContractTests、WorkspaceProjectionTests、MultiSourceWorkspaceTests、WorkspaceSupportSurfaceTests（+聚合站不可导出断言）、CodexAnalyticsPanelsContractTests、CodexIQHistoryPanelContractTests、**CodexRenderedIQHistoryOverviewContractTests（P1②：官方趋势迁挂新页 + 路径更新）**、**RadarRepositoryTests（P2②③：RadarDatasetType.allCases 计数数组扩展 + 新实体 insert/clear 路径）**、**RadarExportServiceTests（R0：`AIRadarExport-` 机械替换；P2⑤：ExportDataset.allCases 精确表 + 新 dataset manifest/page）**、CodexRenderedWarning/IQHistory 的 DOMParser+PageReader+Projection+DebugFixture 系列（含 fixtureNames 收缩与 DOM 派生 fixture 重录、合成 fixture 适配）、ReleaseReadinessTests（品牌串 + 重开迁移测试）、Phase4SourceContractTests（路径/品牌/UA 字面量断言新增/`intelligence-efficiency` 否定断言改写/`api.codexradar.com` 与 deng `/api/*` 新否定断言/P3：渲染读取器 revision 与解析形态断言随 v2 改写）、Phase0SmokeTests（codex fixture 断言 + plist 路径）、Phase4RuntimeSettingsTests、RadarAppRuntimeTests（sidecar 接线 + fixture 隔离零网络断言）
-- 新增：2 个新适配器全套（parser/validator/repository/projection，含 8MiB 上限与超限→LKG 路径测试、**transport 层 host 白名单断言**）、2 个升级适配器的增量测试、迁移测试（目录复制 + 旧 store 重开）、Station 枚举与路由测试、CommandMenu 语义测试、`CodexRadarStatusSnapshotEntity` 实体测试、ContentFingerprint（benchmark + sourceStatus）新字段连锁测试、**FastRadarRunEntity 每 sync 整体替换/不累积正负向测试**、**4 个新共享组件的 view-model 映射 + nil-data 空态单测（横幅 v1-payload 不渲染、月份升序补零分桶）**、**badge 白名单契约测试（源码扫描锚定）**、**my_scores 不持久化负向断言（D12）**、**tibo_presence 不本地推断/不关联断言（D13）**
+- 必改（行为变更对应）：RadarStyleTests（token 重写 + 对比度轴）、WorkspaceRoutingContractTests（含 storageKey 回落语义）、WorkspacePresentationContractTests、WorkspaceProjectionTests、MultiSourceWorkspaceTests、WorkspaceSupportSurfaceTests（+聚合站不可导出断言）、CodexAnalyticsPanelsContractTests、CodexIQHistoryPanelContractTests、**CodexRenderedIQHistoryOverviewContractTests（P1②：官方趋势迁挂新页 + 路径更新）**、**RadarRepositoryTests（P2②③：RadarDatasetType.allCases 计数数组扩展 + 新实体 insert/clear 路径）**、**RadarExportServiceTests（R0：`AIRadarExport-` 机械替换；P2⑤：ExportDataset.allCases 精确表 + 新 dataset manifest/page）**、CodexRenderedWarning/IQHistory 的 DOMParser+PageReader+Projection+DebugFixture 系列（含 fixtureNames 收缩与 DOM 派生 fixture 重录、合成 fixture 适配）、ReleaseReadinessTests（品牌串 + 重开迁移测试）、Phase4SourceContractTests（路径/品牌/UA 字面量断言新增/`intelligence-efficiency` 否定断言改写/`api.codexradar.com` 与 deng `/api/*` 新否定断言/P3→v1.1：deng 读取器退役后的断言与 fixture 收缩（ADR-0002）、`radar-insights` 否定断言改写）、Phase0SmokeTests（codex fixture 断言 + plist 路径）、Phase4RuntimeSettingsTests、RadarAppRuntimeTests（sidecar 接线 + fixture 隔离零网络断言）
+- 新增：2 个新适配器全套（parser/validator/repository/projection，含 8MiB 上限与超限→LKG 路径测试、**transport 层 host 白名单断言**）、2 个升级适配器的增量测试、迁移测试（目录复制 + 旧 store 重开）、Station 枚举与路由测试、CommandMenu 语义测试、`CodexRadarStatusSnapshotEntity` 实体测试、ContentFingerprint（benchmark + sourceStatus）新字段连锁测试、**FastRadarRunEntity 每 sync 整体替换/不累积正负向测试**、**4 个新共享组件的 view-model 映射 + nil-data 空态单测（横幅 v1-payload 不渲染、月份升序补零分桶）**、**badge 白名单契约测试（源码扫描锚定）**、**my_scores 不持久化负向断言（D12）**、**tibo_presence 不本地推断/不关联断言（D13）**、**v1.1：RadarInsights/VisualSpatialReasoning 两新适配器全套（parser/validator/repository/projection，含 8MiB 上限与超限→LKG、transport 层 host+path 白名单断言、`ui/disabled` 零网络断言）+ 白名单视图站路由/侧栏「预览站」组/状态点跟随数据集新鲜度的测试增量**
 - 机械替换（R0 内）：42 个测试文件 import、19 个测试文件的路径与字面量断言（§8；生产类型名引用不动）
 - 基线策略：每 commit 全量 `xcrun swift test` 绿（既有 367 项不删改断言，除非对应行为按本 spec 变更——变更记录于 commit message；总数随新增递增）
 
@@ -276,6 +291,7 @@ MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字
 | SwiftData 加性 schema 变更 | 3 个新 @Model + Optional 字段；旧 store 重开测试 P2① 初版、②③ 增量（§5.1/§9） |
 | P2 落点推翻波及 P1 视图 | 新组件只消费窄 view-model（§5.1/§7），不绑定实体类型 |
 | sidecar 破坏 fixture 隔离 | 在线门控挂 `synchronizationEnabled(for:)` 总闸 + ui/disabled 零网络自动断言（§5.0/§10） |
+| 上游弃用 `/data/*` 静态端点（v1.1） | 同域 `/api/*` 已机制性放行（ADR-0001），迁移无须回 spec；触点清单：Adapter 端点字面量 ×2、DatasetTests path 断言 ×2、Phase4SourceContractTests 字面量断言 ×2 |
 
 ## 12. 已决微项（无阻塞开放项）
 
@@ -294,11 +310,18 @@ R1–R5 审定后，原「开放项」全部收敛为已决：
 - 新实体导出 payload → 跟随既有 per-dataset envelope 惯例（§5.5）
 - 无障碍对比度轴 → line/line-strong 承接，无对应处 increased==standard（§7）
 - FastRadar 历史 → 每 sync 整体替换不累积（§5.3）
+- **域名白名单 → `/data/*` 路径族维持 + 同域 `/api/*` 公开 GET 机制性放行（三条件），`api.codexradar.com` 主机与 deng `/api/*` 禁令维持（v1.1，ADR-0001）**
+- **占位站 → DSH/ZCode/Grok 就地转正为白名单视图站（rawValue 不变、无独立 sync），Kimi 维持占位（v1.1，ADR-0003）**
+- **站长推荐结构化卡 → radar-insights `recommendations` 原文转存展示 + 署名，D4 链接卡保留，不本地派生（v1.1，§5.6）**
+- **degradation_alerts → JSON 结构化卡与降智渲染读取器 v2 并存、互不合并互不替代（v1.1，§5.6）**
+- **deng 24h IQ 读取器 → v1 退役，官网 24h IQ 趋势卡改读 `ie.json` `history[]`，渲染重写作废（v1.1，ADR-0002）**
+- **发版 → v0.4.0 合并发版（P2/P3 成果 + v1.1 新功能，v1.1，issue #3 拍板④）**
 实现期允许的仅剩不影响验收的排版微调（如卡片列宽、color-mix 近似两法取一、**无 runtime 站在 Settings/MenuBarExtra 的显示回落占位（如「—」）**），无须回 spec 流程。
 
 ## 附录 A · 调研证据
 
 - 快照（2026-09-04）：codexradar.com 首页 HTML（679,867B，动态波动）、current.json（94,723B，schema 2.0）、model-ratings（41,516B，27 模型/6 组）、deng.codexradar.com（865,607B）、intelligence-efficiency.json（4.07MB，history 249 条）、fast-radar-history.json（82 runs）
+- 快照（2026-09-08，v1.1）：codexradar.com 各 station 页（SSR + 内联脚本，DSH/ZCode/Grok/聚合四预览站均带真实数据）、current.json（94,713B，window.status=`community_confirmed`）、radar-insights（29KB，schema 1）、intelligence-efficiency-metrics（公开 GET，schema 2/3）、visual-spatial-reasoning（777KB）+ -history（4KB）、fast-radar-history.json（88 runs，官网 UI 已切 Astra medium 新 cohort 过渡态）、deng.codexradar.com（887KB，`iq-body` 空壳 ×1）；关键实测：station 参数纯前端裁剪、`/api/*` 公开无凭据、deng 无结构化 IQ 数据岛（维持）；详见 `docs/ai-radar-upstream-recon-2026-09-08.md`（含晚间增勘节）
 - 关键实测：station 参数被 JSON 端点忽略；`?station=aggregate` 与首页字节级相同；非 Codex 站为预览占位；`model-ratings?history=N` 生效；ie.json `source/metrics_source` 指向 `api.codexradar.com`；两新端点 JSON 无内嵌 attribution 要求；deng 无结构化 IQ 数据岛
 - 本地契约检查计数见 §1.1「渲染读取器契约存活状态」；token 表经 R1 逐值复核；代码落点（sidecar 先例与在线门控、transport 上限常量、AppEnvironment 时序、测试硬断言清单 19 文件、无 runtime 旁路七改造点、bundle ID/偏好/登录项链路、raw-sample prune 策略、fixtureNames 位置、revision 字面量触点）经 R1–R5 逐项核实
 
