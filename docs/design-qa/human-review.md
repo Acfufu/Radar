@@ -5,7 +5,7 @@ Every HUMAN-PENDING acceptance item gets exactly one entry; the release gate
 requires this list to have zero PENDING items.
 
 - [HR-1][R0/C0a] Icon visual variant / 图标视觉变体 — 产物: `Assets/AIRadar.icns/png`（当前为旧图标逐字节沿用；现 icon 为纯雷达图形无文字，spec §8 豁免品牌字样改写）/ 建议方法: 人工出图 AI Radar 变体后 `iconutil -c icns Assets/AIRadar.iconset -o Assets/AIRadar.icns` 重生成并复核观感 / 状态: **DONE（2026-09-08 人工拍板：沿用现图标）** — 三版代码渲染候选（A multistation / B flat / C emerald，对比材料 `output/imagegen/icon-comparison.png` 与 `icon-review.html`）与现行并排目视后，确认现行最成熟且纯图形无 Claude 残留，spec §8 豁免成立；资产零改动，`Assets/AIRadar.iconset` 无需生成
-- [HR-2][R0/C0b] Login item visual check / 登录项目视确认 — 产物: 迁移核验记录（commit 2824c31 message）/ 建议方法: 系统设置 > 通用 > 登录项，确认 AI Radar 的登录项状态与迁移前一致（bundle ID 未变，预期无感知）/ 状态: PENDING
+- [HR-2][R0/C0b] Login item visual check / 登录项目视确认 — 产物: 迁移核验记录（commit 2824c31 message）/ 建议方法: 系统设置 > 通用 > 登录项，确认 AI Radar 的登录项状态与迁移前一致（bundle ID 未变，预期无感知）/ 状态: **DONE（2026-09-09 人工确认：从未开启登录项）** — 证据：用户截图「登录项与扩展→登录时打开」（无 Radar 条目）+ System Events 登录项清单与截图逐项一致（Amphetamine/BetterDisplay/CC Switch/LocalSend/NeatDownloadManager/Snapzy/Thaw/TokenTracker/Vorssaint，共 9 项无 Radar）+ App 偏好 `launchAtLogin = 0`（`defaults read com.acfufu.ClaudeRadar`）+ 用户回忆「印象中没有出现过」——未注册过，迁移前后状态一致（均缺席），bundle ID 不变无注册漂移
 
 ## P0 reskin comparison (72 pairs)
 
