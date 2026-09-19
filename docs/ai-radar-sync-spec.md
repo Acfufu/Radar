@@ -1,9 +1,10 @@
 # AI Radar 全量同步重构 Spec
 
-- 状态：**定稿 v1.1**（v1.0 定稿经 R1–R5 共 5 轮双审，10 次独立审阅，全部发现已闭环；v1.1 为 v0.4.0 迭代修订——ADR-0001/0002/0003 + grill 六题拍板落 spec，经 plan-reviewer 两轮审 + 用户逐条过目后冻结）
+- 状态：**定稿 v1.2**（v1.0 定稿经 R1–R5 共 5 轮双审，10 次独立审阅，全部发现已闭环；v1.1 为 v0.4.0 迭代修订——ADR-0001/0002/0003 + grill 六题拍板落 spec，经 plan-reviewer 两轮审 + 用户逐条过目后冻结；**v1.2 为 2026-09-20 上游重勘增量修订——grill 六题逐题拍板落 spec，见 `docs/ai-radar-upstream-recon-2026-09-20.md` §5 与 ADR-0004**）
 - 决策人冻结确认（2026-09-09 02:28 CST）：**「确认冻结——六处落点+三个关键决策+三个判断全部认可」**（过目材料 = 六处落点摘要表 + 三关键决策（既有 `/data/*` 不迁移 / alerts 双路径并存 / DTO 全 Optional） + 三判断（recommendations 原文转存口径 / 侧栏「预览站」组 / 发版 v0.4.0））
-- 日期：2026-09-04（v1.0 定稿）/ 2026-09-08（v1.1 修订起草）
-- 上游快照：codexradar.com（2026-09-04 抓取；页面为动态服务端渲染，字节数随内容波动，实测约 680KB；**2026-09-08 重勘增补见 `docs/ai-radar-upstream-recon-2026-09-08.md`**）
+- **v1.2 拍板确认（2026-09-20，grill 逐题）**：照实施 v0.4.0 + 重勘微修吸收 / 鹈鹕杯本轮不收录 / deng 接众测 IQ 渲染读取器（ADR-0004）/ 五站对齐多卡 / Fast 雷达页面隐藏 + sidecar 同步继续（loop `next-iteration-recon-grill`，计划短码 a74de209 人工批准）
+- 日期：2026-09-04（v1.0 定稿）/ 2026-09-08（v1.1 修订起草）/ 2026-09-20（v1.2 修订）
+- 上游快照：codexradar.com（2026-09-04 抓取；页面为动态服务端渲染，字节数随内容波动，实测约 680KB；**2026-09-08 重勘增补见 `docs/ai-radar-upstream-recon-2026-09-08.md`**；**2026-09-20 重勘见 `docs/ai-radar-upstream-recon-2026-09-20.md`**）
 - 决策人已确认：① 范围全量（P0–P3 + 重命名）② 架构可重议（对齐上游站点模型）③ 产品定名 **AI Radar**（中文界面「AI 雷达」；用户原话「AI Rader」为笔误，已更正）；**v1.1 新增确认：④ 同域 `/api/*` 机制性放行 ⑤ 四占位站转正 ⑥ radar-insights + visual-spatial-reasoning 接入 ⑦ v0.4.0 合并发版**（ADR-0001/0002/0003，issue #3）
 - 本文件即终版落盘：`docs/ai-radar-sync-spec.md`
 
@@ -68,6 +69,8 @@
 - 降智预警读取器（codexradar.com 主页，revision `codex-radar-rendered-dom-v1`）：`data-radar-degradation`(6)/`data-radar-degradation-grid`(2)/`degradation-card-score`(4)/`degradation-deltas`(2) 均存活；`data-radar-metric`(0) 回退分支失效 → 需清理 + revision bump
 - deng IQ 历史读取器（deng.codexradar.com，revision `codex-radar-rendered-iq-history-v1`）：**实质失效**——`data-iq-hours`(0)、`.iqcard.total-iq`(0) 消失；deng 已重建为「众测雷达」（2026-09-04 实测 865,607B，station-dashboard/site-overview/ticker 等新结构；`iq-body`(9)/`iq-range`(7)/`iqcard`(121) 部分残留；页面 `application/ld+json` 仅为 schema.org 站点元数据，全部 `/api/` 端点为 Bearer-token 提交流程（credential-protected，属排除域）→ **D9 确定落入「重写 v2」分支**）
 
+**v1.2 增勘（2026-09-20 实测，详录 `docs/ai-radar-upstream-recon-2026-09-20.md`）**：① **GPT-6 Astra 换代落地**——radar-insights / visual-spatial-reasoning / model-ratings / intelligence-efficiency 数据面均含 `gpt-6-astra`（effort 新增 `ultra` 档），model-ratings 组 6→7（新增 GPT-6 Astra）；`current.json` comparisons 仍 5.5/5.6 世代 11 键且 `monitored_at` 停更于 2026-09-14（上游主监控节奏，实现期留意）；② iem 数据面模型集 17→20（新增 gpt-6-astra、deepseek-v4.1-flash、dsh-deepseek-v4.1-flash、dsh-deepseek-v4-flash-vision-exp、gemini-3.8-flash、kimi-k2.8-preview）；③ 鹈鹕杯新板块（`/cup/` 活动页 + 主页 showcase，投票型、无公开读端点，处置见 §2 非目标）；④ **deng IQ 区以全新 DOM 契约复活**（匿名渲染探针坐实：70 数据格 / 20 harness 卡 / 252 个内嵌小时趋势点；旧 v1 标记 `data-iq-hours`/`.total-iq` 仍为 0——v1 退役判断不变，新契约另立读取器，见 ADR-0004/§6）；⑤ Fast 雷达官网 UI 与公开 JSON 脱节持续（JSON 仍 schema 1 sol/terra/luna、停更 2026-09-14；UI 已 Astra low/medium/high，见 §5.3 v1.2 注记）。**八个数据端点 schema/键集零漂移**，以上均为开放集内扩张与页面层变化。
+
 ## 2. 目标 / 非目标
 
 **目标**
@@ -85,6 +88,7 @@
 - ~~不为 dsh/zcode/grok 实现真实数据适配器~~（**v1.1 废除**：上游已上线四预览站真实数据；转正形态 = 同一数据面 + 模型白名单视图站，无独立 sync 端点，见 ADR-0003/§4.1）
 - 不做跨源自建排名、组合分数或跨源指标对比（聚合站硬边界见 §4.1/D10）
 - 不做本地文案派生（Tibo 摘要等一律用上游自带字段原文，见 §4.2 行 7）
+- 不收录鹈鹕杯（**v1.2 新增**：`/cup/` 活动页为投票型活动、无公开读端点，App 只读边界下无可接数据面；社区入口链接化选项保留，待活动常态化再议）
 
 ## 3. 决策记录
 
@@ -119,6 +123,10 @@
 
 **v1.1 白名单视图站命名约定（写死）**：Station case `dsh/zcode/grok` 由 `upcoming(DSH|ZCode|Grok)` 占位态**就地转正**——rawValue 保持 `dsh/zcode/grok` 不变（路由 storageKey `source:dsh` 等天然兼容，旧持久化无迁移）；`upcoming` 枚举仅剩 `.kimi`。白名单映射（站→模型 ID 集合）为**静态常量**（对齐上游前端 station 配置：DSH=`dsh-deepseek-v4-flash/pro`、ZCode=`glm-5.3`、Grok=`grok-4.6`），实现期以上游实测为准核对一次；无 runtime 站旁路清单 (a)–(g)（P1 已落地）的适用范围随之收窄为聚合站 + Kimi 占位站。
 
+**v1.2 白名单核对集增勘（2026-09-20 iem 数据面实测）**：DSH 白名单核对集扩充 `dsh-deepseek-v4.1-flash`、`dsh-deepseek-v4-flash-vision-exp`；ZCode 维持 `glm-5.3`（另有 `glm-5.3-flash` 一并核对）；Grok 维持 `grok-4.6`；`kimi-k2.8-preview` 已入数据面但 Kimi 站仍占位——不核对（占位站无白名单）。核对仍以实现期上游 station 配置实测为准。
+
+**v1.2 注记（聚合站对比视图范围）**：Kimi 转正前，对比视图仅并入四实站（Codex/DSH/ZCode/Grok）白名单**并集**——`kimi-k2.8-preview` 等无对应站模型不上视图，不为无站模型创设展示位（与 Kimi 占位语义一致）；逐点标注来源站红线不变。
+
 **命名约定（写死）**：Station Swift case 为 `aggregate/codex/claudeCode/sweBench/upcoming`，`upcoming(DSH|ZCode|Grok|Kimi)` 关联值为嵌套枚举（**v1.1 修订：DSH/ZCode/Grok 转正后仅剩 `upcoming(.kimi)`，`dsh/zcode/grok` rawValue 就地复用为白名单视图站**）；**三实站 Station rawValue 一律复用既有 `RadarSourceID` rawValue**（`claude-code-radar`/`codex-radar`/`swe-bench-verified`），占位站为 `kimi`、白名单视图站为 `dsh/zcode/grok`、聚合站为 `aggregate`（小写连字符）；路由 storageKey 前缀**保持 `source:` 不变**、第二段为站 rawValue（如 `source:aggregate`），保旧持久化兼容；新目的地 rawValue 沿用现有中文串惯例；`RADAR_UI_SOURCE` 新增值 `aggregate` 与 `upcoming-dsh|zcode|grok|kimi`。`WorkspaceRoute(storageKey:)` 现为非 failable、malformed 回落初始路由——**保留该语义**，契约测试同步改写。
 
 **无 runtime 站的旁路改造点（全清单，含强解包消费面）**：
@@ -135,6 +143,8 @@
 
 **状态点四态（写死，映射表入 design-qa）**：最近同步成功且新鲜 = --green；stale/LKG = --amber；错误/校验失败 = --red；禁用或无数据 = --soft 灰；**Kimi 占位站恒灰；白名单视图站状态点跟随其数据源 sidecar 数据集新鲜度**。MenuBarExtra 显示各站状态点（model 已持有全部 runtimes 且有 `projection(for:)`）。
 
+**v1.2 注记（五站「众测 IQ」卡，ADR-0004）**：Codex / Claude Code / DSH / ZCode / Grok 五站各增一张「众测 IQ」**独立数据面卡**（deng 渲染读取器，§6 v1.2 bullet；契约、署名、口径边界见 ADR-0004）——Kimi 占位站不挂。卡带独立新鲜度状态点，读取失败按既有 fail-safe 语义终态失败、保 LKG；不参与聚合站对比视图，不与站内其他 IQ 口径（综合智能/本地拟合）混算。Codex 站落位 §4.2 行 1（官网 24h IQ 趋势卡旁）；其余四站挂各自目的地页（白名单视图站为单页）。
+
 ### 4.2 Codex 站页面矩阵（新页序 × 既有目的地去留）
 
 **公告横幅**挂载层级：仅 Codex 站页顶部（聚合站、白名单视图站与 Kimi 占位站不挂载，D10——横幅为 Codex 站 status 快照语义）。**行为（写死）**：仅当 `window` 字段存在时渲染——`window_open=true` 用 --green-soft 底 + --green 左缘条，`false` 用 --amber-soft 底 + --amber 左缘条；`window`/`status` 字段整体缺失（v1 旧 payload）时横幅与状态徽章不渲染。数据驱动字段：`window`（9 键：标题/消息/开闭状态）+ `status` + `recommended_action`（来自 §5.1 状态快照实体）。
@@ -145,7 +155,7 @@
 | 2. 站长推荐链接卡 + 降智预警（语义强调卡）+ **预测卡**（`prediction` 6 键：24/48h 概率 + 摘要，字段缺失时隐藏）+ **v1.1：站长推荐结构化卡（§5.6，原文转存展示）与 degradation_alerts 结构化卡（与渲染卡并存互不替代）** | 原 Overview 内降智预警区升级；推荐/预测为新增卡（D4/§5.1）；v1.1 两卡见 §5.6 |
 | 3. 效能 PK（intelligence-efficiency） | **「智力中心」目的地取消**；其 5 面板去向：CostVersusIQ/EfficiencyMatrix/ScenarioRecommendations → 效能 PK 页（3 个）；HistoryComparisonPanel → 历史对比页（行 6）；IQHistorySmallMultiplesPanel（**纯本地拟合数据，不含官方曲线**）→ 历史对比页（行 6） |
 | 4. 额度雷达（含 10 天 trend 图 + quota_check/quota_calibration 详情） | 原 Overview 内额度区升级扩容 |
-| 5. Fast 雷达（当前对比 + 82 run 历史 + **月份计数表**：runs 按 `measured_at` 所在月份分桶计数，列=月份、值=run 数，**按月升序、缺月补零列**） | 全新页面 |
+| 5. Fast 雷达（当前对比 + 82 run 历史 + **月份计数表**：runs 按 `measured_at` 所在月份分桶计数，列=月份、值=run 数，**按月升序、缺月补零列**）**v1.2：过渡态页面隐藏（§5.3 注记），不实现导航入口** | 全新页面 |
 | 6. 历史对比（history comparison + 本地 IQ small multiples） | HistoryComparisonPanel + IQHistorySmallMultiplesPanel 归入（见行 3）；官方 24h 曲线不在此页（在行 1） |
 | 7. Tibo 雷达（reset 时段分布 + presence 卡；**数据仅来自 current.json `tibo_presence` 归一化字段，与渲染读取器无关**） | 全新页面。「动态摘要」= 上游自带摘要字段（`evidence_summary_zh/en`）**原文展示**，无则不展示，不做本地语句拼接；`safety_note_zh` 优先、`safety_note_en` 兜底；`should_display=false` 时整卡隐藏（含 safety_note）；隐私语义见 D13 |
 | 8. 工具组：决策透镜 / 趋势 / 来源状态 / 导出 | 四个既有目的地**原样保留**，集中置于主轴之后 |
@@ -196,11 +206,11 @@ MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字
 
 ### 5.3 FastRadarHistory 适配器（全新）
 
-`/data/fast-radar-history.json` schema v1（§1.1 全键）；派生指标（fast vs standard 的 ΔTTFT/ΔTPS/ΔE2E 倍率）入 DerivedMetrics 层——**新建独立入口类型与 evaluate 函数**，勿复用语义为 per-passed-task 比值的 `DerivedMetricFormula`。新实体 `FastRadarRunEntity`：**每 sync 按 dataset fingerprint 整体替换（不跨 sync 累积），本地不无界增长**，配替换/不累积正负向测试（§10）。支撑 Fast 雷达页（当前对比卡 + 82 run 历史 + 月份计数表，§4.2 行 5）。
+`/data/fast-radar-history.json` schema v1（§1.1 全键）；派生指标（fast vs standard 的 ΔTTFT/ΔTPS/ΔE2E 倍率）入 DerivedMetrics 层——**新建独立入口类型与 evaluate 函数**，勿复用语义为 per-passed-task 比值的 `DerivedMetricFormula`。新实体 `FastRadarRunEntity`：**每 sync 按 dataset fingerprint 整体替换（不跨 sync 累积），本地不无界增长**，配替换/不累积正负向测试（§10）。支撑 Fast 雷达页（当前对比卡 + 82 run 历史 + 月份计数表，§4.2 行 5）。**v1.2 注记（Fast 雷达过渡态，拍板 2026-09-20）**：官网 UI 已切 Astra cohort 而公开 JSON 仍 schema 1 sol/terra/luna（114 runs，停更 2026-09-14，脱节持续 12+ 天）——本适配器契约**维持不变、sidecar 同步继续**；Fast 雷达页**从导航/路由隐藏**（§4.2 行 5，不实现导航入口）；恢复条件 = 上游 JSON 切换新结构并经实测冻结新契约（**以实测为准，不猜契约**）。
 
 ### 5.4 ModelRatings 升级
 
-- 解析升级为**开放集合**：group 6 个已知值（GPT-5.6 Sol/Terra/Luna、GPT-5.5、DSV4 Flash、DSV4 Pro）+ effort 后缀 7 个（ultra/max/xhigh/high/medium/low/off）；实现取 `group: String?` + computed property 映射已知组、未知值原样分组渲染（**不做封闭 enum**，防上游换代即断）；effort 后缀从 id 字符串切分，同样原样保留。现 DTO 根本未解码 group，此次补齐
+- 解析升级为**开放集合**：group **7 个已知值（v1.2：实测新增 GPT-6 Astra 组，33 模型）**（GPT-6 Astra、GPT-5.6 Sol/Terra/Luna、GPT-5.5、DSV4 Flash、DSV4 Pro）+ effort 后缀 7 个（ultra/max/xhigh/high/medium/low/off；v1.2 实测含 astra 全档）；实现取 `group: String?` + computed property 映射已知组、未知值原样分组渲染（**不做封闭 enum**，防上游换代即断）；effort 后缀从 id 字符串切分，同样原样保留。现 DTO 根本未解码 group，此次补齐
 - 星评分矩阵：**7 天矩阵直接取 `history[]` 尾部 7 天，24h 用当日 `day` 桶**（已决）；`my_scores`/`my_score_records` 只读展示、不持久化、不建立个人身份关联（D12，配负向测试 §10）
 - 只读 + 「去上游打分」链接（D7）
 
@@ -218,9 +228,10 @@ MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字
 
 ## 6. 渲染读取器（P3）
 
-- **deng IQ 历史读取器（v1.1 修订，ADR-0002）**：~~按新 DOM 重写 extraction script（revision `codex-radar-rendered-iq-history-v2`…）~~——**渲染重写作废**：2026-09-08 复核 deng 数据岛维持消失（`iq-body` 空壳、`data-iq-hours`/`.total-iq` 归零），v2 无读取对象。**新处置（写死）**：v1 读取器退役（coordinator/reader/全仓 12 处 v1 触点摘除，导出数据集随实现轮处置）；官网 24h IQ 趋势卡数据源改为**官网 IQ 历史数据面 = `/data/intelligence-efficiency.json` `history[]`（264 观察点，P2② sidecar 已在同步并保留全量 history）**——趋势卡为既有数据集的纯 UI 渲染，无新 sidecar（实现期确认渲染口径后即关闭勘察项）；**若实现期证实 history[] 口径与官网曲线不可用，则下线该趋势卡**（本地 IQ 拟合不受影响，两者本就独立）。**隐私边界重申（写死）**：退役摘除不引入任何新渲染路径；净化禁词契约测试清单（含 `"<script"`、`"@"`、`"/api/"`）对存留渲染读取器（降智 v2）继续有效。`Tests/ClaudeRadarTests/Fixtures/CodexRenderedIQHistory` 目录随退役摘除（Package.swift exclude 值同步删除）。注意：渲染走 WKWebView，与 `CodexFixtureTransport`（仅 current.json/model-ratings 两 URL）无关
+- **deng IQ 历史读取器（v1.1 修订，ADR-0002）**：~~按新 DOM 重写 extraction script（revision `codex-radar-rendered-iq-history-v2`…）~~——**渲染重写作废**：2026-09-08 复核 deng 数据岛维持消失（`iq-body` 空壳、`data-iq-hours`/`.total-iq` 归零），v2 无读取对象。**新处置（写死）**：v1 读取器退役（coordinator/reader/全仓 12 处 v1 触点摘除，导出数据集随实现轮处置）；官网 24h IQ 趋势卡数据源改为**官网 IQ 历史数据面 = `/data/intelligence-efficiency.json` `history[]`（264 观察点，P2② sidecar 已在同步并保留全量 history）**——趋势卡为既有数据集的纯 UI 渲染，无新 sidecar（实现期确认渲染口径后即关闭勘察项）；**若实现期证实 history[] 口径与官网曲线不可用，则下线该趋势卡**（本地 IQ 拟合不受影响，两者本就独立）。**隐私边界重申（写死；v1.2 修订）**：退役摘除本身不引入任何新渲染路径（v1.2 新增的 deng 众测 IQ 读取器除外，ADR-0004，见下 bullet）；净化禁词契约测试清单（含 `"<script"`、`"@"`、`"/api/"`）对存留渲染读取器（降智 v2、众测 IQ）继续有效。`Tests/ClaudeRadarTests/Fixtures/CodexRenderedIQHistory` 目录随退役摘除（Package.swift exclude 值同步删除）。注意：渲染走 WKWebView，与 `CodexFixtureTransport`（仅 current.json/model-ratings 两 URL）无关
 - **降智预警读取器 v2**：清理 `data-radar-metric` 失效回退（`CodexRenderedWarningPageReader.swift:193-196`）；契约锚定存活的 4 个 data-radar-degradation* 标记；revision bump 至 `-v2`（触点同样以全仓 grep 为准）；Cloudflare challenge 检测逻辑保留。随回退分支删除，对应 fixture（`missing-metric.json`、`duplicate-metric.json`）与 fixtureNames 清单（位于 `CodexRenderedWarningDOMParserTests.swift:271-275`）同步移除
-- 两读取器的 origin 硬守卫（codexradar.com / deng.codexradar.com）不变
+- **deng 众测 IQ 读取器（v1.2 新增，ADR-0004）**：匿名非持久 WebKit、exact-origin `deng.codexradar.com`，数据集 revision `deng-rendered-crowdtest-iq-v1`——**实现期首日复跑匿名探针复核标记稳定性，再冻结解析契约**。契约锚点（2026-09-20 实测，详录重勘档案 §4）：每格 = `data-model`×`data-effort` 按钮，带 `data-iq-score`/`data-iq-p`/`data-iq-n`/`data-count-p`/`data-count-n`/`data-covered-tasks`/`data-total-tasks`/`data-coverage-insufficient` 与方法论 `title`；趋势 = `<circle data-trend-label="MM/DD HH:00 · IQ">` 内嵌小时点（约 24h 窗口）。**五站对齐映射（写死）**：codex/claude-code/dsh/zcode/grok 五张 harness 卡 → 各对应站「众测 IQ」独立数据面卡（§4.1 v1.2 注记）；kimi/deepseek/codebuddy/antigravity 卡不采。**排除（写死）**：deng `/api/v1/*`（Bearer，§5.0 禁域维持）、任何写操作。**口径边界**：众测 IQ 与综合智能 IQ、本地拟合分卡展示、各带署名、永不混算（D10 同级红线）；不参与聚合站对比视图。展示落位：Codex 站 §4.2 行 1（官网 24h IQ 趋势卡旁），其余四站挂各自目的地页
+- 三读取器的 origin 硬守卫（codexradar.com / deng.codexradar.com）不变（v1.2：众测 IQ 读取器同守卫）
 
 ## 7. 视觉系统（P0 落地）
 
