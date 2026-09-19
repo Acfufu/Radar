@@ -12,6 +12,14 @@ struct InformationOverviewView: View {
                 compactHeader
                 informationNotice
                 operationalStrip
+                // Spec §4.1 v1.1: cross-station comparison over the shared
+                // intelligence-efficiency sidecar (view-layer composition
+                // only — D10 boundaries unchanged).
+                AggregateComparisonCard(
+                    groups: AggregateComparison.groups(
+                        from: model.projection(for: .codexRadar)?.intelligenceEfficiencyDataset
+                    )
+                )
                 ForEach(model.sources) { source in
                     sourceBand(source)
                 }
