@@ -34,3 +34,7 @@ _Avoid_: 爬虫、抓取
 **Sidecar**:
 挂在主同步链之外的独立数据面同步器(专属 Coordinator + transport + dataset type),沿用渲染读取器验证过的接线模式。
 _Avoid_: 插件、子任务
+
+**众测 IQ**:
+deng.codexradar.com 渲染的最近 3 次有效运行、全任务等权 IQ 口径(快照矩阵 + 约 24h 内嵌小时趋势),经渲染读取器匿名获取;与 Codex 站综合智能 IQ、本地拟合分属不同口径,分卡展示、永不混算。
+_Avoid_: 官方 IQ、deng 分数
