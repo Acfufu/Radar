@@ -20,7 +20,7 @@ final class LocalPhase3HTTPServer: @unchecked Sendable {
         process.standardError = FileHandle.nullDevice
         try process.run()
         var discoveredPort: Int?
-        for _ in 0..<100 {
+        for _ in 0..<1000 {
             if let text = try? String(contentsOf: portFile, encoding: .utf8), let value = Int(text) {
                 discoveredPort = value
                 break
