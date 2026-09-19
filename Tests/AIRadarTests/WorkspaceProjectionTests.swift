@@ -8,12 +8,14 @@ struct WorkspaceProjectionTests {
     @Test("navigation remains a fixed destination set within each source workspace")
     func navigationContract() {
         // Spec §4.2: Codex station gains efficiency PK / Fast radar / history
-        // comparison / Tibo radar / community hub destinations (P1a typing; P1b
-        // lands the pages and per-station destination lists).
+        // comparison / Tibo radar / community hub destinations (P1a typing;
+        // P1b lands the pages and per-station destination lists). v1.1 adds
+        // the whitelist stations' single 效能排行 destination; v1.2 keeps the
+        // fastRadar case (sidecar sync continues) while hiding the page.
         #expect(WorkspaceDestination.allCases == [
             .overview, .decisionLens, .models, .trends, .intelligenceCenter,
             .alertsRecommendations, .quotaRadar,
-            .efficiencyPK, .fastRadar, .historyComparison, .tiboRadar, .communityHub,
+            .efficiencyPK, .efficiencyRanking, .fastRadar, .historyComparison, .tiboRadar, .communityHub,
             .sourceStatus, .export,
         ])
         let decisionLensRoute = WorkspaceRoute.sourcePage(.claudeCodeRadar, .decisionLens)

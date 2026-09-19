@@ -28,7 +28,7 @@ final class RadarWorkspaceModel {
     }
 
     func selectSource(_ station: WorkspaceStation) {
-        guard station.isRealSource || station == .aggregate || station != selectedStation else { return }
+        guard station.isRealSource || station == .aggregate || station.isWhitelistStation || station != selectedStation else { return }
         if case .source(let sourceID) = station, runtimes[sourceID] == nil { return }
         selectedStation = station
     }
@@ -66,6 +66,7 @@ final class RadarWorkspaceModel {
     var stationDisplayName: String {
         switch selectedStation {
         case .aggregate: "聚合站"
+        case .whitelist(let station): station.displayName
         case .upcoming(let station): station.displayName
         case .source(let sourceID): runtime(for: sourceID)?.descriptor.displayName ?? sourceID.rawValue
         }
@@ -73,10 +74,15 @@ final class RadarWorkspaceModel {
 
     /// CommandMenu/toolbar refresh availability per station semantics:
     /// real station -> its support level; aggregate -> any real station
-    /// enabled; upcoming -> disabled.
+    /// enabled; whitelist view station -> the shared Codex sidecar's
+    /// availability (same dataset, same refresh); upcoming -> disabled.
     var refreshAvailable: Bool {
         if case .aggregate = selectedStation {
             return sources.contains { RefreshActionAvailability.isEnabled(supportLevel: $0.supportLevel) }
+        }
+        if case .whitelist = selectedStation {
+            guard let codexRuntime = runtime(for: .codexRadar) else { return false }
+            return RefreshActionAvailability.isEnabled(supportLevel: codexRuntime.supportLevel)
         }
         guard let runtime else { return false }
         return RefreshActionAvailability.isEnabled(supportLevel: runtime.supportLevel)
@@ -135,6 +141,17 @@ final class RadarWorkspaceModel {
         )
     }
 
+    /// Whitelist view stations follow the shared Codex sidecar freshness
+    /// (spec §4.1): the status dot maps the Codex runtime's intelligence-
+    /// efficiency state, not a station-local runtime (there is none).
+    func whitelistStatusLevel(for station: WhitelistStation) -> StationStatusLevel {
+        guard let codexRuntime = runtime(for: .codexRadar),
+              let state = codexRuntime.intelligenceEfficiencyState else { return .muted }
+        if state.error != nil { return .error }
+        if state.value == nil { return .muted }
+        return state.isStale ? .stale : .fresh
+    }
+
     func history(for sourceID: RadarSourceID) -> [BenchmarkDataset] {
         runtimes[sourceID]?.benchmarkHistory ?? []
     }
@@ -162,6 +179,10 @@ final class RadarWorkspaceModel {
         switch route {
         case .informationOverview:
             .informationOverview
+        case .whitelist(let station):
+            .whitelist(station)
+        case .whitelistPage(let station, let destination):
+            destination == .efficiencyRanking ? .whitelistPage(station, destination) : .whitelist(station)
         case .upcoming(let station):
             .upcoming(station)
         case .export:
@@ -203,10 +224,16 @@ final class RadarWorkspaceModel {
         for runtime in runtimes.values { await runtime.stop() }
     }
     func refresh() async {
-        // Aggregate station refreshes all real stations; placeholder
-        // stations are never synchronized (spec D10 / §4.1).
+        // Aggregate station refreshes all real stations; whitelist view
+        // stations refresh the shared Codex runtime (the intelligence-
+        // efficiency sidecar is the same dataset — same refresh, same
+        // effect, spec §4.1); Kimi placeholder is never synchronized.
         if case .aggregate = selectedStation {
             await refreshAll()
+            return
+        }
+        if case .whitelist = selectedStation {
+            await runtime(for: .codexRadar)?.refresh()
             return
         }
         await runtime?.refresh()

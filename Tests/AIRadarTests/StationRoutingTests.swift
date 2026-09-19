@@ -20,20 +20,30 @@ struct StationRoutingTests {
         #expect(WorkspaceStation.source(.codexRadar).rawValue == "codex-radar")
         #expect(WorkspaceStation.source(.sweBenchVerified).rawValue == "swe-bench-verified")
         #expect(WorkspaceStation.aggregate.rawValue == "aggregate")
-        #expect(WorkspaceStation.upcoming(.dsh).rawValue == "dsh")
+        // v1.1 (ADR-0003): DSH/ZCode/Grok elevated in place — raw values
+        // unchanged, now whitelist view stations; Kimi stays the only
+        // upcoming station.
+        #expect(WorkspaceStation.whitelist(.dsh).rawValue == "dsh")
         #expect(WorkspaceStation(rawValue: "codex-radar") == .source(.codexRadar))
         #expect(WorkspaceStation(rawValue: "aggregate") == .aggregate)
         #expect(WorkspaceStation(rawValue: "kimi") == .upcoming(.kimi))
-        #expect(UpcomingStation.allCases.map(\.rawValue) == ["dsh", "zcode", "grok", "kimi"])
+        #expect(WorkspaceStation(rawValue: "dsh") == .whitelist(.dsh))
+        #expect(WorkspaceStation(rawValue: "zcode") == .whitelist(.zcode))
+        #expect(WorkspaceStation(rawValue: "grok") == .whitelist(.grok))
+        #expect(UpcomingStation.allCases.map(\.rawValue) == ["kimi"])
+        #expect(WhitelistStation.allCases.map(\.rawValue) == ["dsh", "zcode", "grok"])
     }
 
     @Test("storage keys keep the source: prefix and restore round-trips")
     func storageKeyRoundTrip() {
         #expect(WorkspaceRoute.storageKey(for: .aggregate) == "information-overview")
         #expect(WorkspaceRoute.storageKey(for: .source(.codexRadar)) == "source:codex-radar")
-        #expect(WorkspaceRoute.storageKey(for: .upcoming(.zcode)) == "source:zcode")
-        #expect(WorkspaceRoute(storageKey: "source:zcode") == .upcoming(.zcode))
-        #expect(WorkspaceRoute(storageKey: "source:aggregate") == .upcoming(.dsh) ? false : true)
+        // Persisted pre-elevation keys keep their shape and now resolve to
+        // the whitelist station.
+        #expect(WorkspaceRoute.storageKey(for: .whitelist(.zcode)) == "source:zcode")
+        #expect(WorkspaceRoute(storageKey: "source:zcode") == .whitelist(.zcode))
+        #expect(WorkspaceRoute(storageKey: "source:dsh:efficiency-ranking") == .whitelist(.dsh))
+        #expect(WorkspaceRoute(storageKey: "source:kimi") == .upcoming(.kimi))
         // Legacy persisted keys keep their meaning.
         #expect(WorkspaceRoute(storageKey: "information-overview") == .informationOverview)
         #expect(WorkspaceRoute(storageKey: "source:codex-radar:overview") == .sourcePage(.codexRadar, .overview))
@@ -49,18 +59,73 @@ struct StationRoutingTests {
         #expect(model.stationDisplayName == "聚合站")
         #expect(!model.refreshAvailable)
         await model.refresh() // must not crash
-        #expect(model.normalizedRoute(.upcoming(.dsh)) == .upcoming(.dsh))
+        #expect(model.normalizedRoute(.upcoming(.kimi)) == .upcoming(.kimi))
+        #expect(model.normalizedRoute(.whitelist(.dsh)) == .whitelist(.dsh))
+        #expect(model.normalizedRoute(.whitelistPage(.dsh, .efficiencyRanking)) == .whitelistPage(.dsh, .efficiencyRanking))
+        #expect(model.normalizedRoute(.whitelistPage(.dsh, .overview)) == .whitelist(.dsh))
         #expect(model.normalizedRoute(.export) == .informationOverview)
     }
 
-    @Test("placeholder station selection is accepted and routes to its placeholder")
+    @Test("kimi placeholder selection is accepted and routes to its placeholder")
     func placeholderStationRouting() {
-        let model = RadarWorkspaceModel(runtimes: [:], selectedStation: .upcoming(.grok))
-        #expect(model.selectedStation == .upcoming(.grok))
-        #expect(model.stationDisplayName == "Grok 站")
+        let model = RadarWorkspaceModel(runtimes: [:], selectedStation: .upcoming(.kimi))
+        #expect(model.selectedStation == .upcoming(.kimi))
+        #expect(model.stationDisplayName == "Kimi 站")
         #expect(!model.refreshAvailable)
         model.selectSource(.upcoming(.kimi))
         #expect(model.selectedStation == .upcoming(.kimi))
+    }
+
+    @Test("whitelist stations accept selection without a runtime and follow the shared sidecar for refresh")
+    func whitelistStationSemantics() {
+        let environment = makeEnvironment()
+        let runtimes = [
+            RadarSourceID.codexRadar: RadarAppRuntime(environment: environment, sourceID: .codexRadar),
+        ]
+        let model = RadarWorkspaceModel(runtimes: runtimes, selectedStation: .whitelist(.dsh))
+        #expect(model.selectedStation == .whitelist(.dsh))
+        #expect(model.stationDisplayName == "DSH 站")
+        #expect(model.selectedSourceID == nil)
+        #expect(model.runtime == nil)
+        // Refresh availability follows the shared Codex runtime's support
+        // level (ui fixture: synchronization disabled → unavailable).
+        #expect(model.refreshAvailable == false)
+        model.selectSource(.whitelist(.zcode))
+        #expect(model.selectedStation == .whitelist(.zcode))
+        model.selectSource(.upcoming(.kimi))
+        #expect(model.selectedStation == .upcoming(.kimi))
+    }
+
+    @Test("RADAR_UI_SOURCE value domain: whitelist direct values, upcoming-kimi only")
+    func debugStationValueDomain() {
+        // v1.1 elevation: dsh/zcode/grok are direct values; the upcoming-
+        // prefix survives only for kimi (spec §4.1 naming conventions).
+        #expect(AppEnvironment.debugInitialStation(variables: ["RADAR_UI_SOURCE": "dsh"]) == .whitelist(.dsh))
+        #expect(AppEnvironment.debugInitialStation(variables: ["RADAR_UI_SOURCE": "zcode"]) == .whitelist(.zcode))
+        #expect(AppEnvironment.debugInitialStation(variables: ["RADAR_UI_SOURCE": "grok"]) == .whitelist(.grok))
+        #expect(AppEnvironment.debugInitialStation(variables: ["RADAR_UI_SOURCE": "upcoming-kimi"]) == .upcoming(.kimi))
+        #expect(AppEnvironment.debugInitialStation(variables: ["RADAR_UI_SOURCE": "aggregate"]) == .aggregate)
+        // Retired `upcoming-dsh` style values fall through to the default
+        // real source (malformed value semantics unchanged).
+        #expect(AppEnvironment.debugInitialStation(variables: ["RADAR_UI_SOURCE": "upcoming-dsh"]) == .source(.claudeCodeRadar))
+    }
+
+    @Test("whitelist model sets match the 2026-09-20 upstream station-config probe")
+    func whitelistFrozenValues() {
+        #expect(WhitelistStation.dsh.modelWhitelist == ["dsh-deepseek-v4-flash", "dsh-deepseek-v4-pro"])
+        #expect(WhitelistStation.zcode.modelWhitelist == ["glm-5.3"])
+        #expect(WhitelistStation.grok.modelWhitelist == ["grok-4.6"])
+        // The aggregate comparison union covers exactly the four real
+        // stations; data-plane-only models (kimi-k2.8-preview etc.) stay out.
+        #expect(WhitelistStation.aggregateComparisonModels.contains("gpt-6-astra"))
+        #expect(WhitelistStation.aggregateComparisonModels.contains("glm-5.3"))
+        #expect(!WhitelistStation.aggregateComparisonModels.contains("kimi-k2.8-preview"))
+        #expect(!WhitelistStation.aggregateComparisonModels.contains("dsh-deepseek-v4.1-flash"))
+        #expect(WhitelistStation.comparisonSourceLabel(for: "gpt-5.6-sol") == "Codex")
+        #expect(WhitelistStation.comparisonSourceLabel(for: "dsh-deepseek-v4-pro") == "DSH")
+        #expect(WhitelistStation.comparisonSourceLabel(for: "glm-5.3") == "ZCode")
+        #expect(WhitelistStation.comparisonSourceLabel(for: "grok-4.6") == "Grok")
+        #expect(WhitelistStation.comparisonSourceLabel(for: "kimi-k2.8-preview") == "—")
     }
 
     @Test("unknown real station selection falls back to aggregate")
@@ -85,8 +150,8 @@ struct StationRoutingTests {
         // Selecting a station without a runtime is a no-op.
         model.selectSource(.source(.codexRadar))
         #expect(model.selectedSourceID == .claudeCodeRadar)
-        model.selectSource(.upcoming(.dsh))
-        #expect(model.selectedStation == .upcoming(.dsh))
+        model.selectSource(.whitelist(.dsh))
+        #expect(model.selectedStation == .whitelist(.dsh))
         #expect(model.runtime == nil)
     }
 
@@ -102,9 +167,11 @@ struct StationRoutingTests {
         )
         let aggregateIndex = try #require(view.range(of: "Label(\"聚合站\"")?.lowerBound)
         let sourcesIndex = try #require(view.range(of: "Section(\"来源\")")?.lowerBound)
+        let previewIndex = try #require(view.range(of: "Section(\"预览站\")")?.lowerBound)
         let upcomingIndex = try #require(view.range(of: "Section(\"即将开放\")")?.lowerBound)
         #expect(aggregateIndex < sourcesIndex)
-        #expect(sourcesIndex < upcomingIndex)
+        #expect(sourcesIndex < previewIndex)
+        #expect(previewIndex < upcomingIndex)
         // Placeholder card copy: main phrase + station-name subtitle.
         #expect(view.contains("即将开放"))
         #expect(view.contains("station.displayName"))

@@ -38,6 +38,22 @@ struct RadarWorkspaceView: View {
                             .tag(WorkspaceRoute.source(source.id))
                     }
                 }
+                // Spec §4.1 v1.1: the 预览站 group holds the three whitelist
+                // view stations in upstream navigator order (DSH/ZCode/Grok).
+                Section("预览站") {
+                    ForEach(WhitelistStation.allCases) { station in
+                        HStack(spacing: 6) {
+                            Label(station.displayName, systemImage: "chart.bar.fill")
+                                .foregroundStyle(
+                                    (route == .whitelist(station) || isWhitelistRoute(station))
+                                        ? palette.accent.color : palette.primaryText.color
+                                )
+                            Spacer()
+                            StationStatusDot(level: model.whitelistStatusLevel(for: station), diameter: 7)
+                        }
+                        .tag(WorkspaceRoute.whitelist(station))
+                    }
+                }
                 Section("即将开放") {
                     ForEach(UpcomingStation.allCases) { station in
                         Label(station.displayName, systemImage: "sparkles")
@@ -124,6 +140,10 @@ struct RadarWorkspaceView: View {
             } else {
                 stationPlaceholder
             }
+        case .whitelist(let station):
+            WhitelistStationPage(station: station, projection: model.projection(for: .codexRadar))
+        case .whitelistPage(let station, _):
+            WhitelistStationPage(station: station, projection: model.projection(for: .codexRadar))
         case .upcoming(let station):
             upcomingPlaceholder(station)
         }
@@ -223,6 +243,9 @@ struct RadarWorkspaceView: View {
             } else {
                 SourceStatusView(projection: projection)
             }
+        case .efficiencyRanking:
+            // Whitelist-station-only destination; real sources never list it.
+            stationPlaceholder
         case .export: ExportView(runtime: model.runtime(for: sourceID) ?? model.runtime ?? model.fallbackRuntime!)
         case .efficiencyPK, .fastRadar, .historyComparison, .tiboRadar, .communityHub:
             // P1b lands these pages; type-level routing exists since P1a.
@@ -248,6 +271,7 @@ struct RadarWorkspaceView: View {
     private var refreshLabel: String {
         if route == .informationOverview { return "读取全部" }
         if route.sourceID == .sweBenchVerified { return "读取最新" }
+        if isWhitelistRoute { return "刷新数据面" }
         return "刷新"
     }
 
@@ -257,6 +281,20 @@ struct RadarWorkspaceView: View {
         }
         if case .upcoming = route { return false }
         return model.refreshAvailable
+    }
+
+    private var isWhitelistRoute: Bool {
+        switch route {
+        case .whitelist, .whitelistPage: true
+        default: false
+        }
+    }
+
+    private func isWhitelistRoute(_ station: WhitelistStation) -> Bool {
+        switch route {
+        case .whitelist(let current), .whitelistPage(let current, _): current == station
+        default: false
+        }
     }
 
     private func refresh() async {

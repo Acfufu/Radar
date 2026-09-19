@@ -132,11 +132,15 @@ struct AppEnvironment: Sendable {
             .claudeCodeRadar
         }
     }
-    /// Station-valued RADAR_UI_SOURCE: `aggregate`, `upcoming-dsh|zcode|grok|kimi`,
-    /// or a real station raw value (spec §4.1 naming conventions).
+    /// Station-valued RADAR_UI_SOURCE: `aggregate`, `dsh|zcode|grok` (the
+    /// whitelist view stations, direct raw values since ADR-0003),
+    /// `upcoming-kimi`, or a real station raw value (spec §4.1 naming).
     static func debugInitialStation(variables: [String: String]) -> WorkspaceStation {
         guard let requested = variables["RADAR_UI_SOURCE"] else { return .aggregate }
         if requested == "aggregate" { return .aggregate }
+        for whitelist in WhitelistStation.allCases where requested == whitelist.rawValue {
+            return .whitelist(whitelist)
+        }
         for upcoming in UpcomingStation.allCases where requested == "upcoming-\(upcoming.rawValue)" {
             return .upcoming(upcoming)
         }
