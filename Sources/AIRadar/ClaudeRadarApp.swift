@@ -42,6 +42,9 @@ struct ClaudeRadarApp: App {
                 intelligenceEfficiencyReaderFactory: {
                     IntelligenceEfficiencyAdapter.production(dataRoot: environment.dataRoot)
                 },
+                radarInsightsReaderFactory: {
+                    RadarInsightsAdapter.production(dataRoot: environment.dataRoot)
+                },
                 fastRadarHistoryReaderFactory: {
                     FastRadarHistoryAdapter.production(dataRoot: environment.dataRoot)
                 }

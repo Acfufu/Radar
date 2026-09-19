@@ -72,7 +72,16 @@ struct Phase4SourceContractTests {
         let package = try text("Package.swift")
         #expect(seed.contains("state == \"analytics\""))
         #expect(!package.contains("analytics-fixture"))
-        #expect(!package.contains("radar-insights"))
+        // v0.4.0 (spec §5.6): the radar-insights canonical fixture is a
+        // test-only asset like the intelligence-efficiency one — excluded
+        // from the test bundle resources, never shipped in the app target.
+        #expect(package.contains("Fixtures/RadarInsights"))
+        #expect(FileManager.default.fileExists(
+            atPath: root.appending(path: "Tests/AIRadarTests/Fixtures/RadarInsights/radar-insights.json").path
+        ))
+        #expect(!FileManager.default.fileExists(
+            atPath: root.appending(path: "Sources/AIRadar/Resources/Fixtures/radar-insights.json").path
+        ))
         // P2② (spec §5.2): the canonical intelligence-efficiency fixture is a
         // test-only asset — excluded from the test bundle resources and never
         // shipped inside the app target.

@@ -9,6 +9,7 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case renderedIQHistory = "rendered-iq-history"
     case intelligenceEfficiency = "intelligence-efficiency"
     case fastRadarHistory = "fast-radar-history"
+    case radarInsights = "radar-insights"
 }
 
 enum RadarModelSchema {
@@ -22,6 +23,7 @@ enum RadarModelSchema {
             CodexRadarStatusSnapshotEntity.self,
             IntelligenceEfficiencySnapshotEntity.self,
             FastRadarRunEntity.self,
+            RadarInsightsSnapshotEntity.self,
         ])
     }
 
@@ -246,6 +248,33 @@ final class IntelligenceEfficiencySnapshotEntity {
 
     init(dataset: IntelligenceEfficiencyDataset, fingerprint: String, encodedDataset: Data) {
         dedupeKey = "\(dataset.sourceID.rawValue)|\(RadarDatasetType.intelligenceEfficiency.rawValue)|\(fingerprint)"
+        id = UUID()
+        sourceID = dataset.sourceID.rawValue
+        contentFingerprint = fingerprint
+        self.fetchedAt = dataset.fetchedAt
+        sourceUpdatedAtText = dataset.sourceUpdatedAt
+        self.encodedDataset = encodedDataset
+    }
+}
+
+/// Upstream radar-insights snapshot (spec §5.6) from the public
+/// `/api/radar-insights` sidecar endpoint; additive SwiftData schema change.
+/// Latest-only retention (one row per source): three-component IQ rows,
+/// station-owner recommendations, and degradation alerts are analysis state,
+/// so superseded snapshots are dropped on insert while fingerprint dedupe
+/// still short-circuits identical refetches.
+@Model
+final class RadarInsightsSnapshotEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var contentFingerprint: String
+    var fetchedAt: Date
+    var sourceUpdatedAtText: String?
+    var encodedDataset: Data
+
+    init(dataset: RadarInsightsDataset, fingerprint: String, encodedDataset: Data) {
+        dedupeKey = "\(dataset.sourceID.rawValue)|\(RadarDatasetType.radarInsights.rawValue)|\(fingerprint)"
         id = UUID()
         sourceID = dataset.sourceID.rawValue
         contentFingerprint = fingerprint

@@ -85,6 +85,16 @@ enum ContentFingerprint {
         )
     }
 
+    /// Radar-insights fingerprint (spec §5.6): recommendation and point
+    /// order preserved (upstream ranking/scene order is content).
+    static func radarInsights(_ dataset: RadarInsightsDataset) throws -> String {
+        try make(
+            dataset,
+            datasetType: .radarInsights,
+            seriesRevision: CodexRadarConfiguration.seriesRevision
+        )
+    }
+
     static func renderedWarning(_ snapshot: CodexRenderedWarningSnapshot) throws -> String {
         try CodexRenderedWarningSemanticFingerprint.make(
             sourceTimeLabel: snapshot.sourceTimeLabel,

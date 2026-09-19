@@ -359,6 +359,93 @@ struct RadarAppRuntimeTests {
         #expect(await runtime.clearHistory())
         #expect(runtime.intelligenceEfficiencyState == nil)
         await runtime.stop()
+    }
+
+    @MainActor
+    @Test("radar-insights sidecar refreshes on startup while its failure leaves primary sync green")
+    func codexRadarInsightsFailureIsIndependent() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-InsightsFailure-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let reader = RuntimeInsightsReader(results: [.failure(RadarHTTPError(kind: .oversized))])
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            radarInsightsReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.radarInsightsState?.error == nil {
+            await Task.yield()
+        }
+
+        #expect(reader.readCount == 1)
+        #expect(runtime.lifecycleState == .running)
+        #expect(runtime.projection?.benchmark.value != nil)
+        #expect(runtime.radarInsightsState?.value == nil)
+        #expect(runtime.radarInsightsState?.error?.kind == .validation)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("disabled Codex loads persisted radar-insights LKG without reading (zero-network isolation)")
+    func persistedRadarInsightsLoadsIndependently() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-InsightsLKG-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let repository = RadarRepository(
+            container: try environment.makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+        let cached = runtimeRadarInsights(fetchedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertRadarInsights(cached)
+        let reader = RuntimeInsightsReader(results: [.failure(RadarHTTPError(kind: .network))])
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            radarInsightsReaderFactory: { reader }
+        )
+
+        await runtime.start()
+
+        #expect(reader.readCount == 0)
+        #expect(runtime.radarInsightsState?.value == cached)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("manual refresh publishes radar-insights snapshot and clear removes it")
+    func manualRefreshAndClearRadarInsights() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-InsightsManual-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let initial = runtimeRadarInsights(fetchedAt: Date(timeIntervalSince1970: 100))
+        let updated = runtimeRadarInsights(fetchedAt: Date(timeIntervalSince1970: 200), iq: 108.5)
+        let reader = RuntimeInsightsReader(results: [.success(initial), .success(updated)])
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true)
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            radarInsightsReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.radarInsightsState?.value == nil {
+            await Task.yield()
+        }
+        await runtime.refresh()
+        for _ in 0..<200 where reader.readCount < 2 {
+            await Task.yield()
+        }
+        await runtime.updateRefreshInterval(minutes: 60)
+
+        #expect(reader.readCount == 2)
+        #expect(runtime.refreshIntervalMinutes == 60)
+        #expect(runtime.radarInsightsState?.value == updated)
+        #expect(await runtime.clearHistory())
+        #expect(runtime.radarInsightsState == nil)
+        await runtime.stop()
         let repository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: SyncMetadataStore(root: root))
         #expect(try await repository.snapshotCount(datasetType: .intelligenceEfficiency, sourceID: .codexRadar) == 0)
     }
@@ -662,6 +749,23 @@ private final class RuntimeFRHReader: FastRadarHistoryReading {
 }
 
 @MainActor
+private final class RuntimeInsightsReader: RadarInsightsReading {
+    private var results: [Result<RadarInsightsDataset, Error>]
+    private(set) var readCount = 0
+
+    init(results: [Result<RadarInsightsDataset, Error>]) {
+        self.results = results
+    }
+
+    func read() async throws -> RadarInsightsDataset {
+        readCount += 1
+        return try results.removeFirst().get()
+    }
+
+    func cancel() async {}
+}
+
+@MainActor
 private final class RuntimeIEReader: IntelligenceEfficiencyReading {
     private var results: [Result<IntelligenceEfficiencyDataset, Error>]
     private(set) var readCount = 0
@@ -676,6 +780,17 @@ private final class RuntimeIEReader: IntelligenceEfficiencyReading {
     }
 
     func cancel() async {}
+}
+
+private func runtimeRadarInsights(fetchedAt: Date, iq: Double = 107.9) -> RadarInsightsDataset {
+    RadarInsightsDataset(
+        sourceID: .codexRadar,
+        fetchedAt: fetchedAt,
+        benchmarkID: RadarInsightsParser.expectedBenchmarkID,
+        comprehensivePoints: [
+            .init(model: "gpt-6-astra", effort: "ultra", iq: iq, softwareIq: 100.0, visualIq: 134.2, samples: 156),
+        ]
+    )
 }
 
 private func runtimeEfficiency(fetchedAt: Date, iq: Double = 81.25) throws -> IntelligenceEfficiencyDataset {

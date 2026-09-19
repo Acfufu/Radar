@@ -158,6 +158,36 @@ actor RadarRepository {
         return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
     }
 
+    /// Spec §5.6: latest-only retention mirrors the intelligence-efficiency
+    /// sidecar — one bounded row per source, fingerprint dedupe on refetch.
+    func insertRadarInsights(
+        _ dataset: RadarInsightsDataset
+    ) async throws -> SnapshotInsertion {
+        try await waitForExportLease()
+        let fingerprint = try ContentFingerprint.radarInsights(dataset)
+        let context = ModelContext(container)
+        let entities = try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>())
+            .filter { $0.sourceID == dataset.sourceID.rawValue }
+        let existing = entities.contains { $0.contentFingerprint == fingerprint }
+        if !existing {
+            for entity in entities where entity.contentFingerprint != fingerprint {
+                context.delete(entity)
+            }
+            context.insert(RadarInsightsSnapshotEntity(
+                dataset: dataset,
+                fingerprint: fingerprint,
+                encodedDataset: try JSONEncoder.radar.encode(dataset)
+            ))
+            try context.save()
+        }
+        try await recordSuccess(
+            sourceID: dataset.sourceID,
+            datasetType: .radarInsights,
+            at: dataset.fetchedAt
+        )
+        return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
+    }
+
     func intelligenceEfficiencyState(
         sourceID: RadarSourceID
     ) async throws -> SegmentState<IntelligenceEfficiencyDataset> {
@@ -186,6 +216,37 @@ actor RadarRepository {
         return try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>())
             .filter { $0.sourceID == sourceID.rawValue }
             .compactMap { try? verifiedIntelligenceEfficiency($0) }
+            .sorted { $0.fetchedAt < $1.fetchedAt }
+    }
+
+    func radarInsightsState(
+        sourceID: RadarSourceID
+    ) async throws -> SegmentState<RadarInsightsDataset> {
+        let context = ModelContext(container)
+        let snapshots = try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .sorted { $0.fetchedAt > $1.fetchedAt }
+        let result: (RadarInsightsDataset?, SegmentError?) = decodeNewest(snapshots) { snapshot in
+            let candidate = try verifiedRadarInsights(snapshot)
+            guard candidate.sourceID == sourceID else { throw RepositoryIntegrityError.mismatchedSnapshot }
+            return candidate
+        }
+        return try await state(
+            value: result.0,
+            successfulAt: result.0?.fetchedAt,
+            decodingFailure: result.1,
+            sourceID: sourceID,
+            datasetType: .radarInsights
+        )
+    }
+
+    /// Chronological ascending, mirroring the intelligence-efficiency
+    /// accessors. Bounded to at most the latest retained snapshot per source.
+    func radarInsightsHistory(sourceID: RadarSourceID) throws -> [RadarInsightsDataset] {
+        let context = ModelContext(container)
+        return try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .compactMap { try? verifiedRadarInsights($0) }
             .sorted { $0.fetchedAt < $1.fetchedAt }
     }
 
@@ -479,6 +540,8 @@ actor RadarRepository {
             return try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .intelligenceEfficiency:
             return try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
+        case .radarInsights:
+            return try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .fastRadarHistory:
             return try context.fetch(FetchDescriptor<FastRadarRunEntity>()).count { $0.sourceID == sourceID.rawValue }
         }
@@ -612,6 +675,9 @@ actor RadarRepository {
         for entity in try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
+        for entity in try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
         for entity in try context.fetch(FetchDescriptor<FastRadarRunEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
@@ -743,6 +809,22 @@ actor RadarRepository {
               candidate.sourceUpdatedAt == snapshot.sourceUpdatedAtText,
               candidate.fetchedAt == snapshot.fetchedAt,
               try ContentFingerprint.intelligenceEfficiency(candidate) == snapshot.contentFingerprint else {
+            throw RepositoryIntegrityError.mismatchedSnapshot
+        }
+        return candidate
+    }
+
+    func verifiedRadarInsights(
+        _ snapshot: RadarInsightsSnapshotEntity
+    ) throws -> RadarInsightsDataset {
+        let candidate = try JSONDecoder.radar.decode(
+            RadarInsightsDataset.self,
+            from: snapshot.encodedDataset
+        )
+        guard candidate.sourceID.rawValue == snapshot.sourceID,
+              candidate.sourceUpdatedAt == snapshot.sourceUpdatedAtText,
+              candidate.fetchedAt == snapshot.fetchedAt,
+              try ContentFingerprint.radarInsights(candidate) == snapshot.contentFingerprint else {
             throw RepositoryIntegrityError.mismatchedSnapshot
         }
         return candidate

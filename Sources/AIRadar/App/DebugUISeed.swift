@@ -53,6 +53,7 @@ enum DebugUISeed {
         if sourceID == .codexRadar {
             try await populateStationStatus(repository: repository, now: now, stale: state == "stale")
             try await populateIntelligenceEfficiency(repository: repository, now: now, stale: state == "stale")
+            try await populateRadarInsights(repository: repository, now: now, stale: state == "stale")
             try await populateFastRadarHistory(repository: repository, now: now, stale: state == "stale")
         }
         if sourceID == .codexRadar, state == "analytics" {
@@ -829,6 +830,102 @@ enum DebugUISeed {
             )
         )
         _ = try await repository.insertIntelligenceEfficiency(dataset)
+    }
+
+    /// Spec §5.6 fixture seed for the three-capability tabs, the
+    /// station-recommendation structured card, and the degradation-alerts
+    /// structured card. Fixture text only — never upstream copy.
+    private static func populateRadarInsights(
+        repository: RadarRepository,
+        now: Date,
+        stale: Bool
+    ) async throws {
+        let dataset = RadarInsightsDataset(
+            sourceID: .codexRadar,
+            fetchedAt: stale ? now.addingTimeInterval(-9 * 60 * 60) : now,
+            schema: 1,
+            benchmarkID: RadarInsightsParser.expectedBenchmarkID,
+            mode: "rolling_equal_per_task",
+            recommendationMode: "comprehensive_weighted_mean",
+            generatedAt: "2026-09-08T15:50:18+00:00",
+            sourceUpdatedAt: "2026-09-08T13:53:05+00:00",
+            softwareSourceUpdatedAt: "2026-09-08T15:49:31+00:00",
+            visualSourceUpdatedAt: "2026-09-08T13:53:05+00:00",
+            comprehensivePoints: [
+                .init(model: "fixture-astra", effort: "ultra", iq: 108.2, softwareIq: 101.4, visualIq: 135.1, samples: 156),
+                .init(model: "fixture-astra", effort: "high", iq: 105.7, softwareIq: 99.2, visualIq: 131.8, samples: 141),
+                .init(model: "fixture-sol", effort: "xhigh", iq: 100.2, softwareIq: 95.4, visualIq: 121.7, samples: 42),
+            ],
+            recommendations: [
+                .init(
+                    key: "daily_development",
+                    title: "日常开发",
+                    rule: "fixture：种子规则文案，非上游原文；说明选型口径。",
+                    items: [
+                        .init(
+                            model: "fixture-astra",
+                            effort: "high",
+                            iq: 105.7,
+                            passed: 96.4,
+                            samples: 141,
+                            averageCostUSD: 1.82,
+                            costSamples: 141,
+                            averageDurationMinutes: 9.4,
+                            durationSamples: 138,
+                            combinedCostIndex: 17.3,
+                            rule: "fixture：种子规则文案，非上游原文。"
+                        ),
+                        .init(
+                            model: "fixture-sol",
+                            effort: "xhigh",
+                            iq: 100.2,
+                            passed: 92.1,
+                            samples: 42,
+                            averageCostUSD: 2.35,
+                            costSamples: 42,
+                            averageDurationMinutes: 11.2,
+                            durationSamples: 40,
+                            combinedCostIndex: 26.4,
+                            rule: "fixture：种子规则文案，非上游原文。"
+                        ),
+                    ]
+                ),
+                .init(
+                    key: "background_automation",
+                    title: "后台自动化",
+                    rule: "fixture：种子规则文案，非上游原文；说明吞吐优先口径。",
+                    items: [
+                        .init(
+                            model: "fixture-astra",
+                            effort: "medium",
+                            iq: 98.9,
+                            passed: 89.7,
+                            samples: 118,
+                            averageCostUSD: 0.94,
+                            costSamples: 118,
+                            averageDurationMinutes: 6.1,
+                            durationSamples: 115,
+                            combinedCostIndex: 5.8,
+                            rule: "fixture：种子规则文案，非上游原文。"
+                        ),
+                    ]
+                ),
+            ],
+            degradationAlerts: .init(
+                rule: "fixture：每个模型档位只与自身历史比较的种子规则说明，非上游原文。",
+                items: [
+                    .init(
+                        model: "fixture-sol",
+                        effort: "xhigh",
+                        severity: "warning",
+                        message: "fixture：最近三次结果低于自身历史阈值的种子预警，非上游原文。",
+                        currentIq: 94.1,
+                        baselineIq: 100.2
+                    )
+                ]
+            )
+        )
+        _ = try await repository.insertRadarInsights(dataset)
     }
 
     /// Spec §5.4 fixture seed for the star rating matrix: groups, effort

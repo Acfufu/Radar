@@ -116,6 +116,28 @@ struct ReleaseReadinessTests {
         #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .fastRadarHistory).lastSuccessfulAt != nil)
     }
 
+    /// v0.4.0 increment (spec §5.6): the radar-insights latest-only snapshot
+    /// survives a store reopen under the current schema.
+    @MainActor
+    @Test("radar-insights snapshot survives an upgrade reopen")
+    func upgradePreservesRadarInsights() async throws {
+        let dataRoot = temporaryRoot("upgrade-radar-insights")
+        defer { try? FileManager.default.removeItem(at: dataRoot) }
+        let dataset = RadarInsightsDataset(
+            sourceID: .codexRadar,
+            fetchedAt: Date(timeIntervalSince1970: 1_752_566_500),
+            benchmarkID: RadarInsightsParser.expectedBenchmarkID,
+            comprehensivePoints: [.init(model: "m", effort: "ultra", iq: 80)]
+        )
+        let first = try repository(at: dataRoot)
+        _ = try await first.insertRadarInsights(dataset)
+
+        let reopened = try repository(at: dataRoot)
+        let state = try await reopened.radarInsightsState(sourceID: .codexRadar)
+        #expect(state.value == dataset)
+        #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .radarInsights).lastSuccessfulAt != nil)
+    }
+
     @MainActor
     private func verifyHistoryClearPreservesRaw() async throws {
         let dataRoot = temporaryRoot("clear-history")

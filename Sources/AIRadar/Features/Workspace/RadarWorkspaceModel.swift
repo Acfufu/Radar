@@ -55,6 +55,7 @@ final class RadarWorkspaceModel {
             renderedIQHistoryState: runtime.renderedIQHistoryProjection,
             stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+            radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
             fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
         )
     }
@@ -94,6 +95,7 @@ final class RadarWorkspaceModel {
                 renderedIQHistoryState: runtime.renderedIQHistoryProjection,
                 stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
                 intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+                radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
                 fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
             )
         })
@@ -125,6 +127,7 @@ final class RadarWorkspaceModel {
             renderedIQHistoryState: runtime.renderedIQHistoryProjection,
             stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+            radarInsightsDataset: sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
             fastRadarDataset: sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
         )
     }
