@@ -25,6 +25,12 @@ struct CodexSpeedOverviewPage: View {
                     history: history,
                     refreshIntervalMinutes: refreshIntervalMinutes
                 )
+                // Spec §4.2 row 1 (v1.1): three-capability tabs fed by the
+                // radar-insights and visual-spatial-reasoning sidecars.
+                CodexCapabilityTabsCard(
+                    tabs: projection.capabilityTabs,
+                    attributionText: projection.source.attributionText
+                )
                 modelListCard
             }
             .radarPage()
@@ -73,6 +79,18 @@ struct AlertsRecommendationsPage: View {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(title: "预警与推荐", subtitle: "官网预警、站长推荐与重置预测；口径独立并标注来源")
                 degradationCard
+                // v1.1 (spec §5.6): structured alerts + recommendations from
+                // the radar-insights sidecar; they coexist with the rendered
+                // warning card and the D4 link card — never replacing them.
+                CodexAlertsStructuredCard(
+                    rule: projection.radarInsightsDataset?.degradationAlerts?.rule,
+                    alerts: projection.structuredAlerts,
+                    attributionText: projection.source.attributionText
+                )
+                CodexStationRecommendationCard(
+                    scenes: projection.structuredRecommendations,
+                    attributionText: projection.source.attributionText
+                )
                 recommendationLinkCard
                 predictionCard
             }
@@ -110,6 +128,43 @@ struct AlertsRecommendationsPage: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .radarAccentCard(accent: palette.amber, soft: palette.amberSoft)
+    }
+
+    private var structuredAlerts: [DegradationAlertView] {
+        let alerts = projection.radarInsightsDataset?.degradationAlerts?.items ?? []
+        return alerts.enumerated().map { index, alert in
+            DegradationAlertView(
+                id: "\(alert.model ?? "model-\(index)")@\(alert.effort ?? "effort-\(index)")#\(index)",
+                model: alert.model ?? "—",
+                effort: alert.effort ?? "—",
+                severity: alert.severity,
+                message: alert.message,
+                currentIq: alert.currentIq,
+                baselineIq: alert.baselineIq
+            )
+        }
+    }
+
+    private var structuredRecommendations: [StationRecommendationView] {
+        (projection.radarInsightsDataset?.recommendations ?? []).map { scene in
+            StationRecommendationView(
+                id: scene.key ?? scene.title ?? "scene",
+                title: scene.title ?? scene.key ?? "推荐场景",
+                rule: scene.rule,
+                items: scene.items.map { item in
+                    StationRecommendationView.RecommendationItemView(
+                        id: "\(item.model ?? "—")@\(item.effort ?? "—")",
+                        model: item.model ?? "—",
+                        effort: item.effort ?? "—",
+                        iq: item.iq,
+                        averageCostUSD: item.averageCostUSD,
+                        averageDurationMinutes: item.averageDurationMinutes,
+                        combinedCostIndex: item.combinedCostIndex,
+                        rule: item.rule
+                    )
+                }
+            )
+        }
     }
 
     private var recommendationLinkCard: some View {
