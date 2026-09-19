@@ -45,6 +45,9 @@ struct ClaudeRadarApp: App {
                 radarInsightsReaderFactory: {
                     RadarInsightsAdapter.production(dataRoot: environment.dataRoot)
                 },
+                visualSpatialReasoningReaderFactory: {
+                    VisualSpatialReasoningAdapter.production(dataRoot: environment.dataRoot)
+                },
                 fastRadarHistoryReaderFactory: {
                     FastRadarHistoryAdapter.production(dataRoot: environment.dataRoot)
                 }

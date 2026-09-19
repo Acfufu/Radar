@@ -56,6 +56,7 @@ final class RadarWorkspaceModel {
             stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
             radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
+            visualSpatialReasoningDataset: runtime.sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
             fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
         )
     }
@@ -96,6 +97,7 @@ final class RadarWorkspaceModel {
                 stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
                 intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
                 radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
+                visualSpatialReasoningDataset: runtime.sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
                 fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
             )
         })
@@ -128,6 +130,7 @@ final class RadarWorkspaceModel {
             stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
             radarInsightsDataset: sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
+            visualSpatialReasoningDataset: sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
             fastRadarDataset: sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
         )
     }

@@ -251,7 +251,7 @@ struct RadarRepositoryTests {
         #expect(statusState.error == nil)
     }
 
-    @Test("source deletion filters all eight normalized entities and metadata while preserving sibling and raw data")
+    @Test("source deletion filters all nine normalized entities and metadata while preserving sibling and raw data")
     func sourceScopedDeletion() async throws {
         let fixture = try repositoryFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
@@ -265,6 +265,7 @@ struct RadarRepositoryTests {
             _ = try await fixture.repository.insertRenderedIQHistory(try iqHistory(sourceID: sourceID))
             _ = try await fixture.repository.insertIntelligenceEfficiency(efficiency(sourceID: sourceID))
             _ = try await fixture.repository.insertRadarInsights(radarInsights(sourceID: sourceID))
+            _ = try await fixture.repository.insertVisualSpatialReasoning(visualSpatialReasoning(sourceID: sourceID))
             _ = try await fixture.repository.insertFastRadarHistory(fastRadar(sourceID: sourceID))
         }
         let rawStore = RawSampleStore(dataRoot: fixture.root)
@@ -284,10 +285,10 @@ struct RadarRepositoryTests {
         let metadataHashAfter = sha256(try Data(contentsOf: metadataFile))
         let rawHashAfter = try await rawHash(rawStore, sourceIDs: [target, sibling])
 
-        #expect(targetCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1])
-        #expect(siblingCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1])
-        #expect(targetCountsAfter == [0, 0, 0, 0, 0, 0, 0, 0])
-        #expect(siblingCountsAfter == [1, 1, 1, 1, 1, 1, 1, 1])
+        #expect(targetCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1, 1])
+        #expect(siblingCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1, 1])
+        #expect(targetCountsAfter == [0, 0, 0, 0, 0, 0, 0, 0, 0])
+        #expect(siblingCountsAfter == [1, 1, 1, 1, 1, 1, 1, 1, 1])
         for type in types {
             #expect(try await restarted.metadata(sourceID: target, datasetType: type) == .empty)
             #expect(try await restarted.metadata(sourceID: sibling, datasetType: type).lastSuccessfulAt != nil)
@@ -476,6 +477,15 @@ struct RadarRepositoryTests {
             fetchedAt: Date(timeIntervalSince1970: 10),
             benchmarkID: RadarInsightsParser.expectedBenchmarkID,
             comprehensivePoints: [.init(model: "m", effort: "high", iq: 80)]
+        )
+    }
+
+    private func visualSpatialReasoning(sourceID: RadarSourceID) -> VisualSpatialReasoningDataset {
+        VisualSpatialReasoningDataset(
+            sourceID: sourceID,
+            fetchedAt: Date(timeIntervalSince1970: 10),
+            type: VisualSpatialReasoningParser.expectedType,
+            points: [.init(model: "m", effort: "high", iq: 80)]
         )
     }
 

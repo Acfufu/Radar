@@ -10,6 +10,7 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case intelligenceEfficiency = "intelligence-efficiency"
     case fastRadarHistory = "fast-radar-history"
     case radarInsights = "radar-insights"
+    case visualSpatialReasoning = "visual-spatial-reasoning"
 }
 
 enum RadarModelSchema {
@@ -24,6 +25,7 @@ enum RadarModelSchema {
             IntelligenceEfficiencySnapshotEntity.self,
             FastRadarRunEntity.self,
             RadarInsightsSnapshotEntity.self,
+            VisualSpatialReasoningSnapshotEntity.self,
         ])
     }
 
@@ -275,6 +277,31 @@ final class RadarInsightsSnapshotEntity {
 
     init(dataset: RadarInsightsDataset, fingerprint: String, encodedDataset: Data) {
         dedupeKey = "\(dataset.sourceID.rawValue)|\(RadarDatasetType.radarInsights.rawValue)|\(fingerprint)"
+        id = UUID()
+        sourceID = dataset.sourceID.rawValue
+        contentFingerprint = fingerprint
+        self.fetchedAt = dataset.fetchedAt
+        sourceUpdatedAtText = dataset.sourceUpdatedAt
+        self.encodedDataset = encodedDataset
+    }
+}
+
+/// Upstream visual-spatial-reasoning snapshot (spec §5.7), merged from the
+/// summary + history endpoints; additive SwiftData schema change. Each sync
+/// replaces the whole snapshot when the dataset fingerprint changes (runs
+/// never accumulate across syncs, mirroring the FastRadar whole-set rule).
+@Model
+final class VisualSpatialReasoningSnapshotEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var contentFingerprint: String
+    var fetchedAt: Date
+    var sourceUpdatedAtText: String?
+    var encodedDataset: Data
+
+    init(dataset: VisualSpatialReasoningDataset, fingerprint: String, encodedDataset: Data) {
+        dedupeKey = "\(dataset.sourceID.rawValue)|\(RadarDatasetType.visualSpatialReasoning.rawValue)|\(fingerprint)"
         id = UUID()
         sourceID = dataset.sourceID.rawValue
         contentFingerprint = fingerprint

@@ -95,6 +95,16 @@ enum ContentFingerprint {
         )
     }
 
+    /// Visual-spatial-reasoning fingerprint (spec §5.7): the merged summary
+    /// + history snapshot replaces as a whole when this changes.
+    static func visualSpatialReasoning(_ dataset: VisualSpatialReasoningDataset) throws -> String {
+        try make(
+            dataset,
+            datasetType: .visualSpatialReasoning,
+            seriesRevision: CodexRadarConfiguration.seriesRevision
+        )
+    }
+
     static func renderedWarning(_ snapshot: CodexRenderedWarningSnapshot) throws -> String {
         try CodexRenderedWarningSemanticFingerprint.make(
             sourceTimeLabel: snapshot.sourceTimeLabel,

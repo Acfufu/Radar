@@ -54,6 +54,7 @@ enum DebugUISeed {
             try await populateStationStatus(repository: repository, now: now, stale: state == "stale")
             try await populateIntelligenceEfficiency(repository: repository, now: now, stale: state == "stale")
             try await populateRadarInsights(repository: repository, now: now, stale: state == "stale")
+            try await populateVisualSpatialReasoning(repository: repository, now: now, stale: state == "stale")
             try await populateFastRadarHistory(repository: repository, now: now, stale: state == "stale")
         }
         if sourceID == .codexRadar, state == "analytics" {
@@ -926,6 +927,91 @@ enum DebugUISeed {
             )
         )
         _ = try await repository.insertRadarInsights(dataset)
+    }
+
+    /// Spec §5.7 fixture seed for the visual-spatial-reasoning capability
+    /// tab. Fixture text only — never upstream copy.
+    private static func populateVisualSpatialReasoning(
+        repository: RadarRepository,
+        now: Date,
+        stale: Bool
+    ) async throws {
+        let dataset = VisualSpatialReasoningDataset(
+            sourceID: .codexRadar,
+            fetchedAt: stale ? now.addingTimeInterval(-9 * 60 * 60) : now,
+            schema: 1,
+            benchmarkID: "pompeii-adjacency",
+            mode: "latest_valid_per_task",
+            type: VisualSpatialReasoningParser.expectedType,
+            scoreLabel: "Adjacency F1",
+            scoringMode: "continuous-macro",
+            sourceUpdatedAt: "2026-09-08T07:00:05+00:00",
+            runs24hTotal: 26,
+            runs48hTotal: 41,
+            runsTotal: 412,
+            points: [
+                .init(
+                    model: "fixture-astra",
+                    effort: "high",
+                    passed: 88.2,
+                    validTasks: 50,
+                    benchmarkTasks: 86,
+                    iq: 134.8,
+                    scoreMode: "continuous-macro",
+                    averagePriceUSD: 1.65,
+                    priceSamples: 50,
+                    averageMinutes: 7.97,
+                    durationSamples: 50,
+                    incompleteCostSamples: 0,
+                    averageAgentSteps: nil,
+                    agentStepsSamples: 0,
+                    averageTotalTokens: nil,
+                    tokenSamples: 0,
+                    cacheHitRate: 0.92,
+                    cacheTokenSamples: 40,
+                    combinedCostIndex: 118.4,
+                    latestGradedAt: "2026-09-08T07:00:05+00:00",
+                    runs24h: 9,
+                    runs48h: 14,
+                    runsTotal: 412
+                ),
+                .init(
+                    model: "fixture-sol",
+                    effort: "max",
+                    passed: 61.4,
+                    validTasks: 50,
+                    benchmarkTasks: 86,
+                    iq: 112.4,
+                    scoreMode: "continuous-macro",
+                    averagePriceUSD: 2.31,
+                    priceSamples: 36,
+                    averageMinutes: 11.4,
+                    durationSamples: 35,
+                    incompleteCostSamples: 1,
+                    averageAgentSteps: nil,
+                    agentStepsSamples: 0,
+                    averageTotalTokens: nil,
+                    tokenSamples: 0,
+                    cacheHitRate: 0.9,
+                    cacheTokenSamples: 30,
+                    combinedCostIndex: 161.2,
+                    latestGradedAt: "2026-09-07T19:12:44+00:00",
+                    runs24h: 4,
+                    runs48h: 9,
+                    runsTotal: 233
+                ),
+            ],
+            history: [
+                "fixture-astra@high": [
+                    .init(ts: "2026-09-06T07:00:05+00:00", score: 146.5, n: 2),
+                    .init(ts: "2026-09-07T07:00:11+00:00", score: 150.0, n: 1),
+                ],
+                "fixture-sol@max": [
+                    .init(ts: "2026-09-06T07:00:05+00:00", score: 118.5, n: 2),
+                ],
+            ]
+        )
+        _ = try await repository.insertVisualSpatialReasoning(dataset)
     }
 
     /// Spec §5.4 fixture seed for the star rating matrix: groups, effort

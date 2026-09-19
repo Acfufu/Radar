@@ -138,6 +138,28 @@ struct ReleaseReadinessTests {
         #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .radarInsights).lastSuccessfulAt != nil)
     }
 
+    /// v0.4.0 increment (spec §5.7): the visual-spatial-reasoning merged
+    /// snapshot survives a store reopen under the current schema.
+    @MainActor
+    @Test("visual-spatial-reasoning snapshot survives an upgrade reopen")
+    func upgradePreservesVisualSpatialReasoning() async throws {
+        let dataRoot = temporaryRoot("upgrade-vsr")
+        defer { try? FileManager.default.removeItem(at: dataRoot) }
+        let dataset = VisualSpatialReasoningDataset(
+            sourceID: .codexRadar,
+            fetchedAt: Date(timeIntervalSince1970: 1_752_566_500),
+            type: VisualSpatialReasoningParser.expectedType,
+            points: [.init(model: "m", effort: "high", iq: 80)]
+        )
+        let first = try repository(at: dataRoot)
+        _ = try await first.insertVisualSpatialReasoning(dataset)
+
+        let reopened = try repository(at: dataRoot)
+        let state = try await reopened.visualSpatialReasoningState(sourceID: .codexRadar)
+        #expect(state.value == dataset)
+        #expect(try await reopened.metadata(sourceID: .codexRadar, datasetType: .visualSpatialReasoning).lastSuccessfulAt != nil)
+    }
+
     @MainActor
     private func verifyHistoryClearPreservesRaw() async throws {
         let dataRoot = temporaryRoot("clear-history")

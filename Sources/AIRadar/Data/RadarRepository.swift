@@ -188,6 +188,37 @@ actor RadarRepository {
         return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
     }
 
+    /// Spec §5.7: the merged summary+history snapshot is replaced as a whole
+    /// whenever the dataset fingerprint changes — series never accumulate
+    /// across syncs; an identical refetch is a no-op.
+    func insertVisualSpatialReasoning(
+        _ dataset: VisualSpatialReasoningDataset
+    ) async throws -> SnapshotInsertion {
+        try await waitForExportLease()
+        let fingerprint = try ContentFingerprint.visualSpatialReasoning(dataset)
+        let context = ModelContext(container)
+        let entities = try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>())
+            .filter { $0.sourceID == dataset.sourceID.rawValue }
+        let existing = entities.contains { $0.contentFingerprint == fingerprint }
+        if !existing {
+            for entity in entities where entity.contentFingerprint != fingerprint {
+                context.delete(entity)
+            }
+            context.insert(VisualSpatialReasoningSnapshotEntity(
+                dataset: dataset,
+                fingerprint: fingerprint,
+                encodedDataset: try JSONEncoder.radar.encode(dataset)
+            ))
+            try context.save()
+        }
+        try await recordSuccess(
+            sourceID: dataset.sourceID,
+            datasetType: .visualSpatialReasoning,
+            at: dataset.fetchedAt
+        )
+        return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
+    }
+
     func intelligenceEfficiencyState(
         sourceID: RadarSourceID
     ) async throws -> SegmentState<IntelligenceEfficiencyDataset> {
@@ -247,6 +278,36 @@ actor RadarRepository {
         return try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>())
             .filter { $0.sourceID == sourceID.rawValue }
             .compactMap { try? verifiedRadarInsights($0) }
+            .sorted { $0.fetchedAt < $1.fetchedAt }
+    }
+
+    func visualSpatialReasoningState(
+        sourceID: RadarSourceID
+    ) async throws -> SegmentState<VisualSpatialReasoningDataset> {
+        let context = ModelContext(container)
+        let snapshots = try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .sorted { $0.fetchedAt > $1.fetchedAt }
+        let result: (VisualSpatialReasoningDataset?, SegmentError?) = decodeNewest(snapshots) { snapshot in
+            let candidate = try verifiedVisualSpatialReasoning(snapshot)
+            guard candidate.sourceID == sourceID else { throw RepositoryIntegrityError.mismatchedSnapshot }
+            return candidate
+        }
+        return try await state(
+            value: result.0,
+            successfulAt: result.0?.fetchedAt,
+            decodingFailure: result.1,
+            sourceID: sourceID,
+            datasetType: .visualSpatialReasoning
+        )
+    }
+
+    /// Chronological ascending; bounded to the latest retained snapshot.
+    func visualSpatialReasoningHistory(sourceID: RadarSourceID) throws -> [VisualSpatialReasoningDataset] {
+        let context = ModelContext(container)
+        return try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .compactMap { try? verifiedVisualSpatialReasoning($0) }
             .sorted { $0.fetchedAt < $1.fetchedAt }
     }
 
@@ -542,6 +603,8 @@ actor RadarRepository {
             return try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .radarInsights:
             return try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
+        case .visualSpatialReasoning:
+            return try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .fastRadarHistory:
             return try context.fetch(FetchDescriptor<FastRadarRunEntity>()).count { $0.sourceID == sourceID.rawValue }
         }
@@ -676,6 +739,9 @@ actor RadarRepository {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<FastRadarRunEntity>()) where entity.sourceID == sourceID.rawValue {
@@ -825,6 +891,22 @@ actor RadarRepository {
               candidate.sourceUpdatedAt == snapshot.sourceUpdatedAtText,
               candidate.fetchedAt == snapshot.fetchedAt,
               try ContentFingerprint.radarInsights(candidate) == snapshot.contentFingerprint else {
+            throw RepositoryIntegrityError.mismatchedSnapshot
+        }
+        return candidate
+    }
+
+    func verifiedVisualSpatialReasoning(
+        _ snapshot: VisualSpatialReasoningSnapshotEntity
+    ) throws -> VisualSpatialReasoningDataset {
+        let candidate = try JSONDecoder.radar.decode(
+            VisualSpatialReasoningDataset.self,
+            from: snapshot.encodedDataset
+        )
+        guard candidate.sourceID.rawValue == snapshot.sourceID,
+              candidate.sourceUpdatedAt == snapshot.sourceUpdatedAtText,
+              candidate.fetchedAt == snapshot.fetchedAt,
+              try ContentFingerprint.visualSpatialReasoning(candidate) == snapshot.contentFingerprint else {
             throw RepositoryIntegrityError.mismatchedSnapshot
         }
         return candidate

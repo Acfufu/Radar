@@ -446,6 +446,93 @@ struct RadarAppRuntimeTests {
         #expect(await runtime.clearHistory())
         #expect(runtime.radarInsightsState == nil)
         await runtime.stop()
+    }
+
+    @MainActor
+    @Test("visual-spatial-reasoning sidecar refreshes on startup while its failure leaves primary sync green")
+    func codexVSRFailureIsIndependent() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-VSRFailure-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let reader = RuntimeVSRReader(results: [.failure(RadarHTTPError(kind: .oversized))])
+        let runtime = RadarAppRuntime(
+            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
+            sourceID: .codexRadar,
+            visualSpatialReasoningReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.visualSpatialReasoningState?.error == nil {
+            await Task.yield()
+        }
+
+        #expect(reader.readCount == 1)
+        #expect(runtime.lifecycleState == .running)
+        #expect(runtime.projection?.benchmark.value != nil)
+        #expect(runtime.visualSpatialReasoningState?.value == nil)
+        #expect(runtime.visualSpatialReasoningState?.error?.kind == .validation)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("disabled Codex loads persisted visual-spatial-reasoning LKG without reading (zero-network isolation)")
+    func persistedVSRLoadsIndependently() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-VSRLKG-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
+        let repository = RadarRepository(
+            container: try environment.makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+        let cached = runtimeVisualSpatialReasoning(fetchedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertVisualSpatialReasoning(cached)
+        let reader = RuntimeVSRReader(results: [.failure(RadarHTTPError(kind: .network))])
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            visualSpatialReasoningReaderFactory: { reader }
+        )
+
+        await runtime.start()
+
+        #expect(reader.readCount == 0)
+        #expect(runtime.visualSpatialReasoningState?.value == cached)
+        await runtime.stop()
+    }
+
+    @MainActor
+    @Test("manual refresh publishes visual-spatial-reasoning snapshot and clear removes it")
+    func manualRefreshAndClearVSR() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-VSRManual-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let initial = runtimeVisualSpatialReasoning(fetchedAt: Date(timeIntervalSince1970: 100))
+        let updated = runtimeVisualSpatialReasoning(fetchedAt: Date(timeIntervalSince1970: 200), iq: 130.0)
+        let reader = RuntimeVSRReader(results: [.success(initial), .success(updated)])
+        let environment = AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true)
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar,
+            visualSpatialReasoningReaderFactory: { reader }
+        )
+
+        await runtime.start()
+        for _ in 0..<200 where runtime.visualSpatialReasoningState?.value == nil {
+            await Task.yield()
+        }
+        await runtime.refresh()
+        for _ in 0..<200 where reader.readCount < 2 {
+            await Task.yield()
+        }
+        await runtime.updateRefreshInterval(minutes: 60)
+
+        #expect(reader.readCount == 2)
+        #expect(runtime.refreshIntervalMinutes == 60)
+        #expect(runtime.visualSpatialReasoningState?.value == updated)
+        #expect(await runtime.clearHistory())
+        #expect(runtime.visualSpatialReasoningState == nil)
+        await runtime.stop()
         let repository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: SyncMetadataStore(root: root))
         #expect(try await repository.snapshotCount(datasetType: .intelligenceEfficiency, sourceID: .codexRadar) == 0)
     }
@@ -749,6 +836,23 @@ private final class RuntimeFRHReader: FastRadarHistoryReading {
 }
 
 @MainActor
+private final class RuntimeVSRReader: VisualSpatialReasoningReading {
+    private var results: [Result<VisualSpatialReasoningDataset, Error>]
+    private(set) var readCount = 0
+
+    init(results: [Result<VisualSpatialReasoningDataset, Error>]) {
+        self.results = results
+    }
+
+    func read() async throws -> VisualSpatialReasoningDataset {
+        readCount += 1
+        return try results.removeFirst().get()
+    }
+
+    func cancel() async {}
+}
+
+@MainActor
 private final class RuntimeInsightsReader: RadarInsightsReading {
     private var results: [Result<RadarInsightsDataset, Error>]
     private(set) var readCount = 0
@@ -780,6 +884,17 @@ private final class RuntimeIEReader: IntelligenceEfficiencyReading {
     }
 
     func cancel() async {}
+}
+
+private func runtimeVisualSpatialReasoning(fetchedAt: Date, iq: Double = 134.89) -> VisualSpatialReasoningDataset {
+    VisualSpatialReasoningDataset(
+        sourceID: .codexRadar,
+        fetchedAt: fetchedAt,
+        type: VisualSpatialReasoningParser.expectedType,
+        points: [
+            .init(model: "gpt-6-astra", effort: "high", benchmarkTasks: 86, iq: iq),
+        ]
+    )
 }
 
 private func runtimeRadarInsights(fetchedAt: Date, iq: Double = 107.9) -> RadarInsightsDataset {

@@ -142,6 +142,23 @@ struct Phase4SourceContractTests {
         #expect(settings.contains("codexradar.com/data/fast-radar-history.json"))
     }
 
+    @Test("radar-insights and visual-spatial-reasoning sidecar endpoint contracts")
+    func v040SidecarBoundaryContract() throws {
+        // Same-origin /api/* public GET allowlist (ADR-0001); dedicated
+        // 8MiB transports set at both sites; no protected-domain requests.
+        let insights = try text("Sources/AIRadar/Sources/CodexRadar/RadarInsightsAdapter.swift")
+        #expect(insights.contains("URL(string: \"https://codexradar.com/api/radar-insights\")!"))
+        #expect(insights.contains("static let maximumResponseBytes = 8 * 1_024 * 1_024"))
+        #expect(insights.contains("URLSessionHTTPTransport(maxBodyBytes: RadarInsightsAdapter.maximumResponseBytes)"))
+        #expect(insights.contains("URLSessionHTTPTransport(maxBodyBytes: maximumResponseBytes)"))
+        let vsr = try text("Sources/AIRadar/Sources/CodexRadar/VisualSpatialReasoningAdapter.swift")
+        #expect(vsr.contains("URL(string: \"https://codexradar.com/api/visual-spatial-reasoning\")!"))
+        #expect(vsr.contains("URL(string: \"https://codexradar.com/api/visual-spatial-reasoning-history\")!"))
+        #expect(vsr.contains("static let maximumResponseBytes = 8 * 1_024 * 1_024"))
+        #expect(vsr.contains("URLSessionHTTPTransport(maxBodyBytes: VisualSpatialReasoningAdapter.maximumResponseBytes)"))
+        #expect(vsr.contains("URLSessionHTTPTransport(maxBodyBytes: maximumResponseBytes)"))
+    }
+
     @Test("export is wired as a one-way save surface without an import handler")
     func exportIsOneWay() throws {
         let view = try text("Sources/AIRadar/Features/Export/ExportView.swift")
