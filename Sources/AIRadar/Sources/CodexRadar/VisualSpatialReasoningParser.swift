@@ -14,7 +14,11 @@ struct VisualSpatialReasoningPayload: Decodable, Sendable {
     var runs48hTotal: Int?
     var runsTotal: Int?
     var points: [VisualSpatialReasoningDataset.Point]?
-    var history: [String: [VisualSpatialReasoningDataset.HistoryPoint]]?
+    /// The summary embeds its own history; the live payload (2026-09-20)
+    /// carries an observation LIST (`[{at, points[]}]`) while the canonical
+    /// sanitized fixture pins the keyed-dictionary shape — both decode
+    /// tolerantly.
+    var history: PayloadHistory?
 
     enum CodingKeys: String, CodingKey {
         case schema, mode, type, points, history
@@ -25,6 +29,33 @@ struct VisualSpatialReasoningPayload: Decodable, Sendable {
         case runs24hTotal = "runs_24h_total"
         case runs48hTotal = "runs_48h_total"
         case runsTotal = "runs_total"
+    }
+
+    struct SummaryHistoryEntry: Decodable, Sendable {
+        let at: String?
+        let points: [SummaryHistoryPoint]?
+
+        struct SummaryHistoryPoint: Decodable, Sendable {
+            let model: String?
+            let effort: String?
+            let iq: Double?
+        }
+    }
+
+    struct PayloadHistory: Decodable, Sendable {
+        let list: [SummaryHistoryEntry]?
+        let keyed: [String: [VisualSpatialReasoningDataset.HistoryPoint]]?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let decodedList = try? container.decode([SummaryHistoryEntry].self) {
+                list = decodedList
+                keyed = nil
+                return
+            }
+            list = nil
+            keyed = try? container.decode([String: [VisualSpatialReasoningDataset.HistoryPoint]].self)
+        }
     }
 }
 
@@ -68,6 +99,20 @@ enum VisualSpatialReasoningParser {
             } catch {
                 throw VisualSpatialReasoningParseError.malformedJSON
             }
+        } else if let embedded = payload.history?.list {
+            // Fall back to the summary's embedded observation list: derive
+            // the keyed series from it (ts = observation time, score = iq).
+            for observation in embedded {
+                guard let points = observation.points else { continue }
+                for point in points {
+                    guard let model = point.model, let effort = point.effort, let iq = point.iq else { continue }
+                    series["\(model)@\(effort)", default: []].append(
+                        .init(ts: observation.at, score: iq, n: nil)
+                    )
+                }
+            }
+        } else if let keyed = payload.history?.keyed {
+            series = keyed
         }
         return VisualSpatialReasoningDataset(
             sourceID: sourceID,

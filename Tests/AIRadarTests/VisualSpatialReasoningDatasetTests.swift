@@ -189,6 +189,28 @@ struct VisualSpatialReasoningDatasetTests {
         }
     }
 
+    @Test("summary payload with embedded list history decodes and derives series")
+    func embeddedListHistory() throws {
+        // 2026-09-20 live shape: the summary's own history is an observation
+        // LIST, not the -history endpoint's keyed dictionary.
+        let payloadText = "{\"type\":\"visual_spatial_reasoning_summary\",\"points\":[]," +
+            "\"history\":[{\"at\":\"2026-08-18T08:00:00.000Z\",\"points\":[{\"model\":\"gpt-6-astra\",\"effort\":\"high\",\"iq\":134.8}]}," +
+            "{\"at\":\"2026-08-19T08:00:00.000Z\",\"points\":[{\"model\":\"gpt-6-astra\",\"effort\":\"high\",\"iq\":135.2},{\"model\":\"m2\",\"effort\":\"low\"}]}]}"
+        let dataset = try VisualSpatialReasoningParser.parse(
+            Data(payloadText.utf8),
+            historyData: nil,
+            sourceID: .codexRadar,
+            fetchedAt: Date(timeIntervalSince1970: 100)
+        )
+        let series = try #require(dataset.history["gpt-6-astra@high"])
+        #expect(series.count == 2)
+        #expect(series[0].ts == "2026-08-18T08:00:00.000Z")
+        #expect(series[0].score == 134.8)
+        #expect(series[1].score == 135.2)
+        // A point without iq contributes no history value.
+        #expect((dataset.history["m2@low"]?.count ?? 0) == 0)
+    }
+
     @Test("fingerprint ignores fetch time and is sensitive to content")
     func fingerprintBehavior() throws {
         let data = try canonicalFixtureData()
