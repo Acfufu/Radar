@@ -15,6 +15,8 @@
 
 AI Radar is a native macOS menu-bar app and workspace for reading public model-benchmark snapshots. It gives **Claude Code Radar**, **Codex Radar**, and **SWE-bench Verified** separate rooms, vocabulary, history, analysis, and export scope.
 
+Since v0.4.0 the Codex room also ingests the upstream sidecar planes — three-capability IQ (comprehensive / software-engineering / visual-spatial), structured station recommendations and degradation alerts, the official IQ history trend, and the deng crowdtest IQ cards — while DSH/ZCode/Grok appear as whitelist-cropped view stations and the aggregate station adds a cross-station comparison that never forms a unified ranking.
+
 It deliberately has **no unified ranking, composite score, or cross-source recommendation**.
 
 > [!IMPORTANT]

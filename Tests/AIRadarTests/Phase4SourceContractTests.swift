@@ -33,7 +33,7 @@ struct Phase4SourceContractTests {
     @Test("user agent and about-page branding are pinned literals")
     func userAgentAndAboutBranding() throws {
         let http = try text("Sources/AIRadar/Sources/ClaudeCodeRadar/ClaudeCodeRadarHTTP.swift")
-        #expect(http.contains("AIRadar/0.3.0 (macOS; +https://github.com/Acfufu/Radar)"))
+        #expect(http.contains("AIRadar/0.4.0 (macOS; +https://github.com/Acfufu/Radar)"))
         #expect(!http.contains("ClaudeRadar/0.1"))
         let settings = try text("Sources/AIRadar/Features/Settings/SettingsView.swift")
         #expect(settings.contains("AI Radar is an independent open-source project and is not affiliated with codexradar.com (AI 雷达); the name is an independent choice."))

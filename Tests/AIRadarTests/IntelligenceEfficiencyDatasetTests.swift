@@ -249,7 +249,7 @@ struct IntelligenceEfficiencyDatasetTests {
         #expect(request.url?.host == "codexradar.com")
         #expect(request.url?.path == "/data/intelligence-efficiency.json")
         #expect(request.url?.absoluteString.contains("api.codexradar.com") == false)
-        #expect(request.value(forHTTPHeaderField: "User-Agent") == "AIRadar/0.3.0 (macOS; +https://github.com/Acfufu/Radar)")
+        #expect(request.value(forHTTPHeaderField: "User-Agent") == "AIRadar/0.4.0 (macOS; +https://github.com/Acfufu/Radar)")
         #expect(request.httpMethod == "GET")
 
         // A successful read lands in the shared raw-sample prune pool.

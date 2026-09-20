@@ -63,11 +63,17 @@ Use 8 px corners; page/section/card/compact spacing 24/20/14/12; large-title plu
 
 The final route matrix is capability-driven rather than a declaration count:
 
-| Station | Destinations (spec §4.2 matrix) |
+| Station | Destinations (spec §4.2 matrix, v0.4.0) |
 | --- | --- |
-| 聚合站 Aggregate | 信息总览 (status cards only; no rankings, no banner, no export — D10) |
-| Codex Radar | 概览(速览排行+模型档位详情+官网24h趋势), 预警与推荐, 效能 PK, 额度雷达, Fast 雷达, 历史对比, Tibo 雷达, 社区入口, then 工具组: 决策透镜, 趋势, 来源状态, 导出 |
-| Claude Code Radar | 概览, 决策透镜, 模型, 趋势, 来源状态, 导出 |
+| 聚合站 Aggregate | 信息总览 (status cards + 跨站同基准对比视图 with per-point source labels; no unified ranking, no banner, no export — D10) |
+| Codex Radar | 速览排行(三能力 tab + 官网 IQ 趋势卡 + 众测 IQ 卡 + 模型档位详情 + 星评分), 预警与推荐(alerts/推荐结构化卡与渲染卡并存), 效能 PK, 额度雷达, 历史对比, Tibo 雷达, 社区入口, then 工具组: 决策透镜, 趋势, 来源状态, 导出. Fast 雷达 hidden from navigation (v1.2; page + sidecar remain); 智力中心 retired |
+| Claude Code Radar | 概览(+ 众测 IQ 卡), 决策透镜, 模型, 趋势, 来源状态, 导出 |
+| DSH / ZCode / Grok (whitelist view stations, ADR-0003) | 效能排行 single page (whitelist-cropped IE ranking + tier details + 各自众测 IQ 卡) |
+| Kimi (upcoming) | 即将开放 placeholder, never synchronized |
+
+Sidebar section order: 聚合站 → 来源 → 预览站 (DSH/ZCode/Grok) → 即将开放 (Kimi).
+
+Status dots: real stations follow their benchmark state; whitelist view stations follow the shared intelligence-efficiency sidecar freshness (green fresh / amber stale / red error / muted none); each crowdtest IQ card carries its own independent dot; Kimi is always muted.
 | SWE-bench Verified | 模型(榜单); 趋势 only when same-revision comparable history exists; 来源与口径, 导出 |
 | DSH / ZCode / Grok / Kimi | 即将开放 placeholder (never synchronized) |
 
@@ -84,11 +90,13 @@ All 10 chart surfaces across 9 feature files now expose native `AXChartDescripto
 | States | Populated, empty, disabled, stale, LKG, validation, and error use `StateBanner`; fixture source records include long CJK and prompt-like text as inert content. |
 | Interaction | Search/table/inspector routes and source destination views use native controls. NSSavePanel and command menus remain native boundaries; final AX/VoiceOver interaction is not claimed as passed. |
 
-## Codex rendered IQ surface
+## Codex official IQ trend surface (v0.4.0 re-source)
 
-The Overview's `24 小时 IQ 趋势` card is a source-native, read-only surface for the approved rendered DOM observation at `https://deng.codexradar.com/`. The default `官网 24h` view is the exact 24-point official series (one aggregate plus 1...7 model choices), drawn with straight `LineMark`/`PointMark` segments over the ordinal `0...23` domain. It displays the exact attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar` as a link to `https://deng.codexradar.com/` and states that it is independent from `本地 IQ 拟合`.
+The row-1 `IQ 趋势` card's official side now reads the public intelligence-efficiency `history[]` data plane (ADR-0002 successor; the deng v1 24-point reader was retired 2026-09-20 and the title no longer claims `24 小时` — the full observation window renders, ~345 observations on 2026-09-20). Series are `model@effort` keys from the latest observation, ordered by its point order; observations without a tier's IQ yield no point (breakpoint tolerance, never bridged). The `官网 IQ` / `本地拟合` toggle is preserved and the two sides remain independent.
 
-Challenge, schema/origin drift, unavailable page, and timeout states are visibly error/blocked states; they must not be styled as fresh or inferred empty data. `本地拟合` remains a separate local benchmark calculation and does not alter the official chart.
+## Crowdtest IQ cards (ADR-0004, new)
+
+Five stations (Codex/Claude Code/DSH/ZCode/Grok) carry a `众测 IQ` card fed by the deng crowdtest rendered reader (revision `deng-rendered-crowdtest-iq-v1`): per-tier rows (IQ + coverage-insufficient flag), the latest hourly trend label verbatim, the deng attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar`, and the no-mixing boundary line. Each card has its own status dot; reading failure keeps last-known-good per the shared fail-safe semantics. The aggregate station and Kimi carry no crowdtest card.
 
 ## Reproduction and cleanup
 

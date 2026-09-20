@@ -164,7 +164,7 @@ struct FastRadarHistoryDatasetTests {
         #expect(request.url?.host == "codexradar.com")
         #expect(request.url?.path == "/data/fast-radar-history.json")
         #expect(request.url?.absoluteString.contains("api.codexradar.com") == false)
-        #expect(request.value(forHTTPHeaderField: "User-Agent") == "AIRadar/0.3.0 (macOS; +https://github.com/Acfufu/Radar)")
+        #expect(request.value(forHTTPHeaderField: "User-Agent") == "AIRadar/0.4.0 (macOS; +https://github.com/Acfufu/Radar)")
 
         let samples = try await RawSampleStore(dataRoot: storeRoot).samples(sourceID: .codexRadar)
         #expect(samples.count == 1)

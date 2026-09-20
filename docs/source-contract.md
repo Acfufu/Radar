@@ -154,7 +154,7 @@ The public GET required no authentication. It reported `window = "rolling_24h"` 
 | `history[].day` | Calendar bucket | Date string |
 | `history[].updated_at` | Bucket revision timestamp | ISO-8601 string |
 | `history[].models[]` | Per-day rating entries with the same model shape | Array |
-| `my_scores` | Source response field | Object; it is not consumed because personal data is outside scope |
+| `my_scores` | Source response field | Read-only display of the upstream anonymous per-visitor scoring state: shown, never stored, never correlated with any local identity or data (D12) |
 
 Community ratings never feed benchmark quality, derived benchmark metrics, or Pareto calculations.
 
@@ -245,6 +245,11 @@ These are small hand-authored projections of the public shapes, not copied live 
 
 The deng v1 rendered reader (`codex-radar-rendered-iq-history-v1`) was retired per ADR-0002/§6 v1.1: the upstream `iq-body` data island stayed empty (2026-09-08/09-20 rechecks, `data-iq-hours`/`.total-iq` = 0), so the reader had no object. The export dataset, entity, fixtures, and receipts were removed with the reader; the official IQ history card is re-sourced to the public intelligence-efficiency `history[]` plane. The retired v1 contract text is preserved in git history only. The crowdtest-IQ successor reader (ADR-0004) has its own boundary section once implemented.
 
+## v0.4.0 sidecar notes
+
+- Export: radar-insights, visual-spatial-reasoning, and crowdtest-iq are **not** in the export manifest (spec §5.6/§5.7 leave the choice to the implementation round; decided 2026-09-20 — analysis planes without a consumer requirement; the envelope stays schemaVersion 1, additive fields never bump it).
+- intelligence-efficiency growth observation: 264 history entries on 2026-09-08, 345 on 2026-09-20 (~5.9/day) — well inside the 8MiB transport cap; re-check at the next recon.
+
 ## Codex Radar radar-insights contract
 
 ### Release and authorization boundary
@@ -282,3 +287,7 @@ These are small hand-authored projections of the public shapes, not copied live 
 | `visual-spatial-reasoning-history.json` | `model@effort` keyed dictionary of `{ts, score, n}` per-model history entries | 483 | `7fb359c792f165a00667f8b89a9e932fa5f63a3e20bcbb65851faeb75a4c9100` |
 
 These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.
+
+## Codex Radar crowdtest IQ rendered contract (deng, ADR-0004)
+
+The crowdtest IQ plane is a **rendered-reader** dataset, not an HTTP JSON endpoint: an anonymous nonpersistent WebKit read of the browser-visible DOM at `https://deng.codexradar.com/` (noncommercial observation; no `/api/v1/*` — Bearer, credential-protected — traffic; no writes or submissions). Parser revision `deng-rendered-crowdtest-iq-v1`; the final origin must equal `https://deng.codexradar.com` exactly. The extraction bridge emits bounded normalized cells only (model/effort identifiers, IQ score, p/n and coverage counts, coverage-insufficient flag, upstream methodology title verbatim) plus hourly trend labels (`MM/DD HH:00 · <score> IQ`); the five-station mapping (codex/claude-code/dsh/zcode/grok, ADR-0004) is applied at parse time and unmapped families are dropped. There is **no canonical HTTP fixture**: the test fixture is a DOM-derived projection of the 2026-09-20 anonymous probe (SHA-256 pinned in `Tests/AIRadarTests/Fixtures/CodexRenderedCrowdtestIQ/SHA256SUMS`), and the sanitization word list (`<html`, `<script`, `cookie`, `authorization`, `bearer `, `endpoint`, `/api/`, …) is asserted against it. Retention is latest-only; the crowdtest plane displays on its own station cards with the attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar` and never merges with comprehensive IQ, local fitting, or the aggregate comparison view.

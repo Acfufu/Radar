@@ -15,6 +15,8 @@
 
 AI Radar 是一个原生 macOS 菜单栏应用与工作台，用于阅读公开的模型 Benchmark 快照。它为 **Claude Code Radar**、**Codex Radar** 与 **SWE-bench Verified** 保留彼此独立的空间、指标语言、历史、分析和导出范围。
 
+自 v0.4.0 起，Codex 站接入上游 sidecar 数据面：三分量 IQ（综合智能/软件工程/视觉空间推理）、结构化站长推荐与降智预警、官网 IQ 历史趋势、以及 deng 众测 IQ 卡；DSH/ZCode/Grok 以白名单视图站呈现，聚合站新增跨站对比视图（不构成统一排名）。
+
 它明确**不提供统一排名、综合分数或跨来源推荐**。
 
 > [!IMPORTANT]
