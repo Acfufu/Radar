@@ -54,6 +54,7 @@ final class RadarWorkspaceModel {
             renderedWarningHistory: runtime.renderedWarningHistory,
             stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+            intelligenceEfficiencyState: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState : nil,
             radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
             visualSpatialReasoningDataset: runtime.sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
             fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
@@ -100,6 +101,7 @@ final class RadarWorkspaceModel {
                 renderedWarningHistory: runtime.renderedWarningHistory,
                     stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
                 intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+                intelligenceEfficiencyState: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState : nil,
                 radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
                 visualSpatialReasoningDataset: runtime.sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
                 fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
@@ -132,6 +134,7 @@ final class RadarWorkspaceModel {
             renderedWarningHistory: runtime.renderedWarningHistory,
             stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
+            intelligenceEfficiencyState: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState : nil,
             radarInsightsDataset: sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
             visualSpatialReasoningDataset: sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
             fastRadarDataset: sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil

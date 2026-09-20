@@ -2,6 +2,12 @@ import Charts
 import SwiftUI
 
 struct OfficialOverviewSections: View {
+    /// Trend source toggle (spec §4.2 row 1): the official side reads the
+    /// public intelligence-efficiency `history[]` plane; the local-fit side
+    /// is unchanged and independent (ADR-0002).
+    @State var codexIQChartSource: OfficialIQChartSource = .officialTrend
+    @State var officialIQSelection: String = ""
+
     @Environment(\.radarPalette) var palette
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
