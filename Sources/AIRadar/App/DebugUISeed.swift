@@ -128,22 +128,23 @@ enum DebugUISeed {
                 methodTitle: "fixture：方法论 title 原文转存（种子文案）"
             )
         }
+        let harnesses: [CodexRenderedCrowdtestIQHarness] = [
+            .init(harness: "codex", model: "fixture-astra", cells: [cell("ultra", iq: 108), cell("high", iq: 105)],
+                  trend: [.init(label: "09/19 07:00 · 106.6 IQ", month: 9, day: 19, hour: 7, score: 106.6)]),
+            .init(harness: "claude-code", model: "fixture-sonnet", cells: [cell("max", iq: 62)],
+                  trend: [.init(label: "09/20 06:26 · 62 IQ", month: 9, day: 20, hour: 6, score: 62)]),
+            .init(harness: "dsh", model: "fixture-dsh", cells: [cell("max", iq: 80)], trend: []),
+            .init(harness: "zcode", model: "fixture-glm", cells: [cell("max", iq: 97)], trend: []),
+            .init(harness: "grok", model: "fixture-grok", cells: [cell("xhigh", iq: 108)], trend: []),
+        ]
         let snapshot = CodexRenderedCrowdtestIQSnapshot(
             sourceID: .codexRadar,
             parserRevision: CodexRenderedCrowdtestIQDOMParser.parserRevision,
             finalOrigin: "https://deng.codexradar.com",
             capturedAt: capturedAt,
-            harnesses: [
-                .init(harness: "codex", model: "fixture-astra", cells: [cell("ultra", iq: 108), cell("high", iq: 105)],
-                      trend: [.init(label: "09/19 07:00 · 106.6 IQ", month: 9, day: 19, hour: 7, score: 106.6)]),
-                .init(harness: "claude-code", model: "fixture-sonnet", cells: [cell("max", iq: 62)],
-                      trend: [.init(label: "09/20 06:26 · 62 IQ", month: 9, day: 20, hour: 6, score: 62)]),
-                .init(harness: "dsh", model: "fixture-dsh", cells: [cell("max", iq: 80)], trend: []),
-                .init(harness: "zcode", model: "fixture-glm", cells: [cell("max", iq: 97)], trend: []),
-                .init(harness: "grok", model: "fixture-grok", cells: [cell("xhigh", iq: 108)], trend: []),
-            ],
+            harnesses: harnesses,
             semanticFingerprint: try CodexRenderedCrowdtestIQSemanticFingerprint.make(
-                harnesses: [],
+                harnesses: harnesses,
                 finalOrigin: "https://deng.codexradar.com",
                 parserRevision: CodexRenderedCrowdtestIQDOMParser.parserRevision
             )
