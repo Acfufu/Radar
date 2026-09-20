@@ -6,7 +6,6 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case community
     case sourceStatus = "source-status"
     case renderedWarnings = "rendered-warnings"
-    case renderedIQHistory = "rendered-iq-history"
     case intelligenceEfficiency = "intelligence-efficiency"
     case fastRadarHistory = "fast-radar-history"
     case radarInsights = "radar-insights"
@@ -20,7 +19,6 @@ enum RadarModelSchema {
             CommunitySnapshotEntity.self,
             SourceStatusSnapshotEntity.self,
             CodexRenderedWarningSnapshotEntity.self,
-            CodexRenderedIQHistorySnapshotEntity.self,
             CodexRadarStatusSnapshotEntity.self,
             IntelligenceEfficiencySnapshotEntity.self,
             FastRadarRunEntity.self,
@@ -165,48 +163,6 @@ final class CodexRenderedWarningSnapshotEntity {
         self.init(
             snapshot: persistedSnapshot,
             fingerprint: fingerprint,
-            encodedSnapshot: encodedSnapshot
-        )
-    }
-}
-
-@Model
-final class CodexRenderedIQHistorySnapshotEntity {
-    @Attribute(.unique) var dedupeKey: String
-    var id: UUID
-    var sourceID: String
-    var contentFingerprint: String
-    var finalOrigin: String
-    var capturedAt: Date
-    var chronologyAt: Date
-    var parserRevision: String
-    var encodedSnapshot: Data
-
-    init(
-        snapshot: CodexRenderedIQHistorySnapshot,
-        fingerprint: String,
-        encodedSnapshot: Data
-    ) {
-        dedupeKey = "\(snapshot.sourceID.rawValue)|\(RadarDatasetType.renderedIQHistory.rawValue)|\(fingerprint)"
-        id = UUID()
-        sourceID = snapshot.sourceID.rawValue
-        contentFingerprint = fingerprint
-        finalOrigin = snapshot.finalOrigin
-        capturedAt = snapshot.capturedAt
-        chronologyAt = snapshot.capturedAt
-        parserRevision = snapshot.parserRevision
-        self.encodedSnapshot = encodedSnapshot
-    }
-
-    convenience init(snapshot: CodexRenderedIQHistorySnapshot) throws {
-        let encodedSnapshot = try JSONEncoder.radar.encode(snapshot)
-        let persistedSnapshot = try JSONDecoder.radar.decode(
-            CodexRenderedIQHistorySnapshot.self,
-            from: encodedSnapshot
-        )
-        self.init(
-            snapshot: persistedSnapshot,
-            fingerprint: try ContentFingerprint.renderedIQHistory(persistedSnapshot),
             encodedSnapshot: encodedSnapshot
         )
     }

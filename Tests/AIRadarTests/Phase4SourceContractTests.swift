@@ -198,37 +198,6 @@ struct Phase4SourceContractTests {
         #expect(notices.contains("persists or exports only bounded normalized warning fields"))
     }
 
-    @Test("Codex rendered IQ history documentation and source boundary stay aligned")
-    func renderedIQHistorySourceAndReleaseContract() throws {
-        let contract = try text("docs/source-contract.md")
-        let notices = try text("docs/third-party-notices.md")
-        let design = try text("docs/design-qa.md")
-        let reader = try text("Sources/AIRadar/Sources/CodexRadar/CodexRenderedIQHistoryPageReader.swift")
-        let parser = try text("Sources/AIRadar/Sources/CodexRadar/CodexRenderedIQHistoryDOMParser.swift")
-        let lifecycle = try text("Sources/AIRadar/Sources/CodexRadar/CodexRenderedPageLifecycle.swift")
-        let export = try text("Sources/AIRadar/Data/Export/ExportManifest.swift")
-        let model = try text("Sources/AIRadar/Features/Workspace/CodexRenderedWorkspacePresentation.swift")
-
-        #expect(contract.contains("https://deng.codexradar.com/"))
-        #expect(contract.contains("noncommercial, anonymous observation"))
-        #expect(contract.contains("WKWebsiteDataStore.nonPersistent()"))
-        #expect(contract.contains("exactly 24 ordered points"))
-        #expect(contract.contains("rendered-iq-history"))
-        #expect(contract.contains("schema version `1`"))
-        #expect(contract.contains("live readiness is **BLOCKED**"))
-        #expect(notices.contains("数据来自分布式雷达 deng.codexradar.com · powered by codexradar"))
-        #expect(notices.contains("https://deng.codexradar.com/"))
-        #expect(design.contains("24 小时 IQ 趋势"))
-        #expect(reader.contains("https://deng.codexradar.com/"))
-        #expect(parser.contains("(2...8).contains(dto.series.count)"))
-        #expect(parser.contains("value.points.count == 24"))
-        #expect(lifecycle.contains("configuration.websiteDataStore = .nonPersistent()"))
-        #expect(!reader.contains("fetch("))
-        #expect(!reader.contains("XMLHttpRequest"))
-        #expect(export.contains("case renderedIQHistory = \"rendered-iq-history\""))
-        #expect(model.contains("let attribution = \"数据来自分布式雷达 deng.codexradar.com · powered by codexradar\""))
-        #expect(model.contains("let backlink = \"https://deng.codexradar.com/\""))
-    }
 
     private func text(_ relative: String) throws -> String {
         try String(contentsOf: root.appending(path: relative), encoding: .utf8)

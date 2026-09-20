@@ -48,48 +48,6 @@ struct RadarLifecycleRaceTests {
     }
 
     @MainActor
-    @Test("Codex runtime stop fences an IQ history read that completes late")
-    func codexRuntimeStopFencesLateIQHistoryRead() async throws {
-        let root = FileManager.default.temporaryDirectory
-            .appending(path: "RadarLifecycleRaceTests-IQHistoryRead-\(UUID().uuidString)", directoryHint: .isDirectory)
-        defer { try? FileManager.default.removeItem(at: root) }
-        let gate = LifecycleIQHistoryGate()
-        let reader = LifecycleIQHistoryReader(gate: gate)
-        let runtime = RadarAppRuntime(
-            environment: AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true),
-            sourceID: .codexRadar,
-            renderedIQHistoryReaderFactory: { reader }
-        )
-        let starting = Task { await runtime.start() }
-        await gate.waitUntilStarted()
-
-        let stopping = Task { await runtime.stop() }
-        while runtime.lifecycleState != .stopping { await Task.yield() }
-        while reader.cancelCount == 0 { await Task.yield() }
-        await gate.succeed(try lifecycleIQHistory(capturedAt: Date(timeIntervalSince1970: 100)))
-        await stopping.value
-        await starting.value
-
-        let repository = RadarRepository(
-            container: try AppEnvironment(
-                dataRoot: root,
-                fixtureMode: .disabled,
-                onlineSourceEnabled: false
-            ).makeModelContainer(),
-            metadataStore: SyncMetadataStore(root: root)
-        )
-        #expect(runtime.lifecycleState == .stopped)
-        #expect(runtime.renderedIQHistoryProjection?.value == nil)
-        #expect(runtime.renderedIQHistoryProjection?.error == nil)
-        #expect(runtime.renderedIQHistoryHistory.isEmpty)
-        #expect(try await repository.snapshotCount(
-            datasetType: .renderedIQHistory,
-            sourceID: .codexRadar
-        ) == 0)
-        #expect(reader.cancelCount == 1)
-    }
-
-    @MainActor
     @Test("runtime clear drains primary warning and IQ persistence before deleting and publishing empty state")
     func runtimeClearDrainsAllPersistence() async throws {
         let root = FileManager.default.temporaryDirectory
@@ -97,33 +55,28 @@ struct RadarLifecycleRaceTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let primaryGate = LifecycleNthGate(blockAfter: 1)
         let warningGate = LifecycleNthGate(blockAfter: 1)
-        let iqGate = LifecycleNthGate(blockAfter: 1)
         let deletion = LifecycleDeletionRecorder()
         let warningReader = LifecycleStaticWarningReader(snapshot: try lifecycleWarning(capturedAt: Date(timeIntervalSince1970: 100)))
-        let iqReader = LifecycleStaticIQHistoryReader(snapshot: try lifecycleIQHistory(capturedAt: Date(timeIntervalSince1970: 100)))
         let environment = AppEnvironment(dataRoot: root, fixtureMode: .codex, onlineSourceEnabled: true)
         let runtime = RadarAppRuntime(
             environment: environment,
             sourceID: .codexRadar,
             renderedWarningReaderFactory: { warningReader },
-            renderedIQHistoryReaderFactory: { iqReader },
             primaryPersistenceCheckpoint: { await primaryGate.pauseIfNeeded() },
             renderedWarningPersistenceCheckpoint: { await warningGate.pauseIfNeeded() },
-            renderedIQHistoryPersistenceCheckpoint: { await iqGate.pauseIfNeeded() },
             deleteNormalizedHistory: { repository, sourceID in
                 await deletion.record()
                 try await repository.deleteNormalizedHistory(sourceID: sourceID)
             }
         )
         await runtime.start()
-        for _ in 0..<200 where runtime.renderedWarningProjection?.value == nil || runtime.renderedIQHistoryProjection?.value == nil {
+        for _ in 0..<200 where runtime.renderedWarningProjection?.value == nil {
             await Task.yield()
         }
 
         let refreshing = Task { await runtime.refresh() }
         await primaryGate.waitUntilPaused()
         await warningGate.waitUntilPaused()
-        await iqGate.waitUntilPaused()
         let clearCompletion = LifecycleCompletion()
         let clearing = Task {
             let result = await runtime.clearHistory()
@@ -135,7 +88,6 @@ struct RadarLifecycleRaceTests {
         #expect(await deletion.callCount == 0)
 
         await warningGate.release()
-        await iqGate.release()
         await primaryGate.release()
         #expect(await clearing.value)
         await refreshing.value
@@ -146,16 +98,13 @@ struct RadarLifecycleRaceTests {
         #expect(try await repository.snapshotCount(datasetType: .community, sourceID: .codexRadar) == 0)
         #expect(try await repository.snapshotCount(datasetType: .sourceStatus, sourceID: .codexRadar) == 0)
         #expect(try await repository.snapshotCount(datasetType: .renderedWarnings, sourceID: .codexRadar) == 0)
-        #expect(try await repository.snapshotCount(datasetType: .renderedIQHistory, sourceID: .codexRadar) == 0)
         #expect(runtime.projection?.benchmark.value == nil)
         #expect(runtime.renderedWarningProjection == nil)
-        #expect(runtime.renderedIQHistoryProjection == nil)
         #expect(runtime.lifecycleState == .running)
         let states = await runtime.synchronizationLifecycleStates()
         #expect(states.primary?.isPaused == false)
         #expect(states.renderedWarning?.isPaused == false)
-        #expect(states.renderedIQHistory?.isPaused == false)
-        print("G032_DRAIN primary=0 warning=0 iq=0 deletion=1 running=true paused=false")
+        print("G032_DRAIN primary=0 warning=0 deletion=1 running=true paused=false")
         await runtime.stop()
     }
 
@@ -645,29 +594,6 @@ private func lifecycleWarning(capturedAt: Date) throws -> CodexRenderedWarningSn
     )
 }
 
-private actor LifecycleIQHistoryGate {
-    private var started = false
-    private var startWaiters: [CheckedContinuation<Void, Never>] = []
-    private var continuation: CheckedContinuation<CodexRenderedIQHistorySnapshot, Error>?
-
-    func read() async throws -> CodexRenderedIQHistorySnapshot {
-        started = true
-        startWaiters.forEach { $0.resume() }
-        startWaiters.removeAll()
-        return try await withCheckedThrowingContinuation { continuation = $0 }
-    }
-
-    func waitUntilStarted() async {
-        if started { return }
-        await withCheckedContinuation { startWaiters.append($0) }
-    }
-
-    func succeed(_ snapshot: CodexRenderedIQHistorySnapshot) {
-        continuation?.resume(returning: snapshot)
-        continuation = nil
-    }
-}
-
 private actor LifecycleNthGate {
     private let blockAfter: Int
     private var callCount = 0
@@ -731,69 +657,11 @@ private actor LifecycleBlockingDeletion {
 }
 
 @MainActor
-private final class LifecycleIQHistoryReader: CodexRenderedIQHistoryReading {
-    private let gate: LifecycleIQHistoryGate
-    private(set) var cancelCount = 0
-
-    init(gate: LifecycleIQHistoryGate) {
-        self.gate = gate
-    }
-
-    func read() async throws -> CodexRenderedIQHistorySnapshot {
-        try await gate.read()
-    }
-
-    func cancel() {
-        cancelCount += 1
-    }
-}
-
-@MainActor
 private final class LifecycleStaticWarningReader: CodexRenderedWarningReading {
     let snapshot: CodexRenderedWarningSnapshot
     init(snapshot: CodexRenderedWarningSnapshot) { self.snapshot = snapshot }
     func read() async throws -> CodexRenderedWarningSnapshot { snapshot }
     func cancel() {}
-}
-
-@MainActor
-private final class LifecycleStaticIQHistoryReader: CodexRenderedIQHistoryReading {
-    let snapshot: CodexRenderedIQHistorySnapshot
-    init(snapshot: CodexRenderedIQHistorySnapshot) { self.snapshot = snapshot }
-    func read() async throws -> CodexRenderedIQHistorySnapshot { snapshot }
-    func cancel() {}
-}
-
-private func lifecycleIQHistory(capturedAt: Date) throws -> CodexRenderedIQHistorySnapshot {
-    let series = [
-        CodexRenderedIQHistorySeries(
-            sourceOrder: 0,
-            seriesKey: "aggregate",
-            displayName: "官网综合",
-            points: (0..<24).map {
-                CodexRenderedIQHistoryPoint(
-                    sourceOrder: $0,
-                    sourceTimeLabel: "\($0)h",
-                    iq: 80
-                )
-            }
-        ),
-    ]
-    let origin = "https://deng.codexradar.com"
-    let revision = CodexRenderedIQHistoryDOMParser.parserRevision
-    return CodexRenderedIQHistorySnapshot(
-        sourceID: .codexRadar,
-        parserRevision: revision,
-        finalOrigin: origin,
-        capturedAt: capturedAt,
-        series: series,
-        semanticFingerprint: try CodexRenderedIQHistorySemanticFingerprint.make(
-            sourceID: .codexRadar,
-            series: series,
-            finalOrigin: origin,
-            parserRevision: revision
-        )
-    )
 }
 
 private actor CoordinatorProbe {

@@ -6,8 +6,6 @@ struct OfficialOverviewSections: View {
     let projection: WorkspaceProjection
     let history: [BenchmarkDataset]
 
-    @State var codexIQChartSource: CodexRenderedIQHistoryChartSource = .official24h
-    @State var officialIQSelection: CodexRenderedIQHistoryPresentation.Selection = .aggregate
 
     var body: some View {
         Group {

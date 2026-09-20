@@ -38,7 +38,6 @@ enum ExportDataset: String, Codable, CaseIterable, Sendable {
     case communityRatings = "community-ratings"
     case sourceStatus = "source-status"
     case renderedWarnings = "rendered-warnings"
-    case renderedIQHistory = "rendered-iq-history"
     // P2 expanded surfaces (spec §5.5): additive, schemaVersion stays 1.
     case codexStationStatus = "codex-station-status"
     case intelligenceEfficiency = "intelligence-efficiency"
@@ -51,7 +50,6 @@ enum ExportDataset: String, Codable, CaseIterable, Sendable {
         .communityRatings,
         .sourceStatus,
         .renderedWarnings,
-        .renderedIQHistory,
         .codexStationStatus,
         .intelligenceEfficiency,
         .fastRadarHistory,

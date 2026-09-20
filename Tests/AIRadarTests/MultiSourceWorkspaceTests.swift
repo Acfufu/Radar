@@ -182,24 +182,20 @@ struct MultiSourceWorkspaceTests {
             sourceID: .codexRadar,
             metadataStore: metadataStore,
             renderedWarningReaderFactory: { WorkspaceWarningReader() },
-            renderedIQHistoryReaderFactory: { WorkspaceIQHistoryReader() }
         )
         await codex.start()
         #expect(codex.projection?.benchmark.value != nil)
         #expect(codex.renderedWarningProjection?.value != nil)
-        #expect(codex.renderedIQHistoryProjection?.value != nil)
 
         #expect(await codex.clearHistory())
         #expect(codex.projection?.benchmark.value == nil)
         #expect(codex.benchmarkHistory.isEmpty)
         #expect(codex.renderedWarningProjection == nil)
-        #expect(codex.renderedIQHistoryProjection == nil)
         await codex.stop()
 
         let reopenedRepository = RadarRepository(container: try environment.makeModelContainer(), metadataStore: metadataStore)
         #expect(try await reopenedRepository.benchmarkHistory(sourceID: .codexRadar).isEmpty)
         #expect(try await reopenedRepository.renderedWarningHistory(sourceID: .codexRadar).isEmpty)
-        #expect(try await reopenedRepository.renderedIQHistoryHistory(sourceID: .codexRadar).isEmpty)
         let claudeCount = try await reopenedRepository.benchmarkHistory(sourceID: .claudeCodeRadar).count
         let sweCount = try await reopenedRepository.benchmarkHistory(sourceID: .sweBenchVerified).count
         #expect(claudeCount > 0)
@@ -325,36 +321,6 @@ struct MultiSourceWorkspaceTests {
         await restoredModel.stop()
     }
 
-    @MainActor
-    @Test("workspace publishes the Codex runtime official IQ history projection")
-    func workspacePublishesRenderedIQHistory() async throws {
-        let root = FileManager.default.temporaryDirectory
-            .appending(path: "Radar-Workspace-IQHistory-\(UUID().uuidString)", directoryHint: .isDirectory)
-        defer { try? FileManager.default.removeItem(at: root) }
-        let environment = AppEnvironment(dataRoot: root, fixtureMode: .disabled, onlineSourceEnabled: false)
-        let repository = RadarRepository(
-            container: try environment.makeModelContainer(),
-            metadataStore: SyncMetadataStore(root: root)
-        )
-        let snapshot = try workspaceIQHistory()
-        _ = try await repository.insertRenderedIQHistory(snapshot)
-        let codex = RadarAppRuntime(
-            environment: environment,
-            sourceID: .codexRadar,
-            renderedIQHistoryReaderFactory: { WorkspaceIQHistoryReader() }
-        )
-        let model = RadarWorkspaceModel(
-            runtimes: [.codexRadar: codex],
-            selectedSourceID: .codexRadar
-        )
-
-        await model.start()
-
-        let projection = try #require(model.projection)
-        #expect(projection.renderedIQHistoryPresentation?.capturedAt == snapshot.capturedAt)
-        #expect(projection.renderedIQHistoryPresentation?.selectedSeries?.displayName == "官网综合")
-        await model.stop()
-    }
 
     @Test("selected-source export excludes the sibling workspace")
     func exportScope() async throws {
@@ -418,48 +384,8 @@ struct MultiSourceWorkspaceTests {
 }
 
 @MainActor
-private final class WorkspaceIQHistoryReader: CodexRenderedIQHistoryReading {
-    func read() async throws -> CodexRenderedIQHistorySnapshot {
-        throw CancellationError()
-    }
-
-    func cancel() {}
-}
-
-@MainActor
 private final class WorkspaceWarningReader: CodexRenderedWarningReading {
     func read() async throws -> CodexRenderedWarningSnapshot { throw CancellationError() }
     func cancel() {}
 }
 
-private func workspaceIQHistory() throws -> CodexRenderedIQHistorySnapshot {
-    let series = [
-        CodexRenderedIQHistorySeries(
-            sourceOrder: 0,
-            seriesKey: "aggregate",
-            displayName: "官网综合",
-            points: (0..<24).map {
-                CodexRenderedIQHistoryPoint(
-                    sourceOrder: $0,
-                    sourceTimeLabel: "\($0)h",
-                    iq: 80
-                )
-            }
-        ),
-    ]
-    let origin = "https://deng.codexradar.com"
-    let revision = CodexRenderedIQHistoryDOMParser.parserRevision
-    return CodexRenderedIQHistorySnapshot(
-        sourceID: .codexRadar,
-        parserRevision: revision,
-        finalOrigin: origin,
-        capturedAt: Date(timeIntervalSince1970: 100),
-        series: series,
-        semanticFingerprint: try CodexRenderedIQHistorySemanticFingerprint.make(
-            sourceID: .codexRadar,
-            series: series,
-            finalOrigin: origin,
-            parserRevision: revision
-        )
-    )
-}

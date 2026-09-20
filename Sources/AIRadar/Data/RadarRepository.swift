@@ -433,45 +433,6 @@ actor RadarRepository {
         return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
     }
 
-    func insertRenderedIQHistory(
-        _ snapshot: CodexRenderedIQHistorySnapshot
-    ) async throws -> SnapshotInsertion {
-        try await waitForExportLease()
-        let fingerprint = try ContentFingerprint.renderedIQHistory(snapshot)
-        guard fingerprint == snapshot.semanticFingerprint else {
-            throw RepositoryIntegrityError.mismatchedSnapshot
-        }
-        let encodedSnapshot = try JSONEncoder.radar.encode(snapshot)
-        let persistedSnapshot = try JSONDecoder.radar.decode(
-            CodexRenderedIQHistorySnapshot.self,
-            from: encodedSnapshot
-        )
-        let context = ModelContext(container)
-        let existing = try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()).contains {
-            $0.sourceID == snapshot.sourceID.rawValue && $0.contentFingerprint == fingerprint
-        }
-        if !existing {
-            context.insert(CodexRenderedIQHistorySnapshotEntity(
-                snapshot: persistedSnapshot,
-                fingerprint: fingerprint,
-                encodedSnapshot: encodedSnapshot
-            ))
-            context.processPendingChanges()
-            try pruneRenderedIQHistory(
-                sourceID: snapshot.sourceID,
-                parserRevision: snapshot.parserRevision,
-                context: context
-            )
-            try context.save()
-        }
-        try await recordSuccess(
-            sourceID: snapshot.sourceID,
-            datasetType: .renderedIQHistory,
-            at: persistedSnapshot.capturedAt
-        )
-        return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
-    }
-
     func benchmarkState(sourceID: RadarSourceID) async throws -> SegmentState<BenchmarkDataset> {
         let context = ModelContext(container)
         let snapshots = try context.fetch(FetchDescriptor<BenchmarkSnapshotEntity>())
@@ -562,30 +523,6 @@ actor RadarRepository {
         )
     }
 
-    func renderedIQHistoryState(
-        sourceID: RadarSourceID
-    ) async throws -> SegmentState<CodexRenderedIQHistorySnapshot> {
-        let context = ModelContext(container)
-        let snapshots = try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>())
-            .filter { $0.sourceID == sourceID.rawValue }
-            .sorted {
-                if $0.chronologyAt != $1.chronologyAt { return $0.chronologyAt > $1.chronologyAt }
-                return $0.contentFingerprint > $1.contentFingerprint
-            }
-        let result: (CodexRenderedIQHistorySnapshot?, SegmentError?) = decodeNewest(snapshots) { snapshot in
-            let candidate = try verifiedRenderedIQHistory(snapshot)
-            guard candidate.sourceID == sourceID else { throw RepositoryIntegrityError.mismatchedSnapshot }
-            return candidate
-        }
-        return try await state(
-            value: result.0,
-            successfulAt: result.0?.capturedAt,
-            decodingFailure: result.1,
-            sourceID: sourceID,
-            datasetType: .renderedIQHistory
-        )
-    }
-
     func snapshotCount(datasetType: RadarDatasetType, sourceID: RadarSourceID) throws -> Int {
         let context = ModelContext(container)
         switch datasetType {
@@ -597,8 +534,6 @@ actor RadarRepository {
             return try context.fetch(FetchDescriptor<SourceStatusSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .renderedWarnings:
             return try context.fetch(FetchDescriptor<CodexRenderedWarningSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
-        case .renderedIQHistory:
-            return try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .intelligenceEfficiency:
             return try context.fetch(FetchDescriptor<IntelligenceEfficiencySnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .radarInsights:
@@ -628,17 +563,6 @@ actor RadarRepository {
         return try context.fetch(FetchDescriptor<CodexRenderedWarningSnapshotEntity>())
             .filter { $0.sourceID == sourceID.rawValue }
             .compactMap { try? verifiedRenderedWarning($0) }
-            .sorted {
-                if $0.capturedAt != $1.capturedAt { return $0.capturedAt < $1.capturedAt }
-                return $0.semanticFingerprint < $1.semanticFingerprint
-            }
-    }
-
-    func renderedIQHistoryHistory(sourceID: RadarSourceID) throws -> [CodexRenderedIQHistorySnapshot] {
-        let context = ModelContext(container)
-        return try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>())
-            .filter { $0.sourceID == sourceID.rawValue }
-            .compactMap { try? verifiedRenderedIQHistory($0) }
             .sorted {
                 if $0.capturedAt != $1.capturedAt { return $0.capturedAt < $1.capturedAt }
                 return $0.semanticFingerprint < $1.semanticFingerprint
@@ -727,9 +651,6 @@ actor RadarRepository {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<CodexRenderedWarningSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
-            context.delete(entity)
-        }
-        for entity in try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<CodexRadarStatusSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
@@ -835,26 +756,6 @@ actor RadarRepository {
               candidate.parserRevision == snapshot.parserRevision,
               candidate.finalOrigin == snapshot.finalOrigin,
               candidate.sourceTimeLabel == snapshot.sourceTimeLabel,
-              candidate.capturedAt == snapshot.capturedAt,
-              candidate.capturedAt == snapshot.chronologyAt,
-              candidate.semanticFingerprint == snapshot.contentFingerprint,
-              fingerprint == snapshot.contentFingerprint else {
-            throw RepositoryIntegrityError.mismatchedSnapshot
-        }
-        return candidate
-    }
-
-    func verifiedRenderedIQHistory(
-        _ snapshot: CodexRenderedIQHistorySnapshotEntity
-    ) throws -> CodexRenderedIQHistorySnapshot {
-        let candidate = try JSONDecoder.radar.decode(
-            CodexRenderedIQHistorySnapshot.self,
-            from: snapshot.encodedSnapshot
-        )
-        let fingerprint = try ContentFingerprint.renderedIQHistory(candidate)
-        guard candidate.sourceID.rawValue == snapshot.sourceID,
-              candidate.parserRevision == snapshot.parserRevision,
-              candidate.finalOrigin == snapshot.finalOrigin,
               candidate.capturedAt == snapshot.capturedAt,
               candidate.capturedAt == snapshot.chronologyAt,
               candidate.semanticFingerprint == snapshot.contentFingerprint,
@@ -984,12 +885,6 @@ actor RadarRepository {
                     changed = true
                 }
             }
-            for entity in try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>()) {
-                if entity.chronologyAt != entity.capturedAt {
-                    entity.chronologyAt = entity.capturedAt
-                    changed = true
-                }
-            }
             if changed { try context.save() }
         } catch {
             context.rollback()
@@ -1010,32 +905,6 @@ actor RadarRepository {
         for entity in entities {
             do {
                 _ = try verifiedRenderedWarning(entity)
-                valid.append(entity)
-            } catch {
-                context.delete(entity)
-            }
-        }
-        let obsolete = valid.sorted {
-            if $0.chronologyAt != $1.chronologyAt { return $0.chronologyAt > $1.chronologyAt }
-            return $0.contentFingerprint > $1.contentFingerprint
-        }.dropFirst(256)
-        obsolete.forEach(context.delete)
-    }
-
-    private func pruneRenderedIQHistory(
-        sourceID: RadarSourceID,
-        parserRevision: String,
-        context: ModelContext
-    ) throws {
-        let entities = try context.fetch(FetchDescriptor<CodexRenderedIQHistorySnapshotEntity>())
-            .filter {
-                $0.sourceID == sourceID.rawValue
-                    && $0.parserRevision == parserRevision
-            }
-        var valid: [CodexRenderedIQHistorySnapshotEntity] = []
-        for entity in entities {
-            do {
-                _ = try verifiedRenderedIQHistory(entity)
                 valid.append(entity)
             } catch {
                 context.delete(entity)
