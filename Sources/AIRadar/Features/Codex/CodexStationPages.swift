@@ -31,6 +31,12 @@ struct CodexSpeedOverviewPage: View {
                     tabs: projection.capabilityTabs,
                     attributionText: projection.source.attributionText
                 )
+                // Spec §4.1 v1.2 (ADR-0004): the crowdtest IQ card lives
+                // beside the official trend card — an independent plane.
+                CrowdtestIQCard(
+                    model: CrowdtestIQCardMapper.model(harness: "codex", state: projection.crowdtestIQState),
+                    attributionText: "数据来自分布式雷达 deng.codexradar.com · powered by codexradar"
+                )
                 modelListCard
             }
             .radarPage()

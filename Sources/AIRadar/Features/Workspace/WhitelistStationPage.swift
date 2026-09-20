@@ -12,6 +12,10 @@ struct WhitelistStationPage: View {
     /// The Codex station's projection carries the shared sidecar datasets.
     let projection: WorkspaceProjection?
 
+    private var harnessKey: String {
+        station.rawValue
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
@@ -25,6 +29,11 @@ struct WhitelistStationPage: View {
                 } else {
                     emptyState
                 }
+                // Spec §4.1 v1.2 (ADR-0004): the station's crowdtest IQ card.
+                CrowdtestIQCard(
+                    model: CrowdtestIQCardMapper.model(harness: harnessKey, state: projection?.crowdtestIQState),
+                    attributionText: "数据来自分布式雷达 deng.codexradar.com · powered by codexradar"
+                )
                 Text(attributionText)
                     .font(.caption2)
                     .foregroundStyle(palette.secondaryText.color)

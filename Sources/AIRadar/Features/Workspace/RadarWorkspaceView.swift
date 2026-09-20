@@ -199,6 +199,21 @@ struct RadarWorkspaceView: View {
                 history: history,
                 refreshIntervalMinutes: model.refreshIntervalMinutes
             )
+        case .overview where sourceID == .claudeCodeRadar:
+            // Spec §4.1 v1.2 (ADR-0004): Claude Code station carries its own
+            // crowdtest IQ card (claude-code harness) on the overview page.
+            VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
+                OverviewView(
+                    projection: projection,
+                    history: history,
+                    refreshIntervalMinutes: model.refreshIntervalMinutes
+                )
+                CrowdtestIQCard(
+                    model: CrowdtestIQCardMapper.model(harness: "claude-code", state: projection.crowdtestIQState),
+                    attributionText: "数据来自分布式雷达 deng.codexradar.com · powered by codexradar"
+                )
+                .padding(.horizontal, RadarStyle.cardSpacing)
+            }
         case .overview:
             OverviewView(
                 projection: projection,
