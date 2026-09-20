@@ -43,26 +43,27 @@ File naming: `<source>__<tag>__<theme>__<state>.png` under this directory.
 - Fresh/stale fixture states share the seed data with different timestamps,
   so some pairs differ only in the "读取于" timestamp text.
 
-## v0.4.0 supplement matrix (2026-09-20)
+## v0.4.0 supplement matrix (2026-09-20, recaptured)
 
 Captured after the v0.4.0 implementation round (goal `v040-implementation`).
-Purpose: visual evidence for the new/changed surfaces only — the legacy
-72-shot matrix above is unchanged except where v0.4.0 removed routes
-(智力中心 gone since P1; Fast 雷达 hidden from navigation since v1.2).
+Purpose: visual evidence for the new/changed surfaces — the legacy 72-shot
+matrix above is unchanged except where v0.4.0 removed routes (智力中心 gone
+since P1; Fast 雷达 hidden from navigation since v1.2).
 
 - Build: `./Scripts/build-app.sh debug`; `RADAR_FIXTURE_MODE=ui`,
-  `RADAR_UI_STATE=fresh`; theme via isolated-home
-  `defaults write <home>/Library/Preferences/com.acfufu.ClaudeRadar appearance`;
-  window-bounds capture via System Events + `screencapture -R`.
-- Files under `v040/`: aggregate comparison (light/dark), Codex 速览排行
-  top (light/dark; three-capability tabs + crowdtest card sit below the
-  fold of the long overview page — see the scrolling note), Codex
-  预警与推荐 (light/dark, structured alerts/recommendation cards), DSH
-  (light/dark) / ZCode (light) / Grok (dark) 效能排行 single pages each
-  with its 众测 IQ card, Claude Code overview with crowdtest card (light),
+  `RADAR_UI_STATE=fresh`; theme via `HOME=<isolated> defaults write
+  com.acfufu.ClaudeRadar appearance -string 亮色|暗色` (direct plist writes
+  are ignored by cfprefsd — that produced the first bad light/dark pairs).
+- Capture protocol (fixes the first pass's wrong-window shots): launch, then
+  `System Events` activate the AIRadar process, re-query window bounds AFTER
+  activation, `screencapture -x -R<bounds>`.
+- Scroll: CGEvent scroll-wheel events posted at the window centre DO reach
+  the SwiftUI ScrollView when the app is frontmost (14 ticks ≈ 600 px,
+  19 ticks ≈ 810 px) — this supersedes the HR-3-era "cannot scroll"
+  limitation. Below-the-fold components are captured this way.
+- Files under `v040/`: aggregate comparison (light/dark); Codex overview top
+  (light/dark); Codex capability tabs scrolled (light/dark); Codex crowdtest
+  card scrolled (dark); Codex 预警与推荐 structured cards (light/dark); DSH
+  (light/dark) / ZCode (light) / Grok (dark) 效能排行 single pages with their
+  众测 IQ cards; Claude Code overview with crowdtest card (light);
   MenuBarExtra surface (light).
-- Scroll limitation (same as HR-3): background scroll-wheel and PageDown
-  events do not reach the SwiftUI ScrollView in this environment, so the
-  below-the-fold capability tabs / crowdtest card on the Codex overview
-  are evidenced by the DSH/ZCode/Grok/Claude captures of the same
-  components plus unit-level mapping tests; a human scroll pass can amend.
