@@ -60,7 +60,7 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 - Online QA for the v0.4.0 planes (isolated `RADAR_DATA_ROOT`): after a live sync, SyncMetadata shows `radar-insights`, `visual-spatial-reasoning`, and `crowdtest-iq` `lastSuccessfulAt` non-nil with entity counts > 0; the DSH/ZCode/Grok ranking pages and the aggregate comparison view show rows; the official IQ trend card renders series from `ie.json history[]`.
 - No deng traffic beyond the crowdtest rendered reader; the crowdtest card renders with its own attribution and the no-mixing boundary line.
 - Export inspection proving `rendered-warnings` contains only normalized source/provenance/card fields and no HTML, script, cookies, browser storage/profile, response body, authorization, or endpoint/interception material.
-- No `deng.codexradar.com` traffic occurs at all (retired reader): the transport/contract tests and a Release-binary marker scan confirm the domain and `rendered-iq-history` dataset are absent.
+- No retired-deng traffic remains: the transport/contract tests and a Release-binary marker scan confirm the v1 reader's dataset name and export case are absent; the only deng traffic is the crowdtest rendered reader (ADR-0004).
 - SWE-bench live acceptance proving the mini-SWE-agent v2 cohort count, `% Resolved` mapping, 500-task denominator, source-local Pareto analysis, inspector, and permanent read-only/provenance copy.
 - `codesign --verify --deep --strict`, signing details, entitlements, dependencies, and nested-code inventory.
 - Chart/accessibility contract inspection proving all chart surfaces expose native descriptors and non-color series meaning; rendered screenshot/AX/VoiceOver PASS requires an unlocked owner session with Accessibility permission.
