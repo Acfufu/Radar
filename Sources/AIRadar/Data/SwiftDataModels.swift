@@ -10,6 +10,7 @@ enum RadarDatasetType: String, Codable, CaseIterable, Sendable {
     case fastRadarHistory = "fast-radar-history"
     case radarInsights = "radar-insights"
     case visualSpatialReasoning = "visual-spatial-reasoning"
+    case crowdtestIQ = "crowdtest-iq"
 }
 
 enum RadarModelSchema {
@@ -24,6 +25,7 @@ enum RadarModelSchema {
             FastRadarRunEntity.self,
             RadarInsightsSnapshotEntity.self,
             VisualSpatialReasoningSnapshotEntity.self,
+            CodexRenderedCrowdtestIQSnapshotEntity.self,
         ])
     }
 
@@ -264,6 +266,34 @@ final class VisualSpatialReasoningSnapshotEntity {
         self.fetchedAt = dataset.fetchedAt
         sourceUpdatedAtText = dataset.sourceUpdatedAt
         self.encodedDataset = encodedDataset
+    }
+}
+
+/// deng crowdtest IQ snapshot (spec §6 v1.2, ADR-0004) from the anonymous
+/// nonpersistent rendered read of `deng.codexradar.com`; additive SwiftData
+/// schema change. Latest-only retention: each payload carries the whole
+/// five-harness board, so superseded snapshots drop on insert while
+/// fingerprint dedupe short-circuits identical refetches.
+@Model
+final class CodexRenderedCrowdtestIQSnapshotEntity {
+    @Attribute(.unique) var dedupeKey: String
+    var id: UUID
+    var sourceID: String
+    var contentFingerprint: String
+    var finalOrigin: String
+    var capturedAt: Date
+    var parserRevision: String
+    var encodedSnapshot: Data
+
+    init(snapshot: CodexRenderedCrowdtestIQSnapshot, fingerprint: String, encodedSnapshot: Data) {
+        dedupeKey = "\(snapshot.sourceID.rawValue)|\(RadarDatasetType.crowdtestIQ.rawValue)|\(fingerprint)"
+        id = UUID()
+        sourceID = snapshot.sourceID.rawValue
+        contentFingerprint = fingerprint
+        finalOrigin = snapshot.finalOrigin
+        capturedAt = snapshot.capturedAt
+        parserRevision = snapshot.parserRevision
+        self.encodedSnapshot = encodedSnapshot
     }
 }
 

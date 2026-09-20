@@ -188,6 +188,36 @@ actor RadarRepository {
         return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
     }
 
+    /// Spec §6 v1.2 (ADR-0004): latest-only retention mirrors the other
+    /// rendered sidecars — one bounded row per source, fingerprint dedupe.
+    func insertCrowdtestIQ(
+        _ snapshot: CodexRenderedCrowdtestIQSnapshot
+    ) async throws -> SnapshotInsertion {
+        try await waitForExportLease()
+        let fingerprint = try ContentFingerprint.crowdtestIQ(snapshot)
+        let context = ModelContext(container)
+        let entities = try context.fetch(FetchDescriptor<CodexRenderedCrowdtestIQSnapshotEntity>())
+            .filter { $0.sourceID == snapshot.sourceID.rawValue }
+        let existing = entities.contains { $0.contentFingerprint == fingerprint }
+        if !existing {
+            for entity in entities where entity.contentFingerprint != fingerprint {
+                context.delete(entity)
+            }
+            context.insert(CodexRenderedCrowdtestIQSnapshotEntity(
+                snapshot: snapshot,
+                fingerprint: fingerprint,
+                encodedSnapshot: try JSONEncoder.radar.encode(snapshot)
+            ))
+            try context.save()
+        }
+        try await recordSuccess(
+            sourceID: snapshot.sourceID,
+            datasetType: .crowdtestIQ,
+            at: snapshot.capturedAt
+        )
+        return SnapshotInsertion(inserted: !existing, contentFingerprint: fingerprint)
+    }
+
     /// Spec §5.7: the merged summary+history snapshot is replaced as a whole
     /// whenever the dataset fingerprint changes — series never accumulate
     /// across syncs; an identical refetch is a no-op.
@@ -309,6 +339,36 @@ actor RadarRepository {
             .filter { $0.sourceID == sourceID.rawValue }
             .compactMap { try? verifiedVisualSpatialReasoning($0) }
             .sorted { $0.fetchedAt < $1.fetchedAt }
+    }
+
+    func crowdtestIQState(
+        sourceID: RadarSourceID
+    ) async throws -> SegmentState<CodexRenderedCrowdtestIQSnapshot> {
+        let context = ModelContext(container)
+        let snapshots = try context.fetch(FetchDescriptor<CodexRenderedCrowdtestIQSnapshotEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .sorted { $0.capturedAt > $1.capturedAt }
+        let result: (CodexRenderedCrowdtestIQSnapshot?, SegmentError?) = decodeNewest(snapshots) { snapshot in
+            let candidate = try verifiedCrowdtestIQ(snapshot)
+            guard candidate.sourceID == sourceID else { throw RepositoryIntegrityError.mismatchedSnapshot }
+            return candidate
+        }
+        return try await state(
+            value: result.0,
+            successfulAt: result.0?.capturedAt,
+            decodingFailure: result.1,
+            sourceID: sourceID,
+            datasetType: .crowdtestIQ
+        )
+    }
+
+    /// Chronological ascending; bounded to the latest retained snapshot.
+    func crowdtestIQHistory(sourceID: RadarSourceID) throws -> [CodexRenderedCrowdtestIQSnapshot] {
+        let context = ModelContext(container)
+        return try context.fetch(FetchDescriptor<CodexRenderedCrowdtestIQSnapshotEntity>())
+            .filter { $0.sourceID == sourceID.rawValue }
+            .compactMap { try? verifiedCrowdtestIQ($0) }
+            .sorted { $0.capturedAt < $1.capturedAt }
     }
 
     /// Spec §5.3: the run set is replaced as a whole on every sync with a new
@@ -540,6 +600,8 @@ actor RadarRepository {
             return try context.fetch(FetchDescriptor<RadarInsightsSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .visualSpatialReasoning:
             return try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
+        case .crowdtestIQ:
+            return try context.fetch(FetchDescriptor<CodexRenderedCrowdtestIQSnapshotEntity>()).count { $0.sourceID == sourceID.rawValue }
         case .fastRadarHistory:
             return try context.fetch(FetchDescriptor<FastRadarRunEntity>()).count { $0.sourceID == sourceID.rawValue }
         }
@@ -663,6 +725,9 @@ actor RadarRepository {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<VisualSpatialReasoningSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
+            context.delete(entity)
+        }
+        for entity in try context.fetch(FetchDescriptor<CodexRenderedCrowdtestIQSnapshotEntity>()) where entity.sourceID == sourceID.rawValue {
             context.delete(entity)
         }
         for entity in try context.fetch(FetchDescriptor<FastRadarRunEntity>()) where entity.sourceID == sourceID.rawValue {
@@ -808,6 +873,23 @@ actor RadarRepository {
               candidate.sourceUpdatedAt == snapshot.sourceUpdatedAtText,
               candidate.fetchedAt == snapshot.fetchedAt,
               try ContentFingerprint.visualSpatialReasoning(candidate) == snapshot.contentFingerprint else {
+            throw RepositoryIntegrityError.mismatchedSnapshot
+        }
+        return candidate
+    }
+
+    func verifiedCrowdtestIQ(
+        _ snapshot: CodexRenderedCrowdtestIQSnapshotEntity
+    ) throws -> CodexRenderedCrowdtestIQSnapshot {
+        let candidate = try JSONDecoder.radar.decode(
+            CodexRenderedCrowdtestIQSnapshot.self,
+            from: snapshot.encodedSnapshot
+        )
+        guard candidate.sourceID.rawValue == snapshot.sourceID,
+              candidate.parserRevision == snapshot.parserRevision,
+              candidate.finalOrigin == snapshot.finalOrigin,
+              candidate.capturedAt == snapshot.capturedAt,
+              candidate.semanticFingerprint == snapshot.contentFingerprint else {
             throw RepositoryIntegrityError.mismatchedSnapshot
         }
         return candidate

@@ -96,12 +96,59 @@ enum DebugUISeed {
             )
         }
         if sourceID == .codexRadar {
+            try await populateCrowdtestIQ(repository: repository, now: now, stale: state == "stale")
             try await populateRenderedWarning(
                 repository: repository,
                 state: state,
                 now: now
             )
         }
+    }
+
+    /// Spec §6 v1.2 fixture seed for the five crowdtest-IQ station cards.
+    /// Fixture text only — never upstream copy.
+    private static func populateCrowdtestIQ(
+        repository: RadarRepository,
+        now: Date,
+        stale: Bool
+    ) async throws {
+        let capturedAt = stale ? now.addingTimeInterval(-9 * 60 * 60) : now
+        func cell(_ effort: String, iq: Double) -> CodexRenderedCrowdtestIQCell {
+            CodexRenderedCrowdtestIQCell(
+                model: "fixture-model",
+                effort: effort,
+                iqScore: iq,
+                iqP: 30,
+                iqN: 45,
+                countP: 30,
+                countN: 45,
+                coveredTasks: 40,
+                totalTasks: 112,
+                coverageInsufficient: false,
+                methodTitle: "fixture：方法论 title 原文转存（种子文案）"
+            )
+        }
+        let snapshot = CodexRenderedCrowdtestIQSnapshot(
+            sourceID: .codexRadar,
+            parserRevision: CodexRenderedCrowdtestIQDOMParser.parserRevision,
+            finalOrigin: "https://deng.codexradar.com",
+            capturedAt: capturedAt,
+            harnesses: [
+                .init(harness: "codex", model: "fixture-astra", cells: [cell("ultra", iq: 108), cell("high", iq: 105)],
+                      trend: [.init(label: "09/19 07:00 · 106.6 IQ", month: 9, day: 19, hour: 7, score: 106.6)]),
+                .init(harness: "claude-code", model: "fixture-sonnet", cells: [cell("max", iq: 62)],
+                      trend: [.init(label: "09/20 06:26 · 62 IQ", month: 9, day: 20, hour: 6, score: 62)]),
+                .init(harness: "dsh", model: "fixture-dsh", cells: [cell("max", iq: 80)], trend: []),
+                .init(harness: "zcode", model: "fixture-glm", cells: [cell("max", iq: 97)], trend: []),
+                .init(harness: "grok", model: "fixture-grok", cells: [cell("xhigh", iq: 108)], trend: []),
+            ],
+            semanticFingerprint: try CodexRenderedCrowdtestIQSemanticFingerprint.make(
+                harnesses: [],
+                finalOrigin: "https://deng.codexradar.com",
+                parserRevision: CodexRenderedCrowdtestIQDOMParser.parserRevision
+            )
+        )
+        _ = try await repository.insertCrowdtestIQ(snapshot)
     }
 
     private static func populateRadar(

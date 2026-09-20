@@ -1,0 +1,1028 @@
+{
+ "finalOrigin": "https://deng.codexradar.com",
+ "harnesses": [
+  {
+   "cells": [
+    {
+     "countN": 151,
+     "countP": 109,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "ultra",
+     "iqN": 151,
+     "iqP": 109,
+     "iqScore": 108.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-6-astra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 153,
+     "countP": 110,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 153,
+     "iqP": 110,
+     "iqScore": 108.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-6-astra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 153,
+     "countP": 108,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "xhigh",
+     "iqN": 153,
+     "iqP": 108,
+     "iqScore": 106.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-6-astra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 130,
+     "countP": 94,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 130,
+     "iqP": 94,
+     "iqScore": 108.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-6-astra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 134,
+     "countP": 96,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "medium",
+     "iqN": 134,
+     "iqP": 96,
+     "iqScore": 107.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-6-astra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 147,
+     "countP": 98,
+     "coverageInsufficient": false,
+     "coveredTasks": 111,
+     "effort": "low",
+     "iqN": 147,
+     "iqP": 98,
+     "iqScore": 100.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-6-astra",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 106.6 IQ",
+    "09/19 08:00 · 106.5 IQ",
+    "09/19 09:00 · 106.5 IQ",
+    "09/19 10:00 · 106.5 IQ",
+    "09/19 11:00 · 106.4 IQ",
+    "09/19 12:00 · 106.3 IQ",
+    "09/19 13:00 · 106.4 IQ",
+    "09/19 14:00 · 106.4 IQ",
+    "09/19 15:00 · 106.4 IQ",
+    "09/19 16:00 · 106.1 IQ",
+    "09/19 17:00 · 106.2 IQ",
+    "09/19 18:00 · 106.4 IQ",
+    "09/19 19:00 · 106.4 IQ",
+    "09/19 20:00 · 106.4 IQ",
+    "09/19 21:00 · 106.5 IQ",
+    "09/19 22:00 · 106.3 IQ",
+    "09/19 23:00 · 106.1 IQ",
+    "09/20 00:00 · 106.1 IQ",
+    "09/20 01:00 · 106.1 IQ",
+    "09/20 02:00 · 106.2 IQ",
+    "09/20 03:00 · 106.2 IQ",
+    "09/20 04:00 · 106.1 IQ",
+    "09/20 05:00 · 106.1 IQ",
+    "09/20 06:26 · 106.3 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 336,
+     "countP": 226,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "ultra",
+     "iqN": 336,
+     "iqP": 226,
+     "iqScore": 101.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-sol",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 243,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 336,
+     "iqP": 243,
+     "iqScore": 108.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-sol",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 221,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "xhigh",
+     "iqN": 336,
+     "iqP": 221,
+     "iqScore": 99.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-sol",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 217,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 336,
+     "iqP": 217,
+     "iqScore": 97.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-sol",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 214,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "medium",
+     "iqN": 336,
+     "iqP": 214,
+     "iqScore": 96.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-sol",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 182,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "low",
+     "iqN": 336,
+     "iqP": 182,
+     "iqScore": 81.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-sol",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 96.8 IQ",
+    "09/19 08:00 · 96.8 IQ",
+    "09/19 09:00 · 96.9 IQ",
+    "09/19 10:00 · 96.9 IQ",
+    "09/19 11:00 · 96.9 IQ",
+    "09/19 12:00 · 96.9 IQ",
+    "09/19 13:00 · 96.9 IQ",
+    "09/19 14:00 · 96.9 IQ",
+    "09/19 15:00 · 96.9 IQ",
+    "09/19 16:00 · 96.9 IQ",
+    "09/19 17:00 · 96.9 IQ",
+    "09/19 18:00 · 96.9 IQ",
+    "09/19 19:00 · 96.9 IQ",
+    "09/19 20:00 · 96.9 IQ",
+    "09/19 21:00 · 96.9 IQ",
+    "09/19 22:00 · 96.9 IQ",
+    "09/19 23:00 · 96.9 IQ",
+    "09/20 00:00 · 96.9 IQ",
+    "09/20 01:00 · 96.9 IQ",
+    "09/20 02:00 · 96.9 IQ",
+    "09/20 03:00 · 96.9 IQ",
+    "09/20 04:00 · 96.9 IQ",
+    "09/20 05:00 · 96.9 IQ",
+    "09/20 06:26 · 96.9 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 336,
+     "countP": 222,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "ultra",
+     "iqN": 336,
+     "iqP": 222,
+     "iqScore": 99.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-terra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 226,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 336,
+     "iqP": 226,
+     "iqScore": 101.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-terra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 197,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "xhigh",
+     "iqN": 336,
+     "iqP": 197,
+     "iqScore": 88.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-terra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 173,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 336,
+     "iqP": 173,
+     "iqScore": 77.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-terra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 134,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "medium",
+     "iqN": 336,
+     "iqP": 134,
+     "iqScore": 60.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-terra",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 114,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "low",
+     "iqN": 336,
+     "iqP": 114,
+     "iqScore": 51.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-terra",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 79.5 IQ",
+    "09/19 08:00 · 79.5 IQ",
+    "09/19 09:00 · 79.5 IQ",
+    "09/19 10:00 · 79.5 IQ",
+    "09/19 11:00 · 79.5 IQ",
+    "09/19 12:00 · 79.5 IQ",
+    "09/19 13:00 · 79.5 IQ",
+    "09/19 14:00 · 79.5 IQ",
+    "09/19 15:00 · 79.5 IQ",
+    "09/19 16:00 · 79.4 IQ",
+    "09/19 17:00 · 79.4 IQ",
+    "09/19 18:00 · 79.4 IQ",
+    "09/19 19:00 · 79.4 IQ",
+    "09/19 20:00 · 79.4 IQ",
+    "09/19 21:00 · 79.4 IQ",
+    "09/19 22:00 · 79.4 IQ",
+    "09/19 23:00 · 79.4 IQ",
+    "09/20 00:00 · 79.4 IQ",
+    "09/20 01:00 · 79.5 IQ",
+    "09/20 02:00 · 79.4 IQ",
+    "09/20 03:00 · 79.4 IQ",
+    "09/20 04:00 · 79.4 IQ",
+    "09/20 05:00 · 79.3 IQ",
+    "09/20 06:26 · 79.3 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 336,
+     "countP": 230,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 336,
+     "iqP": 230,
+     "iqScore": 103.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-luna",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 193,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "xhigh",
+     "iqN": 336,
+     "iqP": 193,
+     "iqScore": 86.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-luna",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 171,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 336,
+     "iqP": 171,
+     "iqScore": 76.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-luna",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 73,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "medium",
+     "iqN": 336,
+     "iqP": 73,
+     "iqScore": 33.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-luna",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 17,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "low",
+     "iqN": 336,
+     "iqP": 17,
+     "iqScore": 8.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.6-luna",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 61 IQ",
+    "09/19 08:00 · 61 IQ",
+    "09/19 09:00 · 61 IQ",
+    "09/19 10:00 · 61 IQ",
+    "09/19 11:00 · 61 IQ",
+    "09/19 12:00 · 61 IQ",
+    "09/19 13:00 · 61 IQ",
+    "09/19 14:00 · 61 IQ",
+    "09/19 15:00 · 61 IQ",
+    "09/19 16:00 · 61 IQ",
+    "09/19 17:00 · 61 IQ",
+    "09/19 18:00 · 61 IQ",
+    "09/19 19:00 · 61 IQ",
+    "09/19 20:00 · 61 IQ",
+    "09/19 21:00 · 61 IQ",
+    "09/19 22:00 · 61.1 IQ",
+    "09/19 23:00 · 61.1 IQ",
+    "09/20 00:00 · 61.1 IQ",
+    "09/20 01:00 · 61.1 IQ",
+    "09/20 02:00 · 61 IQ",
+    "09/20 03:00 · 61 IQ",
+    "09/20 04:00 · 61.1 IQ",
+    "09/20 05:00 · 61.1 IQ",
+    "09/20 06:26 · 61.1 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 336,
+     "countP": 217,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "xhigh",
+     "iqN": 336,
+     "iqP": 217,
+     "iqScore": 97.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 200,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 336,
+     "iqP": 200,
+     "iqScore": 89.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "gpt-5.5",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 93.3 IQ",
+    "09/19 08:00 · 93.1 IQ",
+    "09/19 09:00 · 93.1 IQ",
+    "09/19 10:00 · 93.1 IQ",
+    "09/19 11:00 · 93.1 IQ",
+    "09/19 12:00 · 93.1 IQ",
+    "09/19 13:00 · 93.1 IQ",
+    "09/19 14:00 · 93.1 IQ",
+    "09/19 15:00 · 92.9 IQ",
+    "09/19 16:00 · 92.9 IQ",
+    "09/19 17:00 · 92.9 IQ",
+    "09/19 18:00 · 92.9 IQ",
+    "09/19 19:00 · 93.3 IQ",
+    "09/19 20:00 · 93.3 IQ",
+    "09/19 21:00 · 93.3 IQ",
+    "09/19 22:00 · 93.3 IQ",
+    "09/19 23:00 · 93.3 IQ",
+    "09/20 00:00 · 93.3 IQ",
+    "09/20 01:00 · 93.3 IQ",
+    "09/20 02:00 · 93.1 IQ",
+    "09/20 03:00 · 93.1 IQ",
+    "09/20 04:00 · 93.1 IQ",
+    "09/20 05:00 · 93.1 IQ",
+    "09/20 06:26 · 93.1 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 222,
+     "countP": 144,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 222,
+     "iqP": 144,
+     "iqScore": 97.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行平均；价格：仅统计完整请求账本，按当前 GLM 标准 API 单价重算历史 token 用量的 API 等价成本；不代表订阅服务商实际扣费。",
+     "model": "glm-5.3",
+     "totalTasks": 112
+    },
+    {
+     "countN": 263,
+     "countP": 170,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 263,
+     "iqP": 170,
+     "iqScore": 97.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行平均；价格：仅统计完整请求账本，按当前 GLM 标准 API 单价重算历史 token 用量的 API 等价成本；不代表订阅服务商实际扣费。",
+     "model": "glm-5.3",
+     "totalTasks": 112
+    },
+    {
+     "countN": 312,
+     "countP": 164,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "low",
+     "iqN": 312,
+     "iqP": 164,
+     "iqScore": 79.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行平均；价格：仅统计完整请求账本，按当前 GLM 标准 API 单价重算历史 token 用量的 API 等价成本；不代表订阅服务商实际扣费。",
+     "model": "glm-5.3",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 89.9 IQ",
+    "09/19 08:00 · 89.9 IQ",
+    "09/19 09:00 · 89.9 IQ",
+    "09/19 10:00 · 89.9 IQ",
+    "09/19 11:00 · 90.8 IQ",
+    "09/19 12:00 · 90.9 IQ",
+    "09/19 13:00 · 90.9 IQ",
+    "09/19 14:00 · 90.9 IQ",
+    "09/19 15:00 · 90.9 IQ",
+    "09/19 16:00 · 90.9 IQ",
+    "09/19 17:00 · 90.9 IQ",
+    "09/19 18:00 · 90.9 IQ",
+    "09/19 19:00 · 90.9 IQ",
+    "09/19 20:00 · 90.9 IQ",
+    "09/19 21:00 · 90.9 IQ",
+    "09/19 22:00 · 90.9 IQ",
+    "09/19 23:00 · 89.9 IQ",
+    "09/20 00:00 · 90.2 IQ",
+    "09/20 01:00 · 90.2 IQ",
+    "09/20 02:00 · 90.2 IQ",
+    "09/20 03:00 · 90.2 IQ",
+    "09/20 04:00 · 90.2 IQ",
+    "09/20 05:00 · 90.2 IQ",
+    "09/20 06:26 · 90 IQ"
+   ],
+   "harness": "zcode"
+  },
+  {
+   "cells": [
+    {
+     "countN": 197,
+     "countP": 124,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 197,
+     "iqP": 124,
+     "iqScore": 94.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行平均；价格：仅统计完整请求账本，按当前 GLM 标准 API 单价重算历史 token 用量的 API 等价成本；不代表订阅服务商实际扣费。",
+     "model": "glm-5.3-flash",
+     "totalTasks": 112
+    },
+    {
+     "countN": 178,
+     "countP": 109,
+     "coverageInsufficient": false,
+     "coveredTasks": 111,
+     "effort": "high",
+     "iqN": 178,
+     "iqP": 109,
+     "iqScore": 92.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行平均；价格：仅统计完整请求账本，按当前 GLM 标准 API 单价重算历史 token 用量的 API 等价成本；不代表订阅服务商实际扣费。",
+     "model": "glm-5.3-flash",
+     "totalTasks": 112
+    },
+    {
+     "countN": 176,
+     "countP": 84,
+     "coverageInsufficient": false,
+     "coveredTasks": 107,
+     "effort": "low",
+     "iqN": 176,
+     "iqP": 84,
+     "iqScore": 72.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行平均；价格：仅统计完整请求账本，按当前 GLM 标准 API 单价重算历史 token 用量的 API 等价成本；不代表订阅服务商实际扣费。",
+     "model": "glm-5.3-flash",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/20 06:26 · 86.3 IQ"
+   ],
+   "harness": "zcode"
+  },
+  {
+   "cells": [
+    {
+     "countN": 336,
+     "countP": 192,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 336,
+     "iqP": 192,
+     "iqScore": 86.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "deepseek-v4-flash",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 147,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 336,
+     "iqP": 147,
+     "iqScore": 66.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "deepseek-v4-flash",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 75.7 IQ",
+    "09/19 08:00 · 75.7 IQ",
+    "09/19 09:00 · 75.7 IQ",
+    "09/19 10:00 · 75.7 IQ",
+    "09/19 11:00 · 75.7 IQ",
+    "09/19 12:00 · 75.7 IQ",
+    "09/19 13:00 · 75.7 IQ",
+    "09/19 14:00 · 75.7 IQ",
+    "09/19 15:00 · 75.7 IQ",
+    "09/19 16:00 · 75.7 IQ",
+    "09/19 17:00 · 75.7 IQ",
+    "09/19 18:00 · 75.7 IQ",
+    "09/19 19:00 · 75.7 IQ",
+    "09/19 20:00 · 75.7 IQ",
+    "09/19 21:00 · 75.7 IQ",
+    "09/19 22:00 · 75.7 IQ",
+    "09/19 23:00 · 75.7 IQ",
+    "09/20 00:00 · 75.7 IQ",
+    "09/20 01:00 · 75.7 IQ",
+    "09/20 02:00 · 75.7 IQ",
+    "09/20 03:00 · 75.7 IQ",
+    "09/20 04:00 · 75.7 IQ",
+    "09/20 05:00 · 75.7 IQ",
+    "09/20 06:26 · 75.7 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 36,
+     "countP": 21,
+     "coverageInsufficient": true,
+     "coveredTasks": 35,
+     "effort": "max",
+     "iqN": 36,
+     "iqP": 21,
+     "iqScore": 88.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "deepseek-v4.1-flash",
+     "totalTasks": 112
+    },
+    {
+     "countN": 47,
+     "countP": 28,
+     "coverageInsufficient": true,
+     "coveredTasks": 46,
+     "effort": "high",
+     "iqN": 47,
+     "iqP": 28,
+     "iqScore": 89.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "deepseek-v4.1-flash",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/20 06:26 · 88.6 IQ"
+   ],
+   "harness": "codex"
+  },
+  {
+   "cells": [
+    {
+     "countN": 217,
+     "countP": 116,
+     "coverageInsufficient": false,
+     "coveredTasks": 111,
+     "effort": "max",
+     "iqN": 217,
+     "iqP": 116,
+     "iqScore": 80.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "dsh-deepseek-v4-flash",
+     "totalTasks": 112
+    },
+    {
+     "countN": 247,
+     "countP": 124,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 247,
+     "iqP": 124,
+     "iqScore": 75.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "dsh-deepseek-v4-flash",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/14 21:50 · 77.6 IQ",
+    "09/20 06:26 · 77.6 IQ"
+   ],
+   "harness": "dsh"
+  },
+  {
+   "cells": [
+    {
+     "countN": 177,
+     "countP": 115,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 177,
+     "iqP": 115,
+     "iqScore": 97.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "dsh-deepseek-v4.1-flash",
+     "totalTasks": 112
+    },
+    {
+     "countN": 253,
+     "countP": 181,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 253,
+     "iqP": 181,
+     "iqScore": 107.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "dsh-deepseek-v4.1-flash",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/20 06:26 · 103.3 IQ"
+   ],
+   "harness": "dsh"
+  },
+  {
+   "cells": [
+    {
+     "countN": 114,
+     "countP": 74,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "max",
+     "iqN": 114,
+     "iqP": 74,
+     "iqScore": 97.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "dsh-deepseek-v4-flash-vision-exp",
+     "totalTasks": 112
+    },
+    {
+     "countN": 84,
+     "countP": 39,
+     "coverageInsufficient": false,
+     "coveredTasks": 82,
+     "effort": "high",
+     "iqN": 84,
+     "iqP": 39,
+     "iqScore": 70.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；时间：最近 3 次有效运行，普通平均；价格：仅统计完整 token 证据，按当前 DeepSeek 低谷价重算同一批真实 token 用量。",
+     "model": "dsh-deepseek-v4-flash-vision-exp",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/18 16:10 · 85.6 IQ",
+    "09/20 06:26 · 85.6 IQ"
+   ],
+   "harness": "dsh"
+  },
+  {
+   "cells": [
+    {
+     "countN": 1,
+     "countP": 0,
+     "coverageInsufficient": true,
+     "coveredTasks": 1,
+     "effort": "max",
+     "iqN": 1,
+     "iqP": 0,
+     "iqScore": 0.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-sonnet-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 5,
+     "countP": 1,
+     "coverageInsufficient": true,
+     "coveredTasks": 5,
+     "effort": "xhigh",
+     "iqN": 5,
+     "iqP": 1,
+     "iqScore": 30.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-sonnet-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 2,
+     "countP": 2,
+     "coverageInsufficient": true,
+     "coveredTasks": 2,
+     "effort": "high",
+     "iqN": 2,
+     "iqP": 2,
+     "iqScore": 150.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-sonnet-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 6,
+     "countP": 3,
+     "coverageInsufficient": true,
+     "coveredTasks": 6,
+     "effort": "medium",
+     "iqN": 6,
+     "iqP": 3,
+     "iqScore": 75.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-sonnet-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 32,
+     "countP": 13,
+     "coverageInsufficient": true,
+     "coveredTasks": 26,
+     "effort": "low",
+     "iqN": 32,
+     "iqP": 13,
+     "iqScore": 61.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-sonnet-5",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/20 06:26 · 62 IQ"
+   ],
+   "harness": "claude-code"
+  },
+  {
+   "cells": [
+    {
+     "countN": 8,
+     "countP": 3,
+     "coverageInsufficient": true,
+     "coveredTasks": 8,
+     "effort": "max",
+     "iqN": 8,
+     "iqP": 3,
+     "iqScore": 56.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-opus-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 74,
+     "countP": 46,
+     "coverageInsufficient": true,
+     "coveredTasks": 45,
+     "effort": "xhigh",
+     "iqN": 74,
+     "iqP": 46,
+     "iqScore": 93.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-opus-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 2,
+     "countP": 0,
+     "coverageInsufficient": true,
+     "coveredTasks": 2,
+     "effort": "high",
+     "iqN": 2,
+     "iqP": 0,
+     "iqScore": 0.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-opus-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 2,
+     "countP": 1,
+     "coverageInsufficient": true,
+     "coveredTasks": 2,
+     "effort": "medium",
+     "iqN": 2,
+     "iqP": 1,
+     "iqScore": 75.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-opus-5",
+     "totalTasks": 112
+    },
+    {
+     "countN": 3,
+     "countP": 2,
+     "coverageInsufficient": true,
+     "coveredTasks": 3,
+     "effort": "low",
+     "iqN": 3,
+     "iqP": 2,
+     "iqScore": 100.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "claude-opus-5",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/20 06:26 · 87.6 IQ"
+   ],
+   "harness": "claude-code"
+  },
+  {
+   "cells": [
+    {
+     "countN": 336,
+     "countP": 242,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "xhigh",
+     "iqN": 336,
+     "iqP": 242,
+     "iqScore": 108.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "grok-4.6",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 223,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "high",
+     "iqN": 336,
+     "iqP": 223,
+     "iqScore": 100.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "grok-4.6",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 222,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "medium",
+     "iqN": 336,
+     "iqP": 222,
+     "iqScore": 99.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "grok-4.6",
+     "totalTasks": 112
+    },
+    {
+     "countN": 336,
+     "countP": 174,
+     "coverageInsufficient": false,
+     "coveredTasks": 112,
+     "effort": "low",
+     "iqN": 336,
+     "iqP": 174,
+     "iqScore": 78.0,
+     "methodTitle": "IQ：每格最近 3 次，全部任务等权；价格和时间：最近 3 次有效运行，普通平均。价格为 API 等价成本：按每次运行的真实 token 用量和官网标准 API 单价折算，与你选的订阅档位无关（档位只决定题目表里的周额度百分比），也不套订阅",
+     "model": "grok-4.6",
+     "totalTasks": 112
+    }
+   ],
+   "circles": [
+    "09/19 07:00 · 95 IQ",
+    "09/19 08:00 · 95 IQ",
+    "09/19 09:00 · 95 IQ",
+    "09/19 10:00 · 95 IQ",
+    "09/19 11:00 · 95 IQ",
+    "09/19 12:00 · 95 IQ",
+    "09/19 13:00 · 95.2 IQ",
+    "09/19 14:00 · 95.3 IQ",
+    "09/19 15:00 · 95 IQ",
+    "09/19 16:00 · 95.2 IQ",
+    "09/19 17:00 · 95.3 IQ",
+    "09/19 18:00 · 95.4 IQ",
+    "09/19 19:00 · 95.4 IQ",
+    "09/19 20:00 · 95.5 IQ",
+    "09/19 21:00 · 95.5 IQ",
+    "09/19 22:00 · 95.6 IQ",
+    "09/19 23:00 · 95.6 IQ",
+    "09/20 00:00 · 95.8 IQ",
+    "09/20 01:00 · 95.7 IQ",
+    "09/20 02:00 · 96.1 IQ",
+    "09/20 03:00 · 96.1 IQ",
+    "09/20 04:00 · 96.1 IQ",
+    "09/20 05:00 · 96.1 IQ",
+    "09/20 06:26 · 96.1 IQ"
+   ],
+   "harness": "grok"
+  }
+ ],
+ "pageState": "ready",
+ "revision": "deng-rendered-crowdtest-iq-v1"
+}

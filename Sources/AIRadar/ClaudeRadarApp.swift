@@ -44,6 +44,7 @@ struct ClaudeRadarApp: App {
                 radarInsightsReaderFactory: {
                     RadarInsightsAdapter.production(dataRoot: environment.dataRoot)
                 },
+                crowdtestIQReaderFactory: { CodexRenderedCrowdtestIQPageReader() },
                 visualSpatialReasoningReaderFactory: {
                     VisualSpatialReasoningAdapter.production(dataRoot: environment.dataRoot)
                 },

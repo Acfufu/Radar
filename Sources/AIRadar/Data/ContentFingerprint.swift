@@ -85,6 +85,15 @@ enum ContentFingerprint {
         )
     }
 
+    /// Crowdtest IQ semantic fingerprint passthrough (spec §6 v1.2).
+    static func crowdtestIQ(_ snapshot: CodexRenderedCrowdtestIQSnapshot) throws -> String {
+        try CodexRenderedCrowdtestIQSemanticFingerprint.make(
+            harnesses: snapshot.harnesses,
+            finalOrigin: snapshot.finalOrigin,
+            parserRevision: snapshot.parserRevision
+        )
+    }
+
     /// Radar-insights fingerprint (spec §5.6): recommendation and point
     /// order preserved (upstream ranking/scene order is content).
     static func radarInsights(_ dataset: RadarInsightsDataset) throws -> String {

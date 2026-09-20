@@ -55,6 +55,7 @@ final class RadarWorkspaceModel {
             stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
             intelligenceEfficiencyState: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState : nil,
+            crowdtestIQState: runtime.sourceID == .codexRadar ? runtime.crowdtestIQProjection : nil,
             radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
             visualSpatialReasoningDataset: runtime.sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
             fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
@@ -102,6 +103,7 @@ final class RadarWorkspaceModel {
                     stationStatus: runtime.sourceID == .codexRadar ? runtime.stationStatus : nil,
                 intelligenceEfficiencyDataset: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
                 intelligenceEfficiencyState: runtime.sourceID == .codexRadar ? runtime.intelligenceEfficiencyState : nil,
+                crowdtestIQState: runtime.sourceID == .codexRadar ? runtime.crowdtestIQProjection : nil,
                 radarInsightsDataset: runtime.sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
                 visualSpatialReasoningDataset: runtime.sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
                 fastRadarDataset: runtime.sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil
@@ -135,6 +137,7 @@ final class RadarWorkspaceModel {
             stationStatus: sourceID == .codexRadar ? runtime.stationStatus : nil,
             intelligenceEfficiencyDataset: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState?.value : nil,
             intelligenceEfficiencyState: sourceID == .codexRadar ? runtime.intelligenceEfficiencyState : nil,
+            crowdtestIQState: sourceID == .codexRadar ? runtime.crowdtestIQProjection : nil,
             radarInsightsDataset: sourceID == .codexRadar ? runtime.radarInsightsState?.value : nil,
             visualSpatialReasoningDataset: sourceID == .codexRadar ? runtime.visualSpatialReasoningState?.value : nil,
             fastRadarDataset: sourceID == .codexRadar ? runtime.fastRadarHistoryState?.value : nil

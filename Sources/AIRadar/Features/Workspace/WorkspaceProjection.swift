@@ -15,6 +15,7 @@ struct WorkspaceProjection: Sendable {
     var stationStatus: CodexStationStatusDataset? = nil
     var intelligenceEfficiencyDataset: IntelligenceEfficiencyDataset? = nil
     let officialIQHistoryPresentation: OfficialIQHistoryPresentation?
+    var crowdtestIQState: SegmentState<CodexRenderedCrowdtestIQSnapshot>? = nil
     var radarInsightsDataset: RadarInsightsDataset? = nil
     var visualSpatialReasoningDataset: VisualSpatialReasoningDataset? = nil
     var fastRadarDataset: FastRadarHistoryDataset? = nil
@@ -29,6 +30,7 @@ struct WorkspaceProjection: Sendable {
         stationStatus: CodexStationStatusDataset? = nil,
         intelligenceEfficiencyDataset: IntelligenceEfficiencyDataset? = nil,
         intelligenceEfficiencyState: SegmentState<IntelligenceEfficiencyDataset>? = nil,
+        crowdtestIQState: SegmentState<CodexRenderedCrowdtestIQSnapshot>? = nil,
         radarInsightsDataset: RadarInsightsDataset? = nil,
         visualSpatialReasoningDataset: VisualSpatialReasoningDataset? = nil,
         fastRadarDataset: FastRadarHistoryDataset? = nil
@@ -48,6 +50,7 @@ struct WorkspaceProjection: Sendable {
             sourceID: source.id,
             state: intelligenceEfficiencyState
         )
+        self.crowdtestIQState = crowdtestIQState
         self.radarInsightsDataset = radarInsightsDataset
         self.visualSpatialReasoningDataset = visualSpatialReasoningDataset
         self.fastRadarDataset = fastRadarDataset
