@@ -288,6 +288,25 @@ These are small hand-authored projections of the public shapes, not copied live 
 
 These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.
 
+## Codex Radar fast-radar-history contract
+
+### Release and authorization boundary
+
+- Homepage: `https://codexradar.com/`
+- History: `https://codexradar.com/data/fast-radar-history.json` (public static GET, no credentials; observed 2026-09-05, dual format re-frozen 2026-09-23)
+- Source ID: `codex-radar`; the sidecar shares the ADR-0001 same-origin public data plane; the `api.codexradar.com` host and the deng `/api/*` submission endpoints remain excluded. Site-level attribution: `数据来自 Codex 雷达 codexradar.com`.
+- v1.3 dual format (spec §5.3 note, 2026-09-22 recon): the `runs[]` array carries two coexisting run shapes — the legacy trio shape (`models` keyed `sol`/`terra`/`luna`, last upstream write 2026-09-08) and the active per-model shape (`model`/`effort`/`profile`/pairing bookkeeping, `models` keyed by short name; `gpt-6-astra` runs through 2026-09-21). Decoding is fully optional-tolerant over an open key dictionary — no closed enum; unknown keys are preserved verbatim. The Fast 雷达 page returned to navigation in v0.5.0 once the per-model shape proved to be the active write line (the v1.2 hiding decision's measured recovery condition).
+- No per-run freshness field exists; dataset freshness follows the dataset fingerprint and top-level `updated_at` only. Export records additively include `model`/`effort` (no schema bump).
+
+### Canonical sanitized fixtures
+
+| Fixture | Purpose | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| `fast-radar-history.json` | Dual-format projection: 3 legacy trio runs + 6 per-model `gpt-6-astra` runs (incl. one `tps_available=false`) | 8,813 | `73b2ee17a5cb4fe74115fff3c7057a2935540100311be13d3281676655ff60b0` |
+| `fast-radar-history-legacy.json` | The pre-v0.5.0 legacy-only capture (88 runs), kept to pin legacy-shape decoding | 106,655 | `be947fad68b90c684f5670d8eddf2e58b3b313219b0a514c0ab57b9fee96b862` |
+
+These are small hand-authored projections of the public shapes, not copied live payloads and not evidence of permission to redistribute upstream data.
+
 ## Codex Radar crowdtest IQ rendered contract (deng, ADR-0004)
 
 The crowdtest IQ plane is a **rendered-reader** dataset, not an HTTP JSON endpoint: an anonymous nonpersistent WebKit read of the browser-visible DOM at `https://deng.codexradar.com/` (noncommercial observation; no `/api/v1/*` — Bearer, credential-protected — traffic; no writes or submissions). Parser revision `deng-rendered-crowdtest-iq-v1`; the final origin must equal `https://deng.codexradar.com` exactly. The extraction bridge emits bounded normalized cells only (model/effort identifiers, IQ score, p/n and coverage counts, coverage-insufficient flag, upstream methodology title verbatim) plus hourly trend labels (`MM/DD HH:00 · <score> IQ`); the five-station mapping (codex/claude-code/dsh/zcode/grok, ADR-0004) is applied at parse time and unmapped families are dropped. There is **no canonical HTTP fixture**: the test fixture is a DOM-derived projection of the 2026-09-20 anonymous probe (SHA-256 pinned in `Tests/AIRadarTests/Fixtures/CodexRenderedCrowdtestIQ/SHA256SUMS`), and the sanitization word list (`<html`, `<script`, `cookie`, `authorization`, `bearer `, `endpoint`, `/api/`, …) is asserted against it. Retention is latest-only; the crowdtest plane displays on its own station cards with the attribution `数据来自分布式雷达 deng.codexradar.com · powered by codexradar` and never merges with comprehensive IQ, local fitting, or the aggregate comparison view.

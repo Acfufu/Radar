@@ -7,23 +7,24 @@
 - Codex Radar online source: **ENABLED in current code; current live-provider validation not claimed**. Historical authorization record (2026-07-16) covers the public summary and community endpoints. The approved noncommercial rendered-page path is historical contract evidence; it separately reads only warning values visible on the public homepage, is not official API authorization, and the protected full API remains out of scope.
 - Codex rendered 24-hour IQ history: **RETIRED 2026-09-20** (ADR-0002). The deng v1 reader, its export dataset, and its receipts are removed. The official IQ history card is sourced from the public intelligence-efficiency `history[]` plane instead.
 - deng crowdtest IQ rendered reader: **NEW 2026-09-20** (ADR-0004). Anonymous nonpersistent WebKit observation of the browser-visible deng DOM, exact-origin `https://deng.codexradar.com`, revision `deng-rendered-crowdtest-iq-v1`; no `/api/v1/*` (Bearer) traffic and no writes. Five station cards (codex/claude-code/dsh/zcode/grok) with independent freshness dots; the aggregate station and Kimi carry none.
-- v0.4.0 sidecars: radar-insights (`/api/radar-insights`) and visual-spatial-reasoning (`/api/visual-spatial-reasoning[/-history]`) under the ADR-0001 same-origin public GET rule; whitelist view stations (DSH/ZCode/Grok, ADR-0003) share the intelligence-efficiency sidecar — no independent sync; the Fast Radar page is hidden (spec §5.3 v1.2) while its sidecar sync continues.
-- Manual UA/version step: the `AIRadar/0.4.0 (macOS; +https://github.com/Acfufu/Radar)` literal is pinned in the five HTTP adapters (ClaudeCodeRadarHTTP, IntelligenceEfficiency, FastRadarHistory, RadarInsights, VisualSpatialReasoning) and asserted by contract tests — step the version string together with the plist at every release.
+- v0.4.0 sidecars: radar-insights (`/api/radar-insights`) and visual-spatial-reasoning (`/api/visual-spatial-reasoning[/-history]`) under the ADR-0001 same-origin public GET rule; whitelist view stations (DSH/ZCode/Grok, ADR-0003) share the intelligence-efficiency sidecar — no independent sync.
+- v0.5.0 changes (spec v1.3, issue #4): the Fast Radar page returns to navigation (spec §5.3 v1.3 note) with dual-format tolerant decoding of `/data/fast-radar-history.json` (legacy trio + active per-model `gpt-6-astra` shape); unified data-age badges (`DataAgeBadge`) annotate the quota-radar, comparisons, and monitored-at fields of current.json; whitelist check-set re-probed 2026-09-23 — constants unchanged.
+- Manual UA/version step: the `AIRadar/0.5.0 (macOS; +https://github.com/Acfufu/Radar)` literal is pinned in the five HTTP adapters (ClaudeCodeRadarHTTP, IntelligenceEfficiency, FastRadarHistory, RadarInsights, VisualSpatialReasoning) and asserted by contract tests — step the version string together with the plist at every release.
 - SWE-bench Verified online source: **ENABLED in current code; current live-provider validation not claimed**. Radar reads the official published leaderboard, projects only the mini-SWE-agent v2 cohort, and never runs or submits an evaluation.
 - External Developer ID distribution: **BLOCKED** unless the release evidence contains a Developer ID Application signature plus successful notarization, stapling, validation, and Gatekeeper receipts. An ad-hoc signature is local QA only.
 
 ## Final bundle
 
-- Canonical artifact: `.build/app/ClaudeRadar.app`
-- Installed application path: `/Applications/ClaudeRadar.app`
+- Canonical artifact: `.build/app/AIRadar.app`
+- Installed application path: `/Applications/AIRadar.app`
 - User data path: `~/Library/Application Support/ClaudeRadar`
 - Normalized SwiftData store: `~/Library/Application Support/ClaudeRadar/Radar.store` (with system-managed sidecars when present)
 - Raw diagnostics: `~/Library/Application Support/ClaudeRadar/RawSamples`
 - Preferences: `~/Library/Preferences/com.acfufu.ClaudeRadar.plist`
 
-Release assembly must contain only `ClaudeRadar.icns` under Resources and no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. All three public source runtimes start with the app; changing the selected source room changes display only.
+Release assembly must contain only `AIRadar.icns` under Resources and no fixture JSON, Debug seed/evidence resource, test data, partial export, helper, LaunchAgent, or separately bundled third-party executable. All three public source runtimes start with the app; changing the selected source room changes display only.
 
-Final route matrix (v0.4.0): 聚合站 Information Overview (incl. the cross-station comparison view; no banner, no export, D10); Claude Code Overview/Decision Lens/Models/Trends/Source Status/Export (+ the station's crowdtest IQ card on Overview); Codex 速览排行(三能力 tab + 官网 IQ 趋势卡 + 众测 IQ 卡)/预警与推荐(结构化卡 + 渲染卡并存)/效能 PK/额度雷达/历史对比/Tibo 雷达/社区入口/决策透镜/趋势/来源状态/导出 — the former Intelligence Center is retired and Fast 雷达 is hidden from navigation (page + sidecar remain); DSH/ZCode/Grok single 效能排行 pages (whitelist-cropped, each with its crowdtest IQ card); Kimi 即将开放 placeholder; SWE Models, Trends only when same-revision comparable history exists, Source Status, and Export. Metric vocabulary, units, Decision Lens inputs, trend datasets, accessibility descriptions, and Export choices remain source-local; no route implies a unified cross-source rank.
+Final route matrix (v0.5.0): 聚合站 Information Overview (incl. the cross-station comparison view; no banner, no export, D10); Claude Code Overview/Decision Lens/Models/Trends/Source Status/Export (+ the station's crowdtest IQ card on Overview); Codex 速览排行(三能力 tab + 官网 IQ 趋势卡 + 众测 IQ 卡)/预警与推荐(结构化卡 + 渲染卡并存)/效能 PK/额度雷达/历史对比/Tibo 雷达/社区入口/决策透镜/趋势/来源状态/导出 — the former Intelligence Center is retired; Fast 雷达 is restored to navigation in v0.5.0 between 额度雷达 and 历史对比 (dual-format page, spec §5.3 v1.3); DSH/ZCode/Grok single 效能排行 pages (whitelist-cropped, each with its crowdtest IQ card); Kimi 即将开放 placeholder; SWE Models, Trends only when same-revision comparable history exists, Source Status, and Export. Metric vocabulary, units, Decision Lens inputs, trend datasets, accessibility descriptions, and Export choices remain source-local; no route implies a unified cross-source rank.
 
 Historical local-QA binding (preserved, not current G033 artifact evidence): temporary-index source/test/support tree `914e787b2311841ebd95c3efc0027050dd050b74`; Debug executable/bundle-manifest SHA-256 `e2fc4ab0bf9fce1ad7e57fe6d655319d9e67865dad0815d3c4493352a385897b` / `aa6163057b2fdb19d5809ac30b2cfdda13bfff75e8a3f224b090130ef507666e`; Release executable/bundle-manifest SHA-256 `4dcbaf13f338319e1ae20d6812f249e6219b7e7fa0d2af80ea4eb9faf885a026` / `ac6b5d2b8214ec54bc4e57ba68561da3b7a99ee18e32968a8e42b6d20013c03c`. The dated receipt records plist lint, strict codesign, icon-only Resources, and an ad-hoc hardened-runtime signature; no current artifact receipt is claimed here.
 
@@ -31,8 +32,8 @@ Current G033 source-test verification passes: `DEVELOPER_DIR=/Applications/Xcode
 
 ## Upgrade
 
-1. Quit Claude Radar and verify no `ClaudeRadar` process remains.
-2. Replace `/Applications/ClaudeRadar.app` with the newer app bundle; do not delete the Application Support directory.
+1. Quit AI Radar and verify no `AIRadar` process remains.
+2. Replace `/Applications/AIRadar.app` with the newer app bundle; do not delete the Application Support directory.
 3. Launch the replacement and verify compatible normalized history remains readable.
 4. Verify Settings still shows the same data directory, online access is enabled in Release, and each source can re-display its cached history when the network is unavailable.
 
@@ -46,10 +47,18 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 
 ## Uninstall
 
-1. Quit Claude Radar and verify no `ClaudeRadar` process remains.
-2. Remove only `/Applications/ClaudeRadar.app` to uninstall the application.
+1. Quit AI Radar and verify no `AIRadar` process remains.
+2. Remove only `/Applications/AIRadar.app` to uninstall the application.
 3. Leave `~/Library/Application Support/ClaudeRadar` and `~/Library/Preferences/com.acfufu.ClaudeRadar.plist` intact by default so user history survives app removal.
 4. If the user explicitly requests complete data deletion, they may separately remove those exact data and preference paths after confirming their contents. The app-only uninstall must never delete user data.
+
+## Release assets (new in v0.5.0)
+
+1. Confirm the version surface: plist `CFBundleShortVersionString` = 0.5.0, `CFBundleVersion` = 4; the `AIRadar/0.5.0` UA literal pinned in the five adapters.
+2. Build the release bundle: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./Scripts/build-app.sh release` (ad-hoc hardened-runtime signature; Resources contain only `AIRadar.icns`).
+3. Package: `cd .build/app && ditto -c -k --sequesterRsrc --keepParent AIRadar.app AIRadar-0.5.0-macos.zip && shasum -a 256 AIRadar-0.5.0-macos.zip > AIRadar-0.5.0-macos.zip.sha256`.
+4. Publish (after the human gate): push `main`, `git tag v0.5.0` + push, `gh release create v0.5.0 --title "v0.5.0" --notes …` attaching both files; then swap the README/README_zh snapshot block to the v0.5.0 assets.
+5. The archive stays ad-hoc signed — local QA only; Developer ID/notarization remains blocked (below).
 
 ## Required verification receipts
 
@@ -57,6 +66,7 @@ All release QA uses an isolated root. Never exercise clear or uninstall validati
 - Plist lint and inventory showing the app icon as the only Release resource.
 - Isolated three-source online launch, shared sync-metadata inspection, and source-room checks proving that cached data remains isolated.
 - Isolated noncommercial Codex page rendering that produces fresh official cards or an explicit rendered empty state. Challenge, schema drift, or page unavailability is **BLOCKED** live readiness, not Pass.
+- Online QA for the v0.5.0 planes (isolated `RADAR_DATA_ROOT`): after a live sync, SyncMetadata shows `fast-radar-history` `lastSuccessfulAt` non-nil with `FastRadarRunEntity` counts ≥ the upstream run total (119 at the 2026-09-22 freeze, legacy + per-model shapes); the Fast 雷达 page lists astra effort rows and the data-age badges render on 额度雷达 / 速览排行 / 历史对比.
 - Online QA for the v0.4.0 planes (isolated `RADAR_DATA_ROOT`): after a live sync, SyncMetadata shows `radar-insights`, `visual-spatial-reasoning`, and `crowdtest-iq` `lastSuccessfulAt` non-nil with entity counts > 0; the DSH/ZCode/Grok ranking pages and the aggregate comparison view show rows; the official IQ trend card renders series from `ie.json history[]`.
 - No deng traffic beyond the crowdtest rendered reader; the crowdtest card renders with its own attribution and the no-mixing boundary line.
 - Export inspection proving `rendered-warnings` contains only normalized source/provenance/card fields and no HTML, script, cookies, browser storage/profile, response body, authorization, or endpoint/interception material.

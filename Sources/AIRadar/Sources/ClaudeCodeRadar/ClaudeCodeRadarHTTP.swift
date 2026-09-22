@@ -5,7 +5,7 @@ extension RadarHTTPSource {
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.httpMethod = "GET"
         request.setValue(acceptHeader, forHTTPHeaderField: "Accept")
-        request.setValue("AIRadar/0.4.0 (macOS; +https://github.com/Acfufu/Radar)", forHTTPHeaderField: "User-Agent")
+        request.setValue("AIRadar/0.5.0 (macOS; +https://github.com/Acfufu/Radar)", forHTTPHeaderField: "User-Agent")
         if let etag = validators.etag {
             request.setValue(etag, forHTTPHeaderField: "If-None-Match")
         }

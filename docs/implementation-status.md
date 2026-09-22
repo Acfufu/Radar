@@ -232,3 +232,12 @@ Reusable, repo-specific findings from the v0.4.0 implementation round:
 2. **Live payload shapes can diverge from frozen canonical fixtures**: the VSR summary embeds its `history` as an observation LIST on the wire while the sanitized fixture pins the keyed-dictionary shape (the `-history` endpoint form). New sidecar adapters must validate the first live sync's raw sample before trusting the fixture-derived decode; the sync core keeps raw samples under `RADAR_DATA_ROOT/RawSamples` for exactly this. Fixed in 8b7a3fe with a dual-shape payload decoder.
 3. **SwiftData entities must be registered in `RadarModelSchema.current`**: inserting a `@Model` that is missing from the schema array is silently dropped (no throw, no row) — the VSR repository tests caught it only because counts stayed 0. Always add the entity to the schema list in the same commit, then assert `snapshotCount == 1`.
 4. **Screenshot evidence protocol** (supersedes the HR-3-era "cannot scroll" note): query window bounds only after re-activating the process (otherwise you capture whatever window is frontmost), write themes through `HOME=<isolated> defaults write` (direct plist writes are ignored by cfprefsd, producing identical light/dark pairs), and post CGEvent scroll-wheel events at the window centre to reach below-the-fold SwiftUI ScrollView content.
+
+## v0.5.0 round (2026-09-23, goal `v050-implementation`, issue #4 / spec v1.3)
+
+- FastRadarHistory dual-format decoding (open `models` dictionary + per-run `model`/`effort`/`profile`/pairing fields, spec §5.3 v1.3); canonical fixture swapped to the 2026-09-22 dual-format capture (`73b2ee17…`), legacy capture kept (`fast-radar-history-legacy.json`, `be947fad…`); SwiftData schema unchanged (`encodedRun` round-trip).
+- Fast 雷达 page restored to navigation (between 额度雷达 and 历史对比) with per-model effort rows, effort badges, and tps-unavailable annotation.
+- `DataAgeBadge` shared component (threshold = `SyncPolicy.staleInterval`) landing on 额度雷达 (quota_radar age), 速览排行 (monitored_at + comparisons age), 历史对比 (comparisons age); `RadarFormat.relativeTime` clamps future skew.
+- Version surface: plist 0.5.0 (build 4); UA `AIRadar/0.5.0` in the five adapters + five test-side literals.
+- Screenshots: `docs/design-qa/baseline/v050/` (7 shots, manifest v0.5.0 section).
+- Test baseline: full suite 417 tests / 52 suites exit 0 at the N7 freeze (baseline at round start: 408 / 51).

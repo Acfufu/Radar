@@ -21,6 +21,7 @@ The former rendered 24-hour IQ history reader for [deng.codexradar.com](https://
 ## Codex Radar v0.4.0 data planes
 
 - **intelligence-efficiency** (`codexradar.com/data/intelligence-efficiency.json`): public static JSON derived by upstream from its protected API; Radar consumes only the public endpoint, never the protected `api.codexradar.com` domain the payload's provenance fields point at.
+- **fast-radar-history** (`codexradar.com/data/fast-radar-history.json`): public static JSON of upstream Fast-mode measurement runs; Radar consumes only the public endpoint (v0.5.0 dual-format decoding, spec §5.3).
 - **radar-insights** (`codexradar.com/api/radar-insights`) and **visual-spatial-reasoning** (`codexradar.com/api/visual-spatial-reasoning[/-history]`): same-origin public GET endpoints allowed by ADR-0001's mechanical rule (same origin + public GET + no credentials). Recommendation scenes and rule texts are upstream-authored and shown verbatim with attribution; Radar derives no recommendations locally.
 - **degradation alerts** (`radar-insights.degradation_alerts`): a structured plane that coexists with the rendered warning reader v2; the two never merge, validate, or replace each other.
 - **tibo_presence** (current.json normalized field): upstream-published public observations about third-party accounts, including country/timezone-level inferences. Radar transcribes and displays it verbatim without local inference or correlation to any local data; upstream `safety_note` ships alongside and gates display (D13).

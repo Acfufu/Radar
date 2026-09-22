@@ -254,7 +254,7 @@ struct VisualSpatialReasoningDatasetTests {
         #expect(historyRequest.url?.host == "codexradar.com")
         #expect(historyRequest.url?.path == "/api/visual-spatial-reasoning-history")
         #expect(summaryRequest.url?.absoluteString.contains("api.codexradar.com") == false)
-        #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "User-Agent") == "AIRadar/0.4.0 (macOS; +https://github.com/Acfufu/Radar)" })
+        #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "User-Agent") == "AIRadar/0.5.0 (macOS; +https://github.com/Acfufu/Radar)" })
         #expect(requests.allSatisfy { $0.httpMethod == "GET" })
 
         // Both successful reads land in the shared raw-sample prune pool.
