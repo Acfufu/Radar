@@ -23,4 +23,6 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSPrincipalClass</key>
-    <str
+    <string>NSApplication</string>
+</dict>
+</plist>
