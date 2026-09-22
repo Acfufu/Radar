@@ -15,10 +15,19 @@ struct FastRadarHistoryDatasetTests {
         .deletingLastPathComponent()
 
     /// SHA-256 of the canonical fixture as captured (Tests fixture SHA256SUMS).
-    private let canonicalFixtureSHA256 = "be947fad68b90c684f5670d8eddf2e58b3b313219b0a514c0ab57b9fee96b862"
+    /// v0.5.0 canonical = dual format (3 legacy trio runs + 6 per-model astra
+    /// runs incl. one `tps_available=false`), carved from the 2026-09-22
+    /// upstream payload; the pre-v0.5.0 legacy-only capture stays as
+    /// `fast-radar-history-legacy.json`.
+    private let canonicalFixtureSHA256 = "73b2ee17a5cb4fe74115fff3c7057a2935540100311be13d3281676655ff60b0"
+    private let legacyFixtureSHA256 = "be947fad68b90c684f5670d8eddf2e58b3b313219b0a514c0ab57b9fee96b862"
 
     private func canonicalFixtureData() throws -> Data {
         try Data(contentsOf: root.appending(path: "Tests/AIRadarTests/Fixtures/FastRadarHistory/fast-radar-history.json"))
+    }
+
+    private func legacyFixtureData() throws -> Data {
+        try Data(contentsOf: root.appending(path: "Tests/AIRadarTests/Fixtures/FastRadarHistory/fast-radar-history-legacy.json"))
     }
 
     private func makeRepository() throws -> (RadarRepository, URL) {
@@ -46,7 +55,7 @@ struct FastRadarHistoryDatasetTests {
                 measuredAt: "2026-08-20T09:00:00+08:00",
                 completedAt: "2026-08-20T09:06:00+08:00",
                 cliVersion: "0.147.0",
-                models: .init(sol: tier(standardTTFT: solTTFT, fastTTFT: 3.4), terra: tier(standardTTFT: 8.4, fastTTFT: 3.6))
+                models: ["sol": tier(standardTTFT: solTTFT, fastTTFT: 3.4), "terra": tier(standardTTFT: 8.4, fastTTFT: 3.6)]
             ),
         ]
         if extraRun {
@@ -55,7 +64,7 @@ struct FastRadarHistoryDatasetTests {
                 measuredAt: "2026-09-04T13:14:54+08:00",
                 completedAt: "2026-09-04T13:20:24+08:00",
                 cliVersion: "0.149.0",
-                models: .init(luna: tier(standardTTFT: 7.4, fastTTFT: 3.0))
+                models: ["luna": tier(standardTTFT: 7.4, fastTTFT: 3.0)]
             ))
         }
         return FastRadarHistoryDataset(
@@ -69,7 +78,7 @@ struct FastRadarHistoryDatasetTests {
         )
     }
 
-    @Test("canonical fixture matches its recorded SHA-256 and parses completely")
+    @Test("canonical dual-format fixture matches its recorded SHA-256 and parses completely")
     func canonicalFixtureParses() throws {
         let data = try canonicalFixtureData()
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -83,20 +92,78 @@ struct FastRadarHistoryDatasetTests {
         #expect(dataset.schemaVersion == 1)
         #expect(dataset.type == FastRadarHistoryParser.expectedType)
         #expect(dataset.timezone == "Asia/Shanghai")
-        #expect(dataset.updatedAt == "2026-09-04T13:20:24+08:00")
-        #expect(dataset.runs.count >= 82)
+        #expect(dataset.updatedAt == "2026-09-21T10:20:55+08:00")
+        #expect(dataset.runs.count == 9)
+
+        // Legacy trio shape: first run keeps its sol/terra/luna tiers.
         let first = try #require(dataset.runs.first)
         #expect(first.runID == "20260720-0850")
         #expect(first.measuredAt == "2026-07-20T08:50:02+08:00")
         #expect(first.completedAt == "2026-07-20T08:57:53+08:00")
         #expect(first.cliVersion == nil)
-        let standard = try #require(first.models?.sol?.standard)
+        #expect(first.model == nil)
+        let standard = try #require(first.models?["sol"]?.standard)
         #expect(standard.ttftSeconds == 9.000502638666667)
         #expect(standard.tps == 56.392279071085504)
         #expect(standard.e2eSeconds == 45.880695764)
+
+        // Per-model shape: last run carries model/effort and an `astra` tier.
         let last = try #require(dataset.runs.last)
-        #expect(last.cliVersion == "0.149.0")
-        #expect(last.models?.luna != nil)
+        #expect(last.runID == "20260921-1007-xhigh")
+        #expect(last.cliVersion == "0.155.0-alpha.9.2")
+        #expect(last.model == "gpt-6-astra")
+        #expect(last.effort == "xhigh")
+        #expect(last.profile == "gpt-6-astra/xhigh")
+        #expect(last.validPairs == 3)
+        #expect(last.sampleCount == 6)
+        #expect(last.tpsAvailable == true)
+        let astraStandard = try #require(last.models?["astra"]?.standard)
+        #expect(astraStandard.tps == 33.22193905452613)
+    }
+
+    @Test("legacy-only fixture still decodes after the canonical swap")
+    func legacyFixtureStillParses() throws {
+        let data = try legacyFixtureData()
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        #expect(digest == legacyFixtureSHA256)
+
+        let dataset = try FastRadarHistoryParser.parse(data, sourceID: .codexRadar, fetchedAt: Date(timeIntervalSince1970: 1))
+        #expect(dataset.runs.count >= 82)
+        #expect(dataset.runs.allSatisfy { $0.model == nil && $0.effort == nil })
+    }
+
+    @Test("per-model runs evaluate with model+effort labels and keep tps-unavailable paths honest")
+    func perModelEvaluation() throws {
+        let data = try canonicalFixtureData()
+        let dataset = try FastRadarHistoryParser.parse(data, sourceID: .codexRadar, fetchedAt: Date(timeIntervalSince1970: 1))
+
+        let xhigh = try #require(dataset.runs.last { $0.effort == "xhigh" })
+        let comparisons = FastRadarAnalysis.evaluate(run: xhigh)
+        #expect(comparisons.count == 1)
+        #expect(comparisons.first?.model == "gpt-6-astra")
+        #expect(comparisons.first?.effort == "xhigh")
+        #expect(comparisons.first?.id == "gpt-6-astra#xhigh")
+        #expect(comparisons.first?.ttftRatio != nil)
+        #expect(comparisons.first?.tpsRatio != nil)
+        #expect(comparisons.first?.e2eRatio != nil)
+        // displayModel prefers the run-level id over the short dict key.
+        #expect(xhigh.displayModel == "gpt-6-astra")
+
+        // tps_available=false run: TPS ratios stay nil (no substitution),
+        // TTFT/E2E ratios still derive, and the upstream reason is preserved.
+        let noTPS = try #require(dataset.runs.first { $0.tpsAvailable == false })
+        #expect(noTPS.tpsUnavailableReason == "no_streaming_interval")
+        let noTPSComparisons = FastRadarAnalysis.evaluate(run: noTPS)
+        #expect(noTPSComparisons.count == 1)
+        #expect(noTPSComparisons.first?.tpsRatio == nil)
+        #expect(noTPSComparisons.first?.ttftRatio != nil)
+        #expect(noTPSComparisons.first?.e2eRatio != nil)
+
+        // Mixed array: legacy trio rows still evaluate under their dict keys.
+        let legacy = try #require(dataset.runs.first { $0.model == nil })
+        let legacyComparisons = FastRadarAnalysis.evaluate(run: legacy)
+        #expect(legacyComparisons.map(\.model) == ["luna", "sol", "terra"])
+        #expect(legacyComparisons.allSatisfy { $0.effort == nil })
     }
 
     @Test("trimmed and empty payloads decode tolerantly")
@@ -119,7 +186,7 @@ struct FastRadarHistoryDatasetTests {
         let run = FastRadarHistoryDataset.FastRadarRun(
             runID: "r",
             measuredAt: "2026-09-04T13:14:54+08:00",
-            models: .init(sol: tier(standardTTFT: 8.0, fastTTFT: 4.0, standardTPS: 50, fastTPS: 100, standardE2E: 40, fastE2E: 10))
+            models: ["sol": tier(standardTTFT: 8.0, fastTTFT: 4.0, standardTPS: 50, fastTPS: 100, standardE2E: 40, fastE2E: 10)]
         )
         let comparisons = FastRadarAnalysis.evaluate(run: run)
         #expect(comparisons.count == 1)
@@ -131,7 +198,7 @@ struct FastRadarHistoryDatasetTests {
         // Missing pairs never substitute 0 or 1.
         let partial = FastRadarHistoryDataset.FastRadarRun(
             runID: "p",
-            models: .init(terra: .init(standard: .init(ttftSeconds: 8, tps: 50, e2eSeconds: 40), fast: nil))
+            models: ["terra": .init(standard: .init(ttftSeconds: 8, tps: 50, e2eSeconds: 40), fast: nil)]
         )
         #expect(FastRadarAnalysis.evaluate(run: partial).isEmpty)
 
@@ -246,6 +313,45 @@ struct FastRadarHistoryDatasetTests {
         let cleared = try await repository.fastRadarHistoryState(sourceID: .codexRadar)
         #expect(cleared.value == nil)
         #expect(try await repository.metadata(sourceID: .codexRadar, datasetType: .fastRadarHistory) == .empty)
+    }
+
+    @Test("per-model run fields survive the encodedRun persistence round-trip")
+    func repositoryRoundTripsPerModelFields() async throws {
+        let (repository, root) = try makeRepository()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let perModelRun = FastRadarHistoryDataset.FastRadarRun(
+            runID: "20260908-234119-0072",
+            measuredAt: "2026-09-08T23:41:19+08:00",
+            completedAt: "2026-09-08T23:43:44+08:00",
+            cliVersion: "0.153.4",
+            model: "gpt-6-astra",
+            effort: "medium",
+            profile: "gpt-6-astra/medium",
+            validPairs: 3,
+            sampleCount: 6,
+            tpsAvailable: false,
+            tpsUnavailableReason: "no_streaming_interval",
+            models: ["astra": .init(
+                standard: .init(ttftSeconds: 70.56299368033332, tps: nil, e2eSeconds: 70.806406611),
+                fast: .init(ttftSeconds: 41.716760986333334, tps: nil, e2eSeconds: 41.960522931)
+            )]
+        )
+        let dataset = FastRadarHistoryDataset(
+            sourceID: .codexRadar,
+            fetchedAt: Date(timeIntervalSince1970: 100),
+            schemaVersion: 1,
+            type: FastRadarHistoryParser.expectedType,
+            timezone: "Asia/Shanghai",
+            updatedAt: "2026-09-08T23:43:44+08:00",
+            runs: [perModelRun]
+        )
+        _ = try await repository.insertFastRadarHistory(dataset)
+
+        let runs = try await repository.fastRadarRuns(sourceID: .codexRadar)
+        let roundTripped = try #require(runs.first)
+        #expect(roundTripped == perModelRun)
+        #expect(roundTripped.models?["astra"]?.standard?.tps == nil)
     }
 
     @Test("oversized refresh keeps the last known good run set")

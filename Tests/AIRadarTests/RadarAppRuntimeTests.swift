@@ -811,12 +811,12 @@ private func runtimeFastRadar(fetchedAt: Date, solTTFT: Double = 8.0) -> FastRad
                 measuredAt: "2026-09-04T13:14:54+08:00",
                 completedAt: "2026-09-04T13:20:24+08:00",
                 cliVersion: "0.149.0",
-                models: .init(
-                    sol: .init(
+                models: [
+                    "sol": .init(
                         standard: .init(ttftSeconds: solTTFT, tps: 50, e2eSeconds: 49),
                         fast: .init(ttftSeconds: 3.4, tps: 69, e2eSeconds: 20.5)
                     )
-                )
+                ]
             ),
         ]
     )

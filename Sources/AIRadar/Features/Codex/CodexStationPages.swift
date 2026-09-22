@@ -500,19 +500,14 @@ struct CodexFastRadarPage: View {
     }
 
     private func comparisonRow(_ comparison: FastRadarTierComparison, run: FastRadarHistoryDataset.FastRadarRun?) -> some View {
-        let tiers = run?.models
-        let tier = switch comparison.model {
-        case "sol": tiers?.sol
-        case "terra": tiers?.terra
-        default: tiers?.luna
-        }
+        let tier = comparison.tier
         return HStack {
             Text(comparison.model).frame(minWidth: 64, alignment: .leading)
-            Text(pair(tier?.standard?.ttftSeconds, tier?.fast?.ttftSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
+            Text(pair(tier.standard?.ttftSeconds, tier.fast?.ttftSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
             Text(ratio(comparison.ttftRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
-            Text(pair(tier?.standard?.tps, tier?.fast?.tps)).frame(width: 150, alignment: .trailing).monospacedDigit()
+            Text(pair(tier.standard?.tps, tier.fast?.tps)).frame(width: 150, alignment: .trailing).monospacedDigit()
             Text(ratio(comparison.tpsRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
-            Text(pair(tier?.standard?.e2eSeconds, tier?.fast?.e2eSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
+            Text(pair(tier.standard?.e2eSeconds, tier.fast?.e2eSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
             Text(ratio(comparison.e2eRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
         }
         .font(.caption)
@@ -559,9 +554,9 @@ struct CodexFastRadarPage: View {
             Text(run.runID ?? "—").frame(minWidth: 128, alignment: .leading)
             Text(run.measuredAt ?? "—").frame(width: 170, alignment: .leading)
             Text(run.cliVersion ?? "—").frame(width: 76, alignment: .leading)
-            Text(e2e(run.models?.sol)).frame(width: 130, alignment: .trailing).monospacedDigit()
-            Text(e2e(run.models?.terra)).frame(width: 130, alignment: .trailing).monospacedDigit()
-            Text(e2e(run.models?.luna)).frame(width: 130, alignment: .trailing).monospacedDigit()
+            Text(e2e(run.models?["sol"])).frame(width: 130, alignment: .trailing).monospacedDigit()
+            Text(e2e(run.models?["terra"])).frame(width: 130, alignment: .trailing).monospacedDigit()
+            Text(e2e(run.models?["luna"])).frame(width: 130, alignment: .trailing).monospacedDigit()
         }
         .font(.caption)
         .padding(.vertical, 5)

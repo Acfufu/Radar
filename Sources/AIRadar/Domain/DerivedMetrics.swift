@@ -188,26 +188,34 @@ enum IntelligenceEfficiency {
 /// fast vs standard ratios (fast/standard, so <1 on TTFT/E2E means Fast is
 /// quicker, >1 on TPS means Fast streams faster). Standalone entry type —
 /// deliberately not a `DerivedMetricFormula` (those are per-passed-task
-/// ratios over the benchmark dataset, a different semantic).
+/// ratios over the benchmark dataset, a different semantic). `effort` is set
+/// only for per-model-shape runs (spec §5.3 v1.3 note); legacy trio rows
+/// leave it nil.
 struct FastRadarTierComparison: Identifiable, Equatable, Sendable {
     let model: String
+    let effort: String?
+    let tier: FastRadarHistoryDataset.FastRadarRun.Tier
     let ttftRatio: Double?
     let tpsRatio: Double?
     let e2eRatio: Double?
 
-    var id: String { model }
+    var id: String { effort.map { "\(model)#\($0)" } ?? model }
 }
 
 enum FastRadarAnalysis {
     /// fast/standard ratios per model tier present on the run; nil when
-    /// either side lacks the metric — never substituted with 0/1.
+    /// either side lacks the metric — never substituted with 0/1. Iterates
+    /// the open `models` dictionary in sorted key order so legacy trio runs
+    /// and per-model runs share one path (spec §5.3 v1.3, dual format).
     static func evaluate(run: FastRadarHistoryDataset.FastRadarRun) -> [FastRadarTierComparison] {
         guard let models = run.models else { return [] }
         var comparisons: [FastRadarTierComparison] = []
-        for (name, tier) in [("sol", models.sol), ("terra", models.terra), ("luna", models.luna)] {
-            guard let standard = tier?.standard, let fast = tier?.fast else { continue }
+        for name in models.keys.sorted() {
+            guard let tier = models[name], let standard = tier.standard, let fast = tier.fast else { continue }
             comparisons.append(FastRadarTierComparison(
-                model: name,
+                model: run.model ?? name,
+                effort: run.effort,
+                tier: tier,
                 ttftRatio: ratio(fast.ttftSeconds, standard.ttftSeconds),
                 tpsRatio: ratio(fast.tps, standard.tps),
                 e2eRatio: ratio(fast.e2eSeconds, standard.e2eSeconds)

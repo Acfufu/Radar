@@ -1010,32 +1010,47 @@ enum DebugUISeed {
                 measuredAt: "2026-08-20T09:00:00+08:00",
                 completedAt: "2026-08-20T09:06:40+08:00",
                 cliVersion: "0.147.0",
-                models: .init(
-                    sol: tier(standard: (8.1, 50.2, 48.9), fast: (3.4, 68.1, 21.0)),
-                    terra: tier(standard: (8.4, 49.0, 50.1), fast: (3.6, 66.0, 22.4))
-                )
+                models: [
+                    "sol": tier(standard: (8.1, 50.2, 48.9), fast: (3.4, 68.1, 21.0)),
+                    "terra": tier(standard: (8.4, 49.0, 50.1), fast: (3.6, 66.0, 22.4)),
+                ]
             ),
             FastRadarHistoryDataset.FastRadarRun(
                 runID: "20260901-1400",
                 measuredAt: "2026-09-01T14:00:00+08:00",
                 completedAt: "2026-09-01T14:07:10+08:00",
                 cliVersion: "0.148.0",
-                models: .init(
-                    sol: tier(standard: (8.0, 50.9, 49.2), fast: (3.3, 68.8, 20.8)),
-                    terra: tier(standard: (8.3, 49.5, 50.3), fast: (3.5, 66.9, 22.1)),
-                    luna: tier(standard: (7.6, 52.4, 46.0), fast: (3.1, 70.2, 19.5))
-                )
+                models: [
+                    "sol": tier(standard: (8.0, 50.9, 49.2), fast: (3.3, 68.8, 20.8)),
+                    "terra": tier(standard: (8.3, 49.5, 50.3), fast: (3.5, 66.9, 22.1)),
+                    "luna": tier(standard: (7.6, 52.4, 46.0), fast: (3.1, 70.2, 19.5)),
+                ]
             ),
             FastRadarHistoryDataset.FastRadarRun(
                 runID: "20260904-1314",
                 measuredAt: "2026-09-04T13:14:54+08:00",
                 completedAt: "2026-09-04T13:20:24+08:00",
                 cliVersion: "0.149.0",
-                models: .init(
-                    sol: tier(standard: (8.26, 51.5, 49.3), fast: (3.35, 69.4, 20.4)),
-                    terra: tier(standard: (8.5, 48.8, 50.8), fast: (3.7, 66.2, 22.6)),
-                    luna: tier(standard: (7.4, 53.0, 45.2), fast: (3.0, 71.0, 19.0))
-                )
+                models: [
+                    "sol": tier(standard: (8.26, 51.5, 49.3), fast: (3.35, 69.4, 20.4)),
+                    "terra": tier(standard: (8.5, 48.8, 50.8), fast: (3.7, 66.2, 22.6)),
+                    "luna": tier(standard: (7.4, 53.0, 45.2), fast: (3.0, 71.0, 19.0)),
+                ]
+            ),
+            FastRadarHistoryDataset.FastRadarRun(
+                runID: "20260921-1007-xhigh",
+                measuredAt: "2026-09-21T10:09:40+08:00",
+                completedAt: "2026-09-21T10:20:55+08:00",
+                cliVersion: "0.155.0-alpha.9.2",
+                model: "gpt-6-astra",
+                effort: "xhigh",
+                profile: "gpt-6-astra/xhigh",
+                validPairs: 3,
+                sampleCount: 6,
+                tpsAvailable: true,
+                models: [
+                    "astra": tier(standard: (8.9, 33.2, 71.4), fast: (7.5, 62.8, 40.6)),
+                ]
             ),
         ]
         let dataset = FastRadarHistoryDataset(

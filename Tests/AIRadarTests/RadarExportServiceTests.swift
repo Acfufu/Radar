@@ -915,10 +915,10 @@ func expandedDatasetsProductionExportContract() async throws {
                 measuredAt: "2026-09-04T13:14:54+08:00",
                 completedAt: "2026-09-04T13:20:24+08:00",
                 cliVersion: "0.149.0",
-                models: .init(sol: .init(
+                models: ["sol": .init(
                     standard: .init(ttftSeconds: 9, tps: 56, e2eSeconds: 45),
                     fast: .init(ttftSeconds: 3.4, tps: 69, e2eSeconds: 20.5)
-                ))
+                )]
             ),
         ]
     )

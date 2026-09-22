@@ -32,19 +32,38 @@ struct FastRadarHistoryDataset: Hashable, Codable, Sendable {
         self.runs = runs
     }
 
-    /// One upstream measurement run (`runs[]`).
+    /// One upstream measurement run (`runs[]`). Two coexisting wire shapes
+    /// (spec §5.3 v1.3 note, 2026-09-22 recon): the legacy trio shape carries
+    /// only `models` keyed `sol`/`terra`/`luna`; the active per-model shape
+    /// adds `model`/`effort`/`profile`/pairing bookkeeping and keys `models`
+    /// by short model name (`astra`). All fields stay optional; unknown keys
+    /// inside `models` are preserved verbatim (never a closed enum).
     struct FastRadarRun: Codable, Hashable, Sendable {
         let runID: String?
         let measuredAt: String?
         let completedAt: String?
         let cliVersion: String?
-        let models: Models?
+        let model: String?
+        let effort: String?
+        let profile: String?
+        let validPairs: Int?
+        let sampleCount: Int?
+        let tpsAvailable: Bool?
+        let tpsUnavailableReason: String?
+        let models: [String: Tier]?
 
         enum CodingKeys: String, CodingKey {
             case runID = "run_id"
             case measuredAt = "measured_at"
             case completedAt = "completed_at"
             case cliVersion = "cli_version"
+            case model
+            case effort
+            case profile
+            case validPairs = "valid_pairs"
+            case sampleCount = "sample_count"
+            case tpsAvailable = "tps_available"
+            case tpsUnavailableReason = "tps_unavailable_reason"
             case models
         }
 
@@ -53,25 +72,33 @@ struct FastRadarHistoryDataset: Hashable, Codable, Sendable {
             measuredAt: String? = nil,
             completedAt: String? = nil,
             cliVersion: String? = nil,
-            models: Models? = nil
+            model: String? = nil,
+            effort: String? = nil,
+            profile: String? = nil,
+            validPairs: Int? = nil,
+            sampleCount: Int? = nil,
+            tpsAvailable: Bool? = nil,
+            tpsUnavailableReason: String? = nil,
+            models: [String: Tier]? = nil
         ) {
             self.runID = runID
             self.measuredAt = measuredAt
             self.completedAt = completedAt
             self.cliVersion = cliVersion
+            self.model = model
+            self.effort = effort
+            self.profile = profile
+            self.validPairs = validPairs
+            self.sampleCount = sampleCount
+            self.tpsAvailable = tpsAvailable
+            self.tpsUnavailableReason = tpsUnavailableReason
             self.models = models
         }
 
-        struct Models: Codable, Hashable, Sendable {
-            let sol: Tier?
-            let terra: Tier?
-            let luna: Tier?
-
-            init(sol: Tier? = nil, terra: Tier? = nil, luna: Tier? = nil) {
-                self.sol = sol
-                self.terra = terra
-                self.luna = luna
-            }
+        /// Display name for a `models` key: the run-level `model` id when the
+        /// per-model shape provides it, otherwise the legacy dict key.
+        var displayModel: String? {
+            model ?? models?.keys.sorted().first
         }
 
         struct Tier: Codable, Hashable, Sendable {

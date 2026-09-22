@@ -418,9 +418,10 @@ extension RadarRepository: RadarExportDataSource {
             ])
         }
         var models: [String: ExportJSONValue] = [:]
-        if let sol = run.models?.sol { models["sol"] = tier(sol) }
-        if let terra = run.models?.terra { models["terra"] = tier(terra) }
-        if let luna = run.models?.luna { models["luna"] = tier(luna) }
+        for key in (run.models ?? [:]).keys.sorted() {
+            guard let tierValue = run.models?[key] else { continue }
+            models[key] = tier(tierValue)
+        }
         return ExportRecord(fields: [
             "id": .string(entity.dedupeKey),
             "datasetFingerprint": .string(entity.datasetFingerprint),
@@ -434,6 +435,8 @@ extension RadarRepository: RadarExportDataSource {
                 "measuredAt": text(run.measuredAt),
                 "completedAt": text(run.completedAt),
                 "cliVersion": text(run.cliVersion),
+                "model": text(run.model),
+                "effort": text(run.effort),
                 "models": .object(models),
             ]),
         ])
