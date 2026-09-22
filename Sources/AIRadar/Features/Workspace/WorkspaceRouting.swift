@@ -158,10 +158,12 @@ enum WhitelistStation: String, CaseIterable, Hashable, Sendable, Identifiable {
 
     /// Model whitelist frozen from the upstream station config probe
     /// (2026-09-20, .lazyzcode/evidence/v040-implementation/station-whitelist-
-    /// probe.json). Spec v1.2's extra checklist models (`dsh-deepseek-v4.1-
-    /// flash`, `dsh-deepseek-v4-flash-vision-exp`, `glm-5.3-flash`) exist in
-    /// the data plane but not in the upstream station whitelists, so they do
-    /// not join a station view.
+    /// probe.json; re-probed 2026-09-23, .lazyzcode/evidence/v050-implementation/
+    /// station-whitelist-probe.json — config unchanged, six 09-22 check-set
+    /// candidates still absent). Spec v1.2's extra checklist models
+    /// (`dsh-deepseek-v4.1-flash`, `dsh-deepseek-v4-flash-vision-exp`,
+    /// `glm-5.3-flash`) exist in the data plane but not in the upstream
+    /// station whitelists, so they do not join a station view.
     var modelWhitelist: Set<String> {
         switch self {
         case .dsh: ["dsh-deepseek-v4-flash", "dsh-deepseek-v4-pro"]
