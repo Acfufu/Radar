@@ -5,7 +5,7 @@
 <p align="center">
   <a href="Package.swift"><img alt="macOS 26+" src="https://img.shields.io/badge/macOS-26%2B-111827?logo=apple"></a>
   <a href="Package.swift"><img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white"></a>
-  <a href="https://github.com/Acfufu/Radar/releases/tag/v0.2.0"><img alt="已发布快照 v0.2.0" src="https://img.shields.io/badge/published_snapshot-v0.2.0-D97706"></a>
+  <a href="https://github.com/Acfufu/Radar/releases/tag/v0.5.0"><img alt="已发布快照 v0.5.0" src="https://img.shields.io/badge/published_snapshot-v0.5.0-D97706"></a>
   <a href="LICENSE"><img alt="GPLv3 许可证" src="https://img.shields.io/badge/license-GPLv3-2F855A"></a>
 </p>
 
@@ -47,14 +47,14 @@ AI Radar 是一个原生 macOS 菜单栏应用与工作台，用于阅读公开�
 
 ## 试用已发布快照
 
-[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) 是面向 Apple silicon 的已发布快照 `bf05ad7`。压缩包使用 ad-hoc 签名，仅供本地 QA；它没有 Developer ID 签名，也未经过 Apple 公证。最新 release [v0.4.0](https://github.com/Acfufu/Radar/releases/tag/v0.4.0) 仅为源码发版、不含二进制资产，因此最新的已发布二进制快照仍是下述 v0.2.0，其压缩包沿用改名前的 `ClaudeRadar` 命名。
+[v0.5.0](https://github.com/Acfufu/Radar/releases/tag/v0.5.0) 是面向 Apple silicon 的已发布快照。压缩包使用 ad-hoc 签名，仅供本地 QA；它没有 Developer ID 签名，也未经过 Apple 公证。
 
 ```bash
-curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip"
-curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip.sha256"
-shasum -a 256 -c ClaudeRadar-0.2.0-macos.zip.sha256
-ditto -x -k ClaudeRadar-0.2.0-macos.zip .
-open ClaudeRadar.app
+curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.5.0/AIRadar-0.5.0-macos.zip"
+curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.5.0/AIRadar-0.5.0-macos.zip.sha256"
+shasum -a 256 -c AIRadar-0.5.0-macos.zip.sha256
+ditto -x -k AIRadar-0.5.0-macos.zip .
+open AIRadar.app
 ```
 
 如果 macOS 阻止首次启动，请在 Finder 中使用“**打开**”并阅读系统提示。
@@ -95,7 +95,7 @@ AI Radar 更名后的首次启动会把旧目录 `~/Library/Application Support/
 - 删除应用不会自动删除这些数据。
 - 原始样本和导出的 ZIP 可能包含上游返回的内容；分享前请先检查。
 - Codex 渲染页读取使用非持久 WebKit。它只保留有上限的规范化预警字段，不保留页面 HTML、脚本、Cookie、浏览器存储、响应正文、凭证或端点材料。
-- 当前源码可能比 v0.2.0 快照更新；需要当前开发状态时请从源码构建。
+- 当前源码可能比 v0.5.0 快照更新；需要当前开发状态时请从源码构建。
 
 ## 参考资料
 
