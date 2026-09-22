@@ -47,7 +47,7 @@ Clearing normalized history includes rendered warnings and IQ history for the se
 
 ## Try published snapshot
 
-[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) is published snapshot `bf05ad7` for Apple silicon. The archive is ad-hoc signed for local QA, not Developer ID-signed or notarized.
+[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) is published snapshot `bf05ad7` for Apple silicon. The archive is ad-hoc signed for local QA, not Developer ID-signed or notarized. Latest release [v0.4.0](https://github.com/Acfufu/Radar/releases/tag/v0.4.0) is source-only and ships no binary assets, so the newest published binary snapshot is still v0.2.0 below; its archive uses the pre-rename `ClaudeRadar` naming.
 
 ```bash
 curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip"

@@ -47,7 +47,7 @@ AI Radar 是一个原生 macOS 菜单栏应用与工作台，用于阅读公开�
 
 ## 试用已发布快照
 
-[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) 是面向 Apple silicon 的已发布快照 `bf05ad7`。压缩包使用 ad-hoc 签名，仅供本地 QA；它没有 Developer ID 签名，也未经过 Apple 公证。
+[v0.2.0](https://github.com/Acfufu/Radar/releases/tag/v0.2.0) 是面向 Apple silicon 的已发布快照 `bf05ad7`。压缩包使用 ad-hoc 签名，仅供本地 QA；它没有 Developer ID 签名，也未经过 Apple 公证。最新 release [v0.4.0](https://github.com/Acfufu/Radar/releases/tag/v0.4.0) 仅为源码发版、不含二进制资产，因此最新的已发布二进制快照仍是下述 v0.2.0，其压缩包沿用改名前的 `ClaudeRadar` 命名。
 
 ```bash
 curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.2.0/ClaudeRadar-0.2.0-macos.zip"

@@ -1,10 +1,11 @@
 # AI Radar 全量同步重构 Spec
 
-- 状态：**定稿 v1.2**（v1.0 定稿经 R1–R5 共 5 轮双审，10 次独立审阅，全部发现已闭环；v1.1 为 v0.4.0 迭代修订——ADR-0001/0002/0003 + grill 六题拍板落 spec，经 plan-reviewer 两轮审 + 用户逐条过目后冻结；**v1.2 为 2026-09-20 上游重勘增量修订——grill 六题逐题拍板落 spec，见 `docs/ai-radar-upstream-recon-2026-09-20.md` §5 与 ADR-0004**）
+- 状态：**定稿 v1.3**（v1.0 定稿经 R1–R5 共 5 轮双审，10 次独立审阅，全部发现已闭环；v1.1 为 v0.4.0 迭代修订——ADR-0001/0002/0003 + grill 六题拍板落 spec，经 plan-reviewer 两轮审 + 用户逐条过目后冻结；v1.2 为 2026-09-20 上游重勘增量修订——grill 六题逐题拍板落 spec，见 `docs/ai-radar-upstream-recon-2026-09-20.md` §5 与 ADR-0004；**v1.3 为 2026-09-22 上游重勘增量修订——grill 六题逐题拍板落 spec，见 `docs/ai-radar-upstream-recon-2026-09-22.md` §5**）
 - 决策人冻结确认（2026-09-09 02:28 CST）：**「确认冻结——六处落点+三个关键决策+三个判断全部认可」**（过目材料 = 六处落点摘要表 + 三关键决策（既有 `/data/*` 不迁移 / alerts 双路径并存 / DTO 全 Optional） + 三判断（recommendations 原文转存口径 / 侧栏「预览站」组 / 发版 v0.4.0））
 - **v1.2 拍板确认（2026-09-20，grill 逐题）**：照实施 v0.4.0 + 重勘微修吸收 / 鹈鹕杯本轮不收录 / deng 接众测 IQ 渲染读取器（ADR-0004）/ 五站对齐多卡 / Fast 雷达页面隐藏 + sidecar 同步继续（loop `next-iteration-recon-grill`，计划短码 a74de209 人工批准）
-- 日期：2026-09-04（v1.0 定稿）/ 2026-09-08（v1.1 修订起草）/ 2026-09-20（v1.2 修订）
-- 上游快照：codexradar.com（2026-09-04 抓取；页面为动态服务端渲染，字节数随内容波动，实测约 680KB；**2026-09-08 重勘增补见 `docs/ai-radar-upstream-recon-2026-09-08.md`**；**2026-09-20 重勘见 `docs/ai-radar-upstream-recon-2026-09-20.md`**）
+- **v1.3 拍板确认（2026-09-22，grill 六题逐题）**：Fast 雷达页面恢复（双格式容错解析）/ 额度雷达脱节记录 + 统一数据年龄标注（不上额度渲染读取器）/ Kimi 占位与鹈鹕杯非目标维持 / EN 本地化非目标 / 收尾验证三项纳入（关 #3 + README 徽章、打包可视化证据、deng 渲染复探；签名公证继续搁置）/ v0.5.0 单跟踪 issue（**本轮无满足三判据的决策，无 ADR**）
+- 日期：2026-09-04（v1.0 定稿）/ 2026-09-08（v1.1 修订起草）/ 2026-09-20（v1.2 修订）/ 2026-09-22（v1.3 修订）
+- 上游快照：codexradar.com（2026-09-04 抓取；页面为动态服务端渲染，字节数随内容波动，实测约 680KB；**2026-09-08 重勘增补见 `docs/ai-radar-upstream-recon-2026-09-08.md`**；**2026-09-20 重勘见 `docs/ai-radar-upstream-recon-2026-09-20.md`**；**2026-09-22 重勘见 `docs/ai-radar-upstream-recon-2026-09-22.md`**）
 - 决策人已确认：① 范围全量（P0–P3 + 重命名）② 架构可重议（对齐上游站点模型）③ 产品定名 **AI Radar**（中文界面「AI 雷达」；用户原话「AI Rader」为笔误，已更正）；**v1.1 新增确认：④ 同域 `/api/*` 机制性放行 ⑤ 四占位站转正 ⑥ radar-insights + visual-spatial-reasoning 接入 ⑦ v0.4.0 合并发版**（ADR-0001/0002/0003，issue #3）
 - 本文件即终版落盘：`docs/ai-radar-sync-spec.md`
 
@@ -57,7 +58,7 @@
   - Run 级新增：`wall_time_human/average_cost_usd/average_task_seconds/average_task_time_human/cost_usd_basis`
   - 模型换代：comparisons 11 键（gpt_56_sol_xhigh/high/medium/low、gpt_56_terra_max/xhigh_distributed/high、gpt_56_luna_max/high、gpt_55_xhigh_distributed/high_distributed）
 - 新端点 `/data/intelligence-efficiency.json`（**实测 4.07MB**，history 249 条、runs_total 42646，持续增长）：顶层 15 键 `schema/mode/type/source/metrics_source/source_updated_at/models/runs_24h_total/runs_48h_total/runs_total/points/history/fingerprint/activity_fingerprint/method`；`source/metrics_source` 指向 `api.codexradar.com/api/v1/*`（该域**不得**请求，见 §5 传输政策）；**两新端点 JSON 内容均不内嵌 attribution/requirements 要求**（实测 0 命中），attribution 义务来自 current.json 站点级声明。**2026-09-08 增勘**：schema 已升至 **2**（App 侧容错解码不受影响，P2② 已实证）；history 264 条；`points[]` 新增 `dsh-deepseek-v4-flash/pro`、`glm-5.3`、`glm-5.3-flash`、`grok-4.6` 等跨站模型与 `harness` 字段（**harness 标注不一致**：dsh 已标、glm/grok 误标 codex——分站归组不依赖它，按模型白名单，ADR-0003）
-- 新端点 `/data/fast-radar-history.json`（顶层 5 键 `schema_version/type/timezone/updated_at/runs`）：schema_version=1，runs[82]，run={run_id,measured_at,completed_at,cli_version,models:{sol|terra|luna:{standard|fast:{ttft_seconds,tps,e2e_seconds}}}}；页面内嵌同名 JSON（type=fast_radar_history）一致。**2026-09-08 增勘**：runs 增至 88；官网 UI 已切换「Astra medium」新 cohort（0 样本等待首次配对），JSON 仍为 sol/terra/luna 旧结构——**上游过渡态**，实现按新 cohort 语义核对（调研档案增勘节）
+- 新端点 `/data/fast-radar-history.json`（顶层 5 键 `schema_version/type/timezone/updated_at/runs`）：schema_version=1，runs[82]，run={run_id,measured_at,completed_at,cli_version,models:{sol|terra|luna:{standard|fast:{ttft_seconds,tps,e2e_seconds}}}}；页面内嵌同名 JSON（type=fast_radar_history）一致。**2026-09-08 增勘**：runs 增至 88；官网 UI 已切换「Astra medium」新 cohort（0 样本等待首次配对），JSON 仍为 sol/terra/luna 旧结构——**上游过渡态**，实现按新 cohort 语义核对（调研档案增勘节）。**2026-09-22 增勘**：**新旧格式并跑**——老格式 88 条（末条 2026-09-08 后停写）、新格式 31 条（逐 run 带 `model`/`effort`/`profile`/`batch_run_id`/`valid_pairs`/`sample_count`/`tps_available`/`tps_unavailable_reason` + `models.<key>{standard,fast}`，全 gpt-6-astra，跨 3 个 cli 版本字段一致，末条 2026-09-21）；`schema_version` 仍 1 未升版。新格式即活跃写入线（官网 Astra 加速数据源于此）——处置见 §5.3 v1.3 注记
 - 新端点 `/api/radar-insights`（2026-09-08 实测 29KB，schema 1，仅 Codex 站模型）：顶层 11 键 `benchmark_id/comprehensive_points/degradation_alerts/generated_at/mode/recommendation_mode/recommendations/schema/software_source_updated_at/source_updated_at/visual_source_updated_at`；`comprehensive_points[]`={model, effort(枚举 low/medium/high/xhigh/max/ultra), iq, software_iq, visual_iq, samples}；`recommendations[]`={key(如 daily_development), title, rule, items[]}，items={model, effort, iq, passed, samples, average_cost_usd, cost_samples, average_duration_minutes, duration_samples, combined_cost_index, rule}；`degradation_alerts`={rule, items[]}（items 实测可为空，元素字段全 Optional 容错）
 - 新端点 `/api/visual-spatial-reasoning`（777KB，schema 1）与 `/api/visual-spatial-reasoning-history`（4KB）：前者顶层 12 键 `benchmark_id(=pompeii-adjacency)/history/mode(=latest_valid_per_task)/points/runs_24h_total/runs_48h_total/runs_total/schema/score_label(=Adjacency F1)/scoring_mode(=continuous-macro)/source_updated_at/type(=visual_spatial_reasoning_summary)`，`points[]` **23 键** = {model, effort, passed, valid_tasks, benchmark_tasks, iq, score_mode, average_price_usd, price_samples, average_minutes, duration_samples, incomplete_cost_samples, average_agent_steps(可 null), agent_steps_samples, average_total_tokens(可 null), token_samples, cache_hit_rate, cache_token_samples, combined_cost_index, latest_graded_at, runs_24h, runs_48h, runs_total}；后者为 `"<model>@<effort>"` 键字典（实测 25 键），值 `[{ts, score, n}]`
 - `model-ratings?history=N`（**history 参数实际生效**，返回对应天窗）：顶层 15 键 `ok/day/timezone/refresh_seconds/updated_at/models/history/my_scores/my_score_records/window/window_hours/since/until/source/cached_at`
@@ -70,6 +71,8 @@
 - deng IQ 历史读取器（deng.codexradar.com，revision `codex-radar-rendered-iq-history-v1`）：**实质失效**——`data-iq-hours`(0)、`.iqcard.total-iq`(0) 消失；deng 已重建为「众测雷达」（2026-09-04 实测 865,607B，station-dashboard/site-overview/ticker 等新结构；`iq-body`(9)/`iq-range`(7)/`iqcard`(121) 部分残留；页面 `application/ld+json` 仅为 schema.org 站点元数据，全部 `/api/` 端点为 Bearer-token 提交流程（credential-protected，属排除域）→ **D9 确定落入「重写 v2」分支**）
 
 **v1.2 增勘（2026-09-20 实测，详录 `docs/ai-radar-upstream-recon-2026-09-20.md`）**：① **GPT-6 Astra 换代落地**——radar-insights / visual-spatial-reasoning / model-ratings / intelligence-efficiency 数据面均含 `gpt-6-astra`（effort 新增 `ultra` 档），model-ratings 组 6→7（新增 GPT-6 Astra）；`current.json` comparisons 仍 5.5/5.6 世代 11 键且 `monitored_at` 停更于 2026-09-14（上游主监控节奏，实现期留意）；② iem 数据面模型集 17→20（新增 gpt-6-astra、deepseek-v4.1-flash、dsh-deepseek-v4.1-flash、dsh-deepseek-v4-flash-vision-exp、gemini-3.8-flash、kimi-k2.8-preview）；③ 鹈鹕杯新板块（`/cup/` 活动页 + 主页 showcase，投票型、无公开读端点，处置见 §2 非目标）；④ **deng IQ 区以全新 DOM 契约复活**（匿名渲染探针坐实：70 数据格 / 20 harness 卡 / 252 个内嵌小时趋势点；旧 v1 标记 `data-iq-hours`/`.total-iq` 仍为 0——v1 退役判断不变，新契约另立读取器，见 ADR-0004/§6）；⑤ Fast 雷达官网 UI 与公开 JSON 脱节持续（JSON 仍 schema 1 sol/terra/luna、停更 2026-09-14；UI 已 Astra low/medium/high，见 §5.3 v1.2 注记）。**八个数据端点 schema/键集零漂移**，以上均为开放集内扩张与页面层变化。
+
+**v1.3 增勘（2026-09-22 实测，详录 `docs/ai-radar-upstream-recon-2026-09-22.md`）**：① **fast-radar-history.json 新旧格式并跑**（§1.1 本条增勘；新格式为活跃线，上轮「恢复条件」出现实测新事实，处置见 §5.3 v1.3 注记）；② **额度雷达 UI/JSON 脱节新出现**——官网 9/13 三档数值（Sol $1,919.83 / Astra $1,463.00 / Luna $1,145.10）服务端直出内嵌首页 HTML，current.json `model_iq.quota_radar.updated_at` 停在 2026-08-09（43 天）；③ **current.json 新鲜度分层**：`window` 块新鲜（2026-09-22T12:31:32+08:00 预告窗口当日真实开启，预告 vs 实开差 32 秒）、`monitored_at` 停 09-14（8 天）、comparisons 仍 5.5/5.6 世代无 astra（14+ 天）、`completion_observation=null`；④ `/api/cup` 首页有引用但实测 404「接口不存在」——鹈鹕杯无公开读端点前提复核维持；新公开 GET `/api/subscriber-count`（`{ok,count,source}`，count 4271，暂无消费场景，不接；配套 `/api/subscribe` 推定写操作，禁）；⑤ 首页 766,595B，头部新增 **EN 语言切换**（App 本地化处置见 §2 非目标）；⑥ **Kimi 不具备转正条件**——iem 中 `kimi-k2.8-preview` 仅 low 档 74 次真实运行，high/max 为 runs_total=1、iq=150 帽值噪声，上游站菜单仍「近期开放」；白名单核对集扩充候选：`grok-4.7`、`hy4-preview`、`k3`、`gemini-3.8-flash`、`deepseek-v4.1-flash`、`dsh-deepseek-v4-flash-vision-exp`（实现期实测核对，同 §5.0 注记 ⑥ 惯例）。**八个数据端点 schema/键集零漂移**（current.json 顶层与 `model_iq` 键集与 09-20 存档逐键一致）。
 
 ## 2. 目标 / 非目标
 
@@ -88,7 +91,8 @@
 - ~~不为 dsh/zcode/grok 实现真实数据适配器~~（**v1.1 废除**：上游已上线四预览站真实数据；转正形态 = 同一数据面 + 模型白名单视图站，无独立 sync 端点，见 ADR-0003/§4.1）
 - 不做跨源自建排名、组合分数或跨源指标对比（聚合站硬边界见 §4.1/D10）
 - 不做本地文案派生（Tibo 摘要等一律用上游自带字段原文，见 §4.2 行 7）
-- 不收录鹈鹕杯（**v1.2 新增**：`/cup/` 活动页为投票型活动、无公开读端点，App 只读边界下无可接数据面；社区入口链接化选项保留，待活动常态化再议）
+- 不收录鹈鹕杯（**v1.2 新增**：`/cup/` 活动页为投票型活动、无公开读端点，App 只读边界下无可接数据面；社区入口链接化选项保留，待活动常态化再议；**v1.3 复核 2026-09-22：首页 JS 引用 `/api/cup` 实测 404「接口不存在」，前提不变，维持不收录**）
+- 不做 App 英文本地化（**v1.3 新增**：上游站点头部新增 EN 切换属其自身国际化路线，不影响数据契约；App 中文界面维持，有真实需求再立项）
 
 ## 3. 决策记录
 
@@ -155,7 +159,7 @@
 | 2. 站长推荐链接卡 + 降智预警（语义强调卡）+ **预测卡**（`prediction` 6 键：24/48h 概率 + 摘要，字段缺失时隐藏）+ **v1.1：站长推荐结构化卡（§5.6，原文转存展示）与 degradation_alerts 结构化卡（与渲染卡并存互不替代）** | 原 Overview 内降智预警区升级；推荐/预测为新增卡（D4/§5.1）；v1.1 两卡见 §5.6 |
 | 3. 效能 PK（intelligence-efficiency） | **「智力中心」目的地取消**；其 5 面板去向：CostVersusIQ/EfficiencyMatrix/ScenarioRecommendations → 效能 PK 页（3 个）；HistoryComparisonPanel → 历史对比页（行 6）；IQHistorySmallMultiplesPanel（**纯本地拟合数据，不含官方曲线**）→ 历史对比页（行 6） |
 | 4. 额度雷达（含 10 天 trend 图 + quota_check/quota_calibration 详情） | 原 Overview 内额度区升级扩容 |
-| 5. Fast 雷达（当前对比 + 82 run 历史 + **月份计数表**：runs 按 `measured_at` 所在月份分桶计数，列=月份、值=run 数，**按月升序、缺月补零列**）**v1.2：过渡态页面隐藏（§5.3 注记），不实现导航入口** | 全新页面 |
+| 5. Fast 雷达（当前对比 + 82 run 历史 + **月份计数表**：runs 按 `measured_at` 所在月份分桶计数，列=月份、值=run 数，**按月升序、缺月补零列**）**v1.2：过渡态页面隐藏（§5.3 注记）→ v1.3：解除隐藏、恢复导航入口（§5.3 v1.3 注记，拍板 2026-09-22）** | 全新页面 |
 | 6. 历史对比（history comparison + 本地 IQ small multiples） | HistoryComparisonPanel + IQHistorySmallMultiplesPanel 归入（见行 3）；官方 24h 曲线不在此页（在行 1） |
 | 7. Tibo 雷达（reset 时段分布 + presence 卡；**数据仅来自 current.json `tibo_presence` 归一化字段，与渲染读取器无关**） | 全新页面。「动态摘要」= 上游自带摘要字段（`evidence_summary_zh/en`）**原文展示**，无则不展示，不做本地语句拼接；`safety_note_zh` 优先、`safety_note_en` 兜底；`should_display=false` 时整卡隐藏（含 safety_note）；隐私语义见 D13 |
 | 8. 工具组：决策透镜 / 趋势 / 来源状态 / 导出 | 四个既有目的地**原样保留**，集中置于主轴之后 |
@@ -165,6 +169,7 @@
 - 原「智力中心」路由下线需同步 `WorkspaceRouting` 契约测试与 design-qa 路由矩阵
 - §6 deng 渲染读取器的展示归宿 = 行 1 的官网 24h IQ 趋势卡（官方曲线唯一挂载点）
 - **空态策略（P1 适用）**：所有新组件必须实现并验收 nil-data 空态（每组件至少 1 个 nil-data 单测）；公告横幅 snapshot 缺失时不占位渲染；新面板的种子状态 + 种子截图验收在 P2 各项执行（§9 P2）
+- **v1.3 注记（数据年龄标注，拍板 2026-09-22）**：current.json 数据新鲜度分层实测（§1.1 v1.3 增勘 ③：window 新鲜 / `monitored_at` 8 天 / `quota_radar` 43 天 / comparisons 滞后一代）——App 侧做**统一数据年龄标注**：一处 UI 逻辑，覆盖额度雷达、comparisons、monitored_at 等陈旧字段，口径 = 字段/数据集自身 updated_at 与当前时刻的间隔（**数据年龄**，术语见 CONTEXT.md），区分「上游仍在写、只是慢」与「上游疑似弃维护」两种陈旧；标注只读、不引入本地推断（D13 同级红线）。**不上额度渲染读取器**（额度数据月更级频率，渲染读取器为最后手段，成本收益不成立；脱节事实记录于 §1.1 v1.3 增勘 ②，若上游数据面恢复承载最新额度值，以实测为准回归常态路径）
 
 ## 5. 数据面（Codex 站）
 
@@ -206,7 +211,7 @@ MIME/重定向政策、UA、超时沿用现有 `HTTPTransport`；署名串逐字
 
 ### 5.3 FastRadarHistory 适配器（全新）
 
-`/data/fast-radar-history.json` schema v1（§1.1 全键）；派生指标（fast vs standard 的 ΔTTFT/ΔTPS/ΔE2E 倍率）入 DerivedMetrics 层——**新建独立入口类型与 evaluate 函数**，勿复用语义为 per-passed-task 比值的 `DerivedMetricFormula`。新实体 `FastRadarRunEntity`：**每 sync 按 dataset fingerprint 整体替换（不跨 sync 累积），本地不无界增长**，配替换/不累积正负向测试（§10）。支撑 Fast 雷达页（当前对比卡 + 82 run 历史 + 月份计数表，§4.2 行 5）。**v1.2 注记（Fast 雷达过渡态，拍板 2026-09-20）**：官网 UI 已切 Astra cohort 而公开 JSON 仍 schema 1 sol/terra/luna（114 runs，停更 2026-09-14，脱节持续 12+ 天）——本适配器契约**维持不变、sidecar 同步继续**；Fast 雷达页**从导航/路由隐藏**（§4.2 行 5，不实现导航入口）；恢复条件 = 上游 JSON 切换新结构并经实测冻结新契约（**以实测为准，不猜契约**）。
+`/data/fast-radar-history.json` schema v1（§1.1 全键）；派生指标（fast vs standard 的 ΔTTFT/ΔTPS/ΔE2E 倍率）入 DerivedMetrics 层——**新建独立入口类型与 evaluate 函数**，勿复用语义为 per-passed-task 比值的 `DerivedMetricFormula`。新实体 `FastRadarRunEntity`：**每 sync 按 dataset fingerprint 整体替换（不跨 sync 累积），本地不无界增长**，配替换/不累积正负向测试（§10）。支撑 Fast 雷达页（当前对比卡 + 82 run 历史 + 月份计数表，§4.2 行 5）。**v1.2 注记（Fast 雷达过渡态，拍板 2026-09-20）**：官网 UI 已切 Astra cohort 而公开 JSON 仍 schema 1 sol/terra/luna（114 runs，停更 2026-09-14，脱节持续 12+ 天）——本适配器契约**维持不变、sidecar 同步继续**；Fast 雷达页**从导航/路由隐藏**（§4.2 行 5，不实现导航入口）；恢复条件 = 上游 JSON 切换新结构并经实测冻结新契约（**以实测为准，不猜契约**）。**v1.3 注记（Fast 雷达恢复，拍板 2026-09-22）**：恢复条件实测满足——新格式（逐 run 带 `model`/`effort`/`profile`，31 条全 gpt-6-astra、跨 3 个 cli 版本字段一致、末条 2026-09-21）已是活跃写入线，官网 Astra 加速数据即源于此（§1.1 增勘）。实现**双格式容错解析**：老格式（sol/terra/luna 三件套）与新格式并存解码、未知字段全 Optional 容错、**不做封闭 enum**；页面**解除隐藏、恢复导航入口**（§4.2 行 5）——新格式按 effort 档位展示 fast/standard 加速比，老格式历史与月份计数表保留；`schema_version` 升版或老格式被清除时按实测再冻结契约（仍**不猜契约**）。
 
 ### 5.4 ModelRatings 升级
 
@@ -334,6 +339,7 @@ R1–R5 审定后，原「开放项」全部收敛为已决：
 
 - 快照（2026-09-04）：codexradar.com 首页 HTML（679,867B，动态波动）、current.json（94,723B，schema 2.0）、model-ratings（41,516B，27 模型/6 组）、deng.codexradar.com（865,607B）、intelligence-efficiency.json（4.07MB，history 249 条）、fast-radar-history.json（82 runs）
 - 快照（2026-09-08，v1.1）：codexradar.com 各 station 页（SSR + 内联脚本，DSH/ZCode/Grok/聚合四预览站均带真实数据）、current.json（94,713B，window.status=`community_confirmed`）、radar-insights（29KB，schema 1）、intelligence-efficiency-metrics（公开 GET，schema 2/3）、visual-spatial-reasoning（777KB）+ -history（4KB）、fast-radar-history.json（88 runs，官网 UI 已切 Astra medium 新 cohort 过渡态）、deng.codexradar.com（887KB，`iq-body` 空壳 ×1）；关键实测：station 参数纯前端裁剪、`/api/*` 公开无凭据、deng 无结构化 IQ 数据岛（维持）；详见 `docs/ai-radar-upstream-recon-2026-09-08.md`（含晚间增勘节）
+- 快照（2026-09-22，v1.3）：current.json（94,716B，window 2026-09-22T12:31 开启、monitored_at 停 09-14、quota_radar 停 08-09、comparisons 仍 11 键无 astra）、radar-insights（29KB，schema 1，5 模型含 astra）、intelligence-efficiency.json（7.38MB，模型 21/points 72/history 361）、visual-spatial-reasoning（1.64MB，points 25）、model-ratings（50KB，33 模型 7 组）、fast-radar-history.json（119 runs = 老格式 88 末条 09-08 + 新格式 31 全 astra 末条 09-21）、deng 未渲染壳（937,533B，iq-body 标记同 09-20、无 v1 契约复活）、首页 HTML（766,595B，EN 切换）、`/api/cup` 404、`/api/subscriber-count` {ok,count:4271,cached}；详见 `docs/ai-radar-upstream-recon-2026-09-22.md`
 - 关键实测：station 参数被 JSON 端点忽略；`?station=aggregate` 与首页字节级相同；非 Codex 站为预览占位；`model-ratings?history=N` 生效；ie.json `source/metrics_source` 指向 `api.codexradar.com`；两新端点 JSON 无内嵌 attribution 要求；deng 无结构化 IQ 数据岛
 - 本地契约检查计数见 §1.1「渲染读取器契约存活状态」；token 表经 R1 逐值复核；代码落点（sidecar 先例与在线门控、transport 上限常量、AppEnvironment 时序、测试硬断言清单 19 文件、无 runtime 旁路七改造点、bundle ID/偏好/登录项链路、raw-sample prune 策略、fixtureNames 位置、revision 字面量触点）经 R1–R5 逐项核实
 
