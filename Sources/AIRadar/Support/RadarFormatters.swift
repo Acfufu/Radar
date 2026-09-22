@@ -20,4 +20,22 @@ enum RadarFormat {
     static func date(_ value: Date?) -> String {
         value?.formatted(date: .abbreviated, time: .shortened) ?? "无可用时间"
     }
+
+    /// Relative age ("8天前"/"8 days ago") for data-age annotations
+    /// (spec §4.2 v1.3 note). Locale-driven; never invented locally.
+    static func relativeTime(_ value: Date, now: Date = Date()) -> String {
+        RelativeDateTimeFormatter().localizedString(for: value, relativeTo: now)
+    }
+
+    /// Tolerant upstream ISO-8601 parse: current.json carries fractional
+    /// seconds ("…T13:05:52.704532+08:00") while other fields do not.
+    static func parseUpstreamTimestamp(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) { return date }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
+    }
 }

@@ -109,6 +109,74 @@ struct StationStatusDot: View {
     }
 }
 
+/// Data age annotation (spec §4.2 v1.3 note): how old an upstream field or
+/// dataset is by its own `updated_at` — deliberately distinct from the sync
+/// channel's freshness (a fresh channel can still serve a stalled upstream
+/// field, e.g. `quota_radar`). Read-only labeling; never infers or
+/// substitutes data (D13 sibling red line). Threshold reuses
+/// `SyncPolicy.staleInterval` — no new constants.
+struct DataAgeBadge: View {
+    struct Content: Equatable, Sendable {
+        let label: String
+        let updatedAt: Date?
+        /// Whether the serving sync channel itself is fresh — distinguishes
+        /// 「上游在写、只是慢」 from a stalled field the channel still carries.
+        let channelFresh: Bool
+        let staleAfter: TimeInterval
+        let now: Date
+
+        init(
+            label: String,
+            updatedAt: Date?,
+            channelFresh: Bool,
+            staleAfter: TimeInterval = SyncPolicy().staleInterval,
+            now: Date
+        ) {
+            self.label = label
+            self.updatedAt = updatedAt
+            self.channelFresh = channelFresh
+            self.staleAfter = staleAfter
+            self.now = now
+        }
+
+        var level: StationStatusLevel {
+            guard let updatedAt else { return .muted }
+            return now.timeIntervalSince(updatedAt) <= staleAfter ? .fresh : .stale
+        }
+
+        /// Wording for a known timestamp; the view renders nothing when
+        /// `updatedAt` is nil so this never sees a missing date.
+        func wording(updatedAt: Date, relative: String) -> String {
+            switch (now.timeIntervalSince(updatedAt) <= staleAfter, channelFresh) {
+            case (true, _):
+                return "\(label) · 更新于 \(relative)"
+            case (false, true):
+                return "\(label) · 上游 \(relative)未更新（同步正常）"
+            case (false, false):
+                return "\(label) · 最后更新 \(relative)（本地同步同样滞后）"
+            }
+        }
+    }
+
+    @Environment(\.radarPalette) private var palette
+    let content: Content?
+
+    var body: some View {
+        if let content, let updatedAt = content.updatedAt {
+            HStack(spacing: 6) {
+                StationStatusDot(level: content.level, diameter: 7)
+                Text(content.wording(
+                    updatedAt: updatedAt,
+                    relative: RadarFormat.relativeTime(updatedAt, now: content.now)
+                ))
+                .font(.caption2)
+                .foregroundStyle(palette.secondaryText.color)
+                .monospacedDigit()
+            }
+        }
+    }
+}
+
 /// Star rating matrix (spec §5.4, read-only; upstream submission stays a link).
 /// Rows are model groups; columns are arbitrary labeled buckets (24h / 7-day
 /// days). Cells render a 0-5 star fill with a count suffix.

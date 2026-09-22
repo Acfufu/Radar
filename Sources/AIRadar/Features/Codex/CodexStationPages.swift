@@ -20,6 +20,15 @@ struct CodexSpeedOverviewPage: View {
                 // Spec §4.2: announcement banner renders only when the
                 // upstream window snapshot exists.
                 AnnouncementBanner(content: bannerContent)
+                // Spec §4.2 v1.3 note: the primary monitor's own age —
+                // current.json's window block stays fresh while
+                // `monitored_at` can stall upstream.
+                DataAgeBadge(content: DataAgeBadge.Content(
+                    label: "主监控",
+                    updatedAt: RadarFormat.parseUpstreamTimestamp(projection.stationStatus?.monitoredAt),
+                    channelFresh: projection.benchmarkState == .fresh,
+                    now: Date()
+                ))
                 OverviewView(
                     projection: projection,
                     history: history,
@@ -57,6 +66,14 @@ struct CodexSpeedOverviewPage: View {
         VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
             VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
                 ViewHeader(title: "模型档位详情", subtitle: "来源内模型配置与本地指标")
+                // Spec §4.2 v1.3 note: comparisons dataset age (the
+                // benchmark plane's own updated_at).
+                DataAgeBadge(content: DataAgeBadge.Content(
+                    label: "对比数据",
+                    updatedAt: projection.updatedAt,
+                    channelFresh: projection.benchmarkState == .fresh,
+                    now: Date()
+                ))
                 ModelListView(projection: projection, history: history)
             }
             // Spec §5.4: star rating matrix (P2④), nil-data safe.
@@ -399,6 +416,15 @@ struct CodexQuotaRadarPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(title: "额度雷达", subtitle: "来源账户额度估算；非个人用量（source-account estimate）")
+                // Spec §4.2 v1.3 note: the quota field's own updated_at age —
+                // current.json's copy has drifted from the site UI before,
+                // so the badge makes the field staleness visible.
+                DataAgeBadge(content: DataAgeBadge.Content(
+                    label: "额度数据",
+                    updatedAt: projection.sync?.sourceStatus.value?.sourceUpdatedAt,
+                    channelFresh: projection.sourceStatusState == .fresh,
+                    now: Date()
+                ))
                 if let estimates = projection.sync?.sourceStatus.value?.quotaEstimates, !estimates.isEmpty {
                     ForEach(estimates, id: \.windowLabel) { quota in
                         HStack {
@@ -613,6 +639,14 @@ struct CodexHistoryComparisonPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(title: "历史对比", subtitle: "本地快照历史与 IQ 小倍数视图")
+                // Spec §4.2 v1.3 note: comparisons dataset age, same source
+                // as the speed-overview badge (benchmark plane updated_at).
+                DataAgeBadge(content: DataAgeBadge.Content(
+                    label: "对比数据",
+                    updatedAt: projection.updatedAt,
+                    channelFresh: projection.benchmarkState == .fresh,
+                    now: Date()
+                ))
                 CodexHistoryComparisonPanel(
                     current: projection.sync?.benchmark.value,
                     history: history,
