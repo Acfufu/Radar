@@ -64,4 +64,13 @@ struct DataAgeBadgeTests {
         #expect(RadarFormat.parseUpstreamTimestamp(nil) == nil)
         #expect(RadarFormat.parseUpstreamTimestamp("not-a-date") == nil)
     }
+
+    @Test("relative age clamps a slightly-future timestamp to the present")
+    func relativeTimeClampsFutureSkew() {
+        let future = now.addingTimeInterval(5)
+        let text = RadarFormat.relativeTime(future, now: now)
+        #expect(!text.contains("后"))
+        let past = RadarFormat.relativeTime(now.addingTimeInterval(-60), now: now)
+        #expect(past != text)
+    }
 }

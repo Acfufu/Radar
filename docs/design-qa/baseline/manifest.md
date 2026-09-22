@@ -67,3 +67,23 @@ since P1; Fast 雷达 hidden from navigation since v1.2).
   (light/dark) / ZCode (light) / Grok (dark) 效能排行 single pages with their
   众测 IQ cards; Claude Code overview with crowdtest card (light);
   MenuBarExtra surface (light).
+
+## v0.5.0 supplement matrix (2026-09-23, goal `v050-implementation`)
+
+- Build: `./Scripts/build-app.sh debug`; `RADAR_FIXTURE_MODE=ui`,
+  `RADAR_UI_STATE=fresh`, `RADAR_UI_SOURCE=codex-radar`; theme via isolated-HOME
+  `defaults write com.acfufu.ClaudeRadar appearance -string 亮色|暗色`; launch
+  the binary directly (env array, never `${var:+K=V}` word-splitting), activate
+  via System Events, `screencapture -x -R<bounds>`.
+- Scroll: CGEvent line-scroll tool at window centre (`/tmp/airadar-tools/`,
+  15–75 ticks ≈ page-depth dependent; Page Down key does NOT scroll the
+  SwiftUI ScrollView). AX-guided closed-loop scrolling proved flaky — the
+  comparisons badge on the speed overview is additionally AX-verified
+  (「对比数据 · 更新于 …」 found in the tree) and captured on the 历史对比
+  page instead (same component, same `projection.updatedAt` source).
+- Files (7): Fast 雷达 restored light/dark (sidebar entry + gpt-6-astra ·
+  effort row + mixed history rows); 额度雷达 light (「额度数据」data-age
+  badge); 概览 light (「主监控」badge, amber upstream-stall wording); 概览
+  scrolled dark (capability tabs + 众测 IQ card re-shoot); 历史对比 dark
+  (「对比数据」badge); 预警与推荐 light (rendered + structured cards
+  re-shoot). No version-bearing UI in any shot (captured pre-version-bump).

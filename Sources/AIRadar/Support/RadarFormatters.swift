@@ -22,9 +22,12 @@ enum RadarFormat {
     }
 
     /// Relative age ("8天前"/"8 days ago") for data-age annotations
-    /// (spec §4.2 v1.3 note). Locale-driven; never invented locally.
+    /// (spec §4.2 v1.3 note). Locale-driven; never invented locally. Clamps
+    /// slightly into the past so a future/fresh-now timestamp (seed skew,
+    /// clock drift, zero interval) never reads as "X 后".
     static func relativeTime(_ value: Date, now: Date = Date()) -> String {
-        RelativeDateTimeFormatter().localizedString(for: value, relativeTo: now)
+        RelativeDateTimeFormatter()
+            .localizedString(for: min(value, now.addingTimeInterval(-1)), relativeTo: now)
     }
 
     /// Tolerant upstream ISO-8601 parse: current.json carries fractional
