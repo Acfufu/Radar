@@ -93,16 +93,16 @@ enum WorkspaceDestination: String, CaseIterable, Identifiable, Sendable {
             [.overview, .decisionLens, .models, .trends, .sourceStatus, .export]
         case .codexRadar:
             // Spec §4.2 main axis: speed overview (row 1, includes the row-2
-            // alert/recommendation cards), efficiency PK, quota radar,
-            // history comparison, Tibo radar, then the tool group; community
-            // hub closes the axis. The former intelligence center
-            // destination is retired (spec §4.2 row 3). Fast radar is hidden
-            // from navigation since v1.2 (spec §5.3 note): the page code and
-            // sidecar sync stay, but no nav entry exists while the upstream
-            // JSON lags the Astra UI cohort.
+            // alert/recommendation cards), efficiency PK, quota radar, fast
+            // radar, history comparison, Tibo radar, then the tool group;
+            // community hub closes the axis. The former intelligence center
+            // destination is retired (spec §4.2 row 3). Fast radar returned
+            // to navigation in v1.3 (spec §5.3 note): the upstream JSON now
+            // carries an active per-model shape (gpt-6-astra runs), so the
+            // v1.2 hiding condition no longer holds.
             [
                 .overview, .alertsRecommendations, .efficiencyPK, .quotaRadar,
-                .historyComparison, .tiboRadar, .communityHub,
+                .fastRadar, .historyComparison, .tiboRadar, .communityHub,
                 .decisionLens, .trends, .sourceStatus, .export,
             ]
         case .sweBenchVerified:

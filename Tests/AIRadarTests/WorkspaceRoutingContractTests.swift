@@ -16,11 +16,12 @@ struct WorkspaceRoutingContractTests {
         #expect(model.defaultDestination(for: .sweBenchVerified) == .models)
         #expect(model.destinations(for: .claudeCodeRadar) == [.overview, .decisionLens, .models, .trends, .sourceStatus, .export])
         // Spec §4.2 Codex main axis; intelligence center retired.
-        // v1.2 (spec §5.3): Fast radar is hidden from navigation; the page
-        // and sidecar sync remain.
+        // v1.3 (spec §5.3): Fast radar returned to navigation — the upstream
+        // JSON now carries an active per-model shape, so the v1.2 hiding
+        // condition no longer holds.
         #expect(model.destinations(for: .codexRadar) == [
             .overview, .alertsRecommendations, .efficiencyPK, .quotaRadar,
-            .historyComparison, .tiboRadar, .communityHub,
+            .fastRadar, .historyComparison, .tiboRadar, .communityHub,
             .decisionLens, .trends, .sourceStatus, .export,
         ])
         #expect(model.destinations(for: .sweBenchVerified) == [.models, .sourceStatus, .export])

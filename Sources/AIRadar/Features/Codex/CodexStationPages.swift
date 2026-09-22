@@ -474,6 +474,11 @@ struct CodexFastRadarPage: View {
                     comparisonRow(comparison, run: latest)
                     Divider().overlay(palette.divider.color)
                 }
+                if latest?.tpsAvailable == false {
+                    Text("TPS 不可用（\(latest?.tpsUnavailableReason ?? "—")）——TPS 列不代换，仅 TTFT / E2E 参与对比。")
+                        .font(.caption2)
+                        .foregroundStyle(palette.secondaryText.color)
+                }
             }
             if let timezone = dataset.timezone {
                 Text("时区：\(timezone)")
@@ -502,7 +507,14 @@ struct CodexFastRadarPage: View {
     private func comparisonRow(_ comparison: FastRadarTierComparison, run: FastRadarHistoryDataset.FastRadarRun?) -> some View {
         let tier = comparison.tier
         return HStack {
-            Text(comparison.model).frame(minWidth: 64, alignment: .leading)
+            HStack(spacing: 6) {
+                Text(comparison.model)
+                if let effort = comparison.effort {
+                    Text("· \(effort)")
+                        .foregroundStyle(palette.secondaryText.color)
+                }
+            }
+            .frame(minWidth: 64, alignment: .leading)
             Text(pair(tier.standard?.ttftSeconds, tier.fast?.ttftSeconds, suffix: " s")).frame(width: 150, alignment: .trailing).monospacedDigit()
             Text(ratio(comparison.ttftRatio)).frame(width: 64, alignment: .trailing).monospacedDigit()
             Text(pair(tier.standard?.tps, tier.fast?.tps)).frame(width: 150, alignment: .trailing).monospacedDigit()
@@ -545,6 +557,9 @@ struct CodexFastRadarPage: View {
         .radarPanel()
     }
 
+    /// History rows render both coexisting run shapes (spec §5.3 v1.3):
+    /// legacy trio rows keep the sol/terra/luna E2E columns; per-model rows
+    /// show a model·effort badge with its single tier pair instead.
     private func historyRow(_ run: FastRadarHistoryDataset.FastRadarRun) -> some View {
         func e2e(_ tier: FastRadarHistoryDataset.FastRadarRun.Tier?) -> String {
             guard let standard = tier?.standard?.e2eSeconds, let fast = tier?.fast?.e2eSeconds else { return "—" }
@@ -554,9 +569,19 @@ struct CodexFastRadarPage: View {
             Text(run.runID ?? "—").frame(minWidth: 128, alignment: .leading)
             Text(run.measuredAt ?? "—").frame(width: 170, alignment: .leading)
             Text(run.cliVersion ?? "—").frame(width: 76, alignment: .leading)
-            Text(e2e(run.models?["sol"])).frame(width: 130, alignment: .trailing).monospacedDigit()
-            Text(e2e(run.models?["terra"])).frame(width: 130, alignment: .trailing).monospacedDigit()
-            Text(e2e(run.models?["luna"])).frame(width: 130, alignment: .trailing).monospacedDigit()
+            if run.model == nil {
+                Text(e2e(run.models?["sol"])).frame(width: 130, alignment: .trailing).monospacedDigit()
+                Text(e2e(run.models?["terra"])).frame(width: 130, alignment: .trailing).monospacedDigit()
+                Text(e2e(run.models?["luna"])).frame(width: 130, alignment: .trailing).monospacedDigit()
+            } else {
+                Text([run.displayModel, run.effort].compactMap { $0 }.joined(separator: " · "))
+                    .frame(minWidth: 130, alignment: .leading)
+                Text(e2e(run.models.flatMap { $0.keys.sorted().first }.flatMap { run.models?[$0] }))
+                    .frame(width: 130, alignment: .trailing).monospacedDigit()
+                Text(run.tpsAvailable == false ? "TPS 不可用" : "")
+                    .font(.caption2)
+                    .foregroundStyle(palette.secondaryText.color)
+            }
         }
         .font(.caption)
         .padding(.vertical, 5)
