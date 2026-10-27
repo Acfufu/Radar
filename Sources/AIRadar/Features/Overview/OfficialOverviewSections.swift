@@ -21,7 +21,11 @@ struct OfficialOverviewSections: View {
     }
 
     @ViewBuilder private var officialWarnings: some View {
-        if let warning = projection.renderedWarningPresentation {
+        // ADR-0005 soft retirement: the rendered-warning card stays hidden
+        // while `CodexRenderedWarningSoftRetire.isActive`; the JSON
+        // (radar-insights) alerts path keeps carrying the data plane.
+        if let warning = projection.renderedWarningPresentation,
+           !CodexRenderedWarningSoftRetire.isActive {
             radarOverviewSection("Codex Radar 官网降智预警") {
                 VStack(alignment: .leading, spacing: 12) {
                     Label(warning.stateMessage, systemImage: warningStateIcon(warning.state))

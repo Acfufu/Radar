@@ -1,5 +1,19 @@
 import Foundation
 
+/// ADR-0005 (soft retirement, 2026-09-25; re-affirmed 2026-10-27 after the
+/// re-probe measured the server-side markers shrinking 2/4/2 → 2/1/1,
+/// closing the thaw-as-is path for now): the rendered degradation-warning
+/// reader is soft-retired. Production scheduling stops at the app entry
+/// (no reader factory injected) and the rendered-warning UI card is hidden
+/// behind this gate. The reader/parser/coordinator, the frozen
+/// `codex-radar-rendered-dom-v2` contract, fixtures and tests are all kept
+/// intact for unfreeze. Revival paths: (1) thaw as-is — re-add the factory
+/// line and flip `isActive`; (2) re-freeze on a newly measured contract;
+/// (3) upgrade to hard retirement per the ADR-0002 checklist precedent.
+enum CodexRenderedWarningSoftRetire {
+    static let isActive = true
+}
+
 struct CodexRenderedWarningPresentation: Equatable, Sendable {
     enum State: String, CaseIterable, Equatable, Sendable {
         case loading

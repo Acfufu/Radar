@@ -122,6 +122,45 @@ struct RadarAppRuntimeTests {
     }
 
     @MainActor
+    @Test("soft-retired rendered warnings: production shape (no reader factory) never schedules and preserves LKG (ADR-0005)")
+    func softRetiredRenderedWarningsPreserveLKG() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "RadarAppRuntimeTests-SoftRetire-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = AppEnvironment(
+            dataRoot: root,
+            fixtureMode: .disabled,
+            onlineSourceEnabled: false
+        )
+        let repository = RadarRepository(
+            container: try environment.makeModelContainer(),
+            metadataStore: SyncMetadataStore(root: root)
+        )
+        let cached = try runtimeWarning(capturedAt: Date(timeIntervalSince1970: 100))
+        _ = try await repository.insertRenderedWarning(cached)
+        let metadataBefore = try await repository.metadata(sourceID: .codexRadar, datasetType: .renderedWarnings)
+
+        // Production shape since ADR-0005: the app entry injects no warning
+        // reader factory, so no coordinator is created and scheduling never
+        // runs — while the seeded LKG rows stay untouched in the store.
+        let runtime = RadarAppRuntime(
+            environment: environment,
+            sourceID: .codexRadar
+        )
+
+        await runtime.start()
+
+        #expect(runtime.renderedWarningProjection == nil)
+        #expect(runtime.renderedWarningHistory.isEmpty)
+        let history = try await repository.renderedWarningHistory(sourceID: .codexRadar)
+        #expect(history.count == 1)
+        #expect(history.first?.cards == cached.cards)
+        let metadataAfter = try await repository.metadata(sourceID: .codexRadar, datasetType: .renderedWarnings)
+        #expect(metadataAfter == metadataBefore)
+        await runtime.stop()
+    }
+
+    @MainActor
     @Test("Codex startup reads warnings while warning failure leaves primary sync green")
     func codexWarningFailureDoesNotCorruptPrimaryProjection() async throws {
         let root = FileManager.default.temporaryDirectory

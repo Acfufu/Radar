@@ -101,7 +101,12 @@ struct AlertsRecommendationsPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(title: "预警与推荐", subtitle: "官网预警、站长推荐与重置预测；口径独立并标注来源")
-                degradationCard
+                // ADR-0005 soft retirement: rendered warning card hidden while
+                // `CodexRenderedWarningSoftRetire.isActive`; the structured
+                // (radar-insights) card below keeps carrying the data plane.
+                if !CodexRenderedWarningSoftRetire.isActive {
+                    degradationCard
+                }
                 // v1.1 (spec §5.6): structured alerts + recommendations from
                 // the radar-insights sidecar; they coexist with the rendered
                 // warning card and the D4 link card — never replacing them.

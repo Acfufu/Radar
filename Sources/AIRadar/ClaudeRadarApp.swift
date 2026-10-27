@@ -37,7 +37,6 @@ struct ClaudeRadarApp: App {
                 metadataStore: metadataStore,
                 exportArchiver: exportArchiver,
                 refreshIntervalMinutes: settings.refreshIntervalMinutes,
-                renderedWarningReaderFactory: { CodexRenderedWarningPageReader() },
                 intelligenceEfficiencyReaderFactory: {
                     IntelligenceEfficiencyAdapter.production(dataRoot: environment.dataRoot)
                 },

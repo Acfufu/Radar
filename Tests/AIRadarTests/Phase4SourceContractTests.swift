@@ -198,6 +198,22 @@ struct Phase4SourceContractTests {
         #expect(notices.contains("persists or exports only bounded normalized warning fields"))
     }
 
+    @Test("rendered warnings soft-retire: scheduling stopped at the app entry and card mounts gated (ADR-0005)")
+    func renderedWarningsSoftRetireGate() throws {
+        // ADR-0005: production scheduling stops at the only factory
+        // injection point; the runtime machinery, frozen v2 contract,
+        // fixtures and reader tests all stay for unfreeze (one-line thaw).
+        let app = try text("Sources/AIRadar/ClaudeRadarApp.swift")
+        #expect(!app.contains("renderedWarningReaderFactory"))
+        let presentation = try text("Sources/AIRadar/Features/Workspace/CodexRenderedWorkspacePresentation.swift")
+        #expect(presentation.contains("enum CodexRenderedWarningSoftRetire"))
+        #expect(presentation.contains("static let isActive = true"))
+        #expect(presentation.contains("ADR-0005"))
+        let alertsPage = try text("Sources/AIRadar/Features/Codex/CodexStationPages.swift")
+        #expect(alertsPage.contains("!CodexRenderedWarningSoftRetire.isActive"))
+        let overview = try text("Sources/AIRadar/Features/Overview/OfficialOverviewSections.swift")
+        #expect(overview.contains("!CodexRenderedWarningSoftRetire.isActive"))
+    }
 
     private func text(_ relative: String) throws -> String {
         try String(contentsOf: root.appending(path: relative), encoding: .utf8)
