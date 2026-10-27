@@ -258,7 +258,7 @@ struct IntelligenceEfficiencyDatasetTests {
         #expect(samples.first?.outcome == .success)
     }
 
-    @Test("adapter enforces status, MIME, and the 8MiB caps")
+    @Test("adapter enforces status, MIME, and the 16MiB caps")
     func adapterRejections() async throws {
         let (_, storeRoot) = try makeRepository()
         defer { try? FileManager.default.removeItem(at: storeRoot) }
@@ -298,7 +298,7 @@ struct IntelligenceEfficiencyDatasetTests {
             #expect(error.kind == .mime)
         }
 
-        #expect(IntelligenceEfficiencyAdapter.maximumResponseBytes == 8 * 1_024 * 1_024)
+        #expect(IntelligenceEfficiencyAdapter.maximumResponseBytes == 16 * 1_024 * 1_024)
     }
 
     @Test("type-mismatch payload records a validation-failed sample")

@@ -17,9 +17,13 @@ actor IntelligenceEfficiencyAdapter: IntelligenceEfficiencyReading {
     static let endpoint = URL(string: "https://codexradar.com/data/intelligence-efficiency.json")!
 
     /// Spec §5.0/§10: the sidecar uses a dedicated transport instance and
-    /// both the transport cap and the source-level cap are 8MiB (the payload
-    /// measured ~4.1MiB on 2026-09-04 and keeps growing).
-    static let maximumResponseBytes = 8 * 1_024 * 1_024
+    /// both the transport cap and the source-level cap are aligned. 16MiB
+    /// since the 2026-10-27 recon (spec §5.0 v1.4, grill G2): the payload
+    /// measured 9,695,083B — past the original 8MiB — with zero key drift;
+    /// the cap aligns with the SWE-bench precedent. The Fast-Radar sidecar
+    /// keeps its own independent 8MiB cap (measured ~313KB) — the two caps
+    /// are per-adapter constants, not a shared ceiling.
+    static let maximumResponseBytes = 16 * 1_024 * 1_024
 
     nonisolated let sourceID: RadarSourceID
     private let transport: any HTTPTransport
@@ -34,7 +38,7 @@ actor IntelligenceEfficiencyAdapter: IntelligenceEfficiencyReading {
         self.rawSampleStore = rawSampleStore
     }
 
-    /// Production wiring used by the app: dedicated 8MiB transport plus the
+    /// Production wiring used by the app: dedicated 16MiB transport plus the
     /// shared raw-sample store (existing per-source prune applies, spec §5.0).
     static func production(dataRoot: URL) -> IntelligenceEfficiencyAdapter {
         IntelligenceEfficiencyAdapter(

@@ -105,10 +105,11 @@ struct Phase4SourceContractTests {
     @Test("intelligence-efficiency sidecar endpoint and forbidden-domain contract")
     func efficiencySidecarBoundaryContract() throws {
         let adapter = try text("Sources/AIRadar/Sources/CodexRadar/IntelligenceEfficiencyAdapter.swift")
-        // Fixed endpoint + dedicated 8MiB transport set at both sites
-        // (transport cap and source-level cap, spec §5.0/§10).
+        // Fixed endpoint + dedicated 16MiB transport set at both sites
+        // (transport cap and source-level cap, spec §5.0/§10; raised from
+        // 8MiB by the 2026-10-27 recon, grill G2 — measured 9.7MB payload).
         #expect(adapter.contains("URL(string: \"https://codexradar.com/data/intelligence-efficiency.json\")!"))
-        #expect(adapter.contains("static let maximumResponseBytes = 8 * 1_024 * 1_024"))
+        #expect(adapter.contains("static let maximumResponseBytes = 16 * 1_024 * 1_024"))
         #expect(adapter.contains("URLSessionHTTPTransport(maxBodyBytes: IntelligenceEfficiencyAdapter.maximumResponseBytes)"))
         #expect(adapter.contains("URLSessionHTTPTransport(maxBodyBytes: maximumResponseBytes)"))
 
