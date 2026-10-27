@@ -112,12 +112,38 @@ struct CodexRadarDTO: Decodable, Sendable {
         let primaryWindow: String?
         let globalConcurrency: Int?
         let checkedAt: String?
+        let source: String?
+        let tasks: Int?
+        let validTasks: Int?
+        let costUsd: Decimal?
+        let costBasis: String?
+        let checkedAtBefore: String?
+        let checkedAtAfter: String?
+        let windows: [String: QuotaCalibrationWindow]?
 
         enum CodingKeys: String, CodingKey {
             case date, status
             case primaryWindow = "primary_window"
             case globalConcurrency = "global_concurrency"
             case checkedAt = "checked_at"
+            case source, tasks
+            case validTasks = "valid_tasks"
+            case costUsd = "cost_usd"
+            case costBasis = "cost_basis"
+            case checkedAtBefore = "checked_at_before"
+            case checkedAtAfter = "checked_at_after"
+            case windows
+        }
+    }
+
+    struct QuotaCalibrationWindow: Decodable, Sendable {
+        let valid: Bool?
+        let reason: String?
+        let usedPercentDelta: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case valid, reason
+            case usedPercentDelta = "used_percent_delta"
         }
     }
 
@@ -126,12 +152,24 @@ struct CodexRadarDTO: Decodable, Sendable {
         let creditsAvailable: Int?
         let limitReached: Bool?
         let allowed: Bool?
+        let checkedAt: String?
+        let windows: [String: QuotaCheckWindow]?
 
         enum CodingKeys: String, CodingKey {
             case planType = "plan_type"
             case creditsAvailable = "rate_limit_reset_credits_available_count"
             case limitReached = "limit_reached"
             case allowed
+            case checkedAt = "checked_at"
+            case windows
+        }
+    }
+
+    struct QuotaCheckWindow: Decodable, Sendable {
+        let usedPercent: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case usedPercent = "used_percent"
         }
     }
 
@@ -215,9 +253,12 @@ struct CodexRadarDTO: Decodable, Sendable {
     }
 
     struct QuotaRadar: Decodable, Sendable {
+        // Schema 3 (2026-10-27 recon): the plans-matrix rebuild removed
+        // rows/trend/updated_at — both stay Optional so the payload decodes
+        // and the two card datasets (quota_check/quota_calibration) surface.
         let updatedAt: String?
         let basisWindowLabel: String?
-        let rows: [QuotaRow]
+        let rows: [QuotaRow]?
         let trend: [TrendPoint]?
 
         enum CodingKeys: String, CodingKey {

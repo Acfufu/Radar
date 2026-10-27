@@ -120,7 +120,11 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
         }
         do {
             let window = quota.basisWindowLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "7d"
-            let estimates = try quota.rows.map { row in
+            // Schema 3 (2026-10-27): rows/trend vanished upstream, so the
+            // estimate set legitimately degrades to empty without failing
+            // the segment — the two card datasets below keep carrying the
+            // quota plane (spec §4.2 row 4 v1.4 note).
+            let estimates = try (quota.rows ?? []).map { row in
                 let tier = row.tier.trimmingCharacters(in: .whitespacesAndNewlines)
                 let estimate = SourceQuotaEstimate(
                     id: "\(tier.lowercased().replacingOccurrences(of: " ", with: "-"))-\(window.lowercased())",
@@ -133,9 +137,6 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                 )
                 try ClaudeRadarValidator.validateStatus(estimate)
                 return estimate
-            }
-            guard !estimates.isEmpty else {
-                throw ClaudeRadarValidator.validation("Codex Radar quota estimate set is empty")
             }
             return .success(SourceStatusDataset(
                 sourceID: .codexRadar,
@@ -159,7 +160,11 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                         planType: check.planType,
                         creditsAvailable: check.creditsAvailable,
                         limitReached: check.limitReached,
-                        allowed: check.allowed
+                        allowed: check.allowed,
+                        checkedAt: check.checkedAt,
+                        windows: check.windows?.mapValues { window in
+                            QuotaCheckWindowInfo(usedPercent: window.usedPercent)
+                        }
                     )
                 },
                 calibration: dto.modelIQ.quotaCalibration.map { calibration in
@@ -168,7 +173,21 @@ struct CodexRadarParser: RadarPayloadParser, Sendable {
                         status: calibration.status,
                         primaryWindow: calibration.primaryWindow,
                         globalConcurrency: calibration.globalConcurrency,
-                        checkedAt: calibration.checkedAt
+                        checkedAt: calibration.checkedAtBefore ?? calibration.checkedAt,
+                        source: calibration.source,
+                        tasks: calibration.tasks,
+                        validTasks: calibration.validTasks,
+                        costUsd: calibration.costUsd,
+                        costBasis: calibration.costBasis,
+                        checkedAtBefore: calibration.checkedAtBefore,
+                        checkedAtAfter: calibration.checkedAtAfter,
+                        windows: calibration.windows?.mapValues { window in
+                            QuotaCalibrationWindowInfo(
+                                valid: window.valid,
+                                reason: window.reason,
+                                usedPercentDelta: window.usedPercentDelta
+                            )
+                        }
                     )
                 }
             ))

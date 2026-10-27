@@ -128,4 +128,111 @@ struct CodexStationStatusTests {
         try await repository.deleteNormalizedHistory(sourceID: .codexRadar)
         #expect((try? await repository.latestStationStatus(sourceID: .codexRadar)) ?? nil == nil)
     }
+
+    // MARK: schema 3 (2026-10-27 recon): quota_radar rebuilt as the plans
+    // matrix — rows/trend/updated_at are gone, check/calibration keys stay.
+
+    private struct FixtureShapeError: Error {}
+
+    private func fixtureObject(_ name: String) throws -> [String: Any] {
+        let object = try JSONSerialization.jsonObject(with: fixture(name))
+        guard let dict = object as? [String: Any] else {
+            throw FixtureShapeError()
+        }
+        return dict
+    }
+
+    private func mutatedFixture(_ name: String, _ mutate: (inout [String: Any]) -> Void) throws -> Data {
+        var object = try fixtureObject(name)
+        mutate(&object)
+        return try JSONSerialization.data(withJSONObject: object)
+    }
+
+    @Test("schema 3 quota payload tolerates missing rows and surfaces the check/calibration cards")
+    func v3QuotaToleranceAndCards() throws {
+        let fetchedAt = Date(timeIntervalSince1970: 1_769_000_000)
+        let envelope = try CodexRadarParser().parseBenchmarkEnvelope(
+            fixture("codex-radar-public-summary-v3"),
+            fetchedAt: fetchedAt
+        )
+
+        let status = try #require(envelope.sourceStatus.value)
+        // rows/trend/updated_at vanished with the plans-matrix rebuild:
+        // estimates degrade to empty instead of failing the segment.
+        #expect(status.quotaEstimates.isEmpty)
+        #expect(status.trend == nil)
+
+        let check = try #require(status.check)
+        #expect(check.planType == "pro")
+        #expect(check.creditsAvailable == 1)
+        #expect(check.limitReached == false)
+        #expect(check.allowed == true)
+        #expect(check.checkedAt == "2026-07-06T00:25:54Z")
+        #expect(check.windows?["primary_5h"]?.usedPercent == 43)
+        #expect(check.windows?["secondary_7d"]?.usedPercent == 68)
+
+        let calibration = try #require(status.calibration)
+        #expect(calibration.status == "valid")
+        #expect(calibration.primaryWindow == "secondary_7d")
+        #expect(calibration.globalConcurrency == 24)
+        #expect(calibration.checkedAt == "2026-07-16T00:43:44Z")
+        #expect(calibration.checkedAtAfter == "2026-07-16T01:47:29Z")
+        #expect(calibration.tasks == 90)
+        #expect(calibration.validTasks == 90)
+        #expect(calibration.windows?["secondary_7d"]?.valid == true)
+        #expect(calibration.windows?["secondary_7d"]?.usedPercentDelta == 15)
+        #expect(calibration.windows?["primary_5h"]?.reason == "missing_snapshot")
+    }
+
+    @Test("schema 3 nil-data states: missing check, missing calibration, both missing, empty quota_radar shell")
+    func v3NilDataStates() throws {
+        let fetchedAt = Date(timeIntervalSince1970: 1_769_000_000)
+
+        let noCheck = try CodexRadarParser().parseBenchmarkEnvelope(
+            try mutatedFixture("codex-radar-public-summary-v3") { object in
+                var modelIQ = object["model_iq"] as? [String: Any] ?? [:]
+                modelIQ.removeValue(forKey: "quota_check")
+                object["model_iq"] = modelIQ
+            },
+            fetchedAt: fetchedAt
+        )
+        #expect(noCheck.sourceStatus.value?.check == nil)
+        #expect(noCheck.sourceStatus.value?.calibration != nil)
+
+        let noCalibration = try CodexRadarParser().parseBenchmarkEnvelope(
+            try mutatedFixture("codex-radar-public-summary-v3") { object in
+                var modelIQ = object["model_iq"] as? [String: Any] ?? [:]
+                modelIQ.removeValue(forKey: "quota_calibration")
+                object["model_iq"] = modelIQ
+            },
+            fetchedAt: fetchedAt
+        )
+        #expect(noCalibration.sourceStatus.value?.check != nil)
+        #expect(noCalibration.sourceStatus.value?.calibration == nil)
+
+        let neither = try CodexRadarParser().parseBenchmarkEnvelope(
+            try mutatedFixture("codex-radar-public-summary-v3") { object in
+                var modelIQ = object["model_iq"] as? [String: Any] ?? [:]
+                modelIQ.removeValue(forKey: "quota_check")
+                modelIQ.removeValue(forKey: "quota_calibration")
+                object["model_iq"] = modelIQ
+            },
+            fetchedAt: fetchedAt
+        )
+        #expect(neither.sourceStatus.value?.check == nil)
+        #expect(neither.sourceStatus.value?.calibration == nil)
+        #expect(neither.sourceStatus.value?.quotaEstimates.isEmpty == true)
+
+        let emptyShell = try CodexRadarParser().parseBenchmarkEnvelope(
+            try mutatedFixture("codex-radar-public-summary-v3") { object in
+                var modelIQ = object["model_iq"] as? [String: Any] ?? [:]
+                modelIQ["quota_radar"] = [String: Any]()
+                object["model_iq"] = modelIQ
+            },
+            fetchedAt: fetchedAt
+        )
+        #expect(emptyShell.sourceStatus.value?.quotaEstimates.isEmpty == true)
+        #expect(emptyShell.sourceStatus.value?.check != nil)
+        #expect(emptyShell.sourceStatus.value?.calibration != nil)
+    }
 }

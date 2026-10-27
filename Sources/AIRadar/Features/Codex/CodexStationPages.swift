@@ -410,51 +410,118 @@ struct CodexEfficiencyPKPage: View {
     }
 }
 
-/// Main axis row 4: quota radar. Surfaces the source-status quota estimates
-/// that previously lived inside the overview; trend/check/calibration detail
-/// arrives with P2① and renders empty states until then.
+/// Main axis row 4: quota radar. Schema 3 (2026-10-27) rebuilt the upstream
+/// quota plane as the third-party plans matrix (not consumed), so the page
+/// degrades to two verbatim cards — quota_check「当前核查」and
+/// quota_calibration「校准信息」— each age-annotated by its own checked_at
+/// (spec §4.2 row 4 v1.4 note). The trend chart and the three-tier estimate
+/// rows retired with their upstream data plane.
 struct CodexQuotaRadarPage: View {
     @Environment(\.radarPalette) private var palette
     let projection: WorkspaceProjection
+
+    private var status: SourceStatusDataset? {
+        projection.sync?.sourceStatus.value
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: RadarStyle.sectionSpacing) {
                 ViewHeader(title: "额度雷达", subtitle: "来源账户额度估算；非个人用量（source-account estimate）")
-                // Spec §4.2 v1.3 note: the quota field's own updated_at age —
-                // current.json's copy has drifted from the site UI before,
-                // so the badge makes the field staleness visible.
-                DataAgeBadge(content: DataAgeBadge.Content(
-                    label: "额度数据",
-                    updatedAt: projection.sync?.sourceStatus.value?.sourceUpdatedAt,
-                    channelFresh: projection.sourceStatusState == .fresh,
-                    now: Date()
-                ))
-                if let estimates = projection.sync?.sourceStatus.value?.quotaEstimates, !estimates.isEmpty {
-                    ForEach(estimates, id: \.windowLabel) { quota in
-                        HStack {
-                            Text(quota.windowLabel)
-                            Spacer()
-                            if let usedPercent = quota.usedPercent {
-                                Text(RadarFormat.decimal(usedPercent, suffix: "%")).monospacedDigit()
-                            } else if let value = quota.estimatedValueUSD {
-                                Text("$\(RadarFormat.decimal(value))").monospacedDigit()
-                            } else {
-                                Text(quota.windowLabel).foregroundStyle(palette.secondaryText.color)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                } else {
-                    Text("暂无额度估算数据")
+                if let check = status?.check {
+                    quotaCheckCard(check)
+                }
+                if let calibration = status?.calibration {
+                    quotaCalibrationCard(calibration)
+                }
+                if status?.check == nil && status?.calibration == nil {
+                    Text("暂无当前核查与校准信息；数据接入后在此显示。")
                         .foregroundStyle(palette.secondaryText.color)
                 }
-                Text("额度 10 天趋势、当前核查与校准信息接入后在此显示（P2①）。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             .radarPage()
         }
+    }
+
+    /// quota_check verbatim (D13 sibling red line): upstream's own probe
+    /// result; nothing is derived locally.
+    private func quotaCheckCard(_ check: QuotaCheckInfo) -> some View {
+        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+            ViewHeader(title: "当前核查", subtitle: check.planType ?? "—")
+            cardAgeBadge(label: "当前核查", checkedAt: check.checkedAt)
+            if let windows = check.windows, !windows.isEmpty {
+                ForEach(windows.keys.sorted(), id: \.self) { key in
+                    row(key, windows[key]?.usedPercent.map { "\($0)%" })
+                }
+            }
+            row("计划", check.planType)
+            row("可用额度", check.creditsAvailable.map { RadarFormat.integer($0) })
+            row("达到限额", boolLabel(check.limitReached))
+            row("允许同步", boolLabel(check.allowed))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarPanel()
+    }
+
+    /// quota_calibration verbatim: how upstream calibrates the quota probes;
+    /// the age anchor is checked_at_before (schema 3 naming).
+    private func quotaCalibrationCard(_ calibration: QuotaCalibrationInfo) -> some View {
+        VStack(alignment: .leading, spacing: RadarStyle.cardSpacing) {
+            ViewHeader(title: "校准信息", subtitle: calibration.status ?? "—")
+            cardAgeBadge(label: "校准信息", checkedAt: calibration.checkedAt)
+            row("状态", calibration.status)
+            row("主窗", calibration.primaryWindow)
+            row("全局并发", calibration.globalConcurrency.map { RadarFormat.integer($0) })
+            row("任务", calibration.tasks.map { RadarFormat.integer($0) })
+            row("有效任务", calibration.validTasks.map { RadarFormat.integer($0) })
+            row("校准成本", calibration.costUsd.map { "$\(RadarFormat.decimal($0))" })
+            row("成本口径", calibration.costBasis)
+            row("检测开始", calibration.checkedAtBefore)
+            row("检测结束", calibration.checkedAtAfter)
+            if let windows = calibration.windows, !windows.isEmpty {
+                ForEach(windows.keys.sorted(), id: \.self) { key in
+                    let window = windows[key]
+                    row(
+                        key,
+                        [
+                            window?.valid.map { $0 ? "valid" : "invalid" },
+                            window?.reason,
+                            window?.usedPercentDelta.map { "Δ\($0)%" },
+                        ]
+                        .compactMap { $0 }
+                        .joined(separator: " · ")
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .radarPanel()
+    }
+
+    /// Field-age badge (spec §4.2 v1.3/v1.4 notes): the card's own checked_at,
+    /// not the channel freshness — a nil anchor renders nothing.
+    private func cardAgeBadge(label: String, checkedAt: String?) -> some View {
+        DataAgeBadge(content: DataAgeBadge.Content(
+            label: label,
+            updatedAt: RadarFormat.parseUpstreamTimestamp(checkedAt),
+            channelFresh: projection.sourceStatusState == .fresh,
+            now: Date()
+        ))
+    }
+
+    private func row(_ label: String, _ value: String?) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value ?? "—")
+                .monospacedDigit()
+                .foregroundStyle(value == nil ? palette.secondaryText.color : palette.primaryText.color)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func boolLabel(_ value: Bool?) -> String? {
+        value.map { $0 ? "是" : "否" }
     }
 }
 
