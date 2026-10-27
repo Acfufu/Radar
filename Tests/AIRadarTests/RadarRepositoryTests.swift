@@ -251,7 +251,7 @@ struct RadarRepositoryTests {
         #expect(statusState.error == nil)
     }
 
-    @Test("source deletion filters all nine normalized entities and metadata while preserving sibling and raw data")
+    @Test("source deletion filters all normalized entities and metadata while preserving sibling and raw data")
     func sourceScopedDeletion() async throws {
         let fixture = try repositoryFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
@@ -265,7 +265,6 @@ struct RadarRepositoryTests {
             _ = try await fixture.repository.insertIntelligenceEfficiency(efficiency(sourceID: sourceID))
             _ = try await fixture.repository.insertRadarInsights(radarInsights(sourceID: sourceID))
             _ = try await fixture.repository.insertVisualSpatialReasoning(visualSpatialReasoning(sourceID: sourceID))
-            _ = try await fixture.repository.insertCrowdtestIQ(crowdtestIQ(sourceID: sourceID))
             _ = try await fixture.repository.insertFastRadarHistory(fastRadar(sourceID: sourceID))
         }
         let rawStore = RawSampleStore(dataRoot: fixture.root)
@@ -285,10 +284,13 @@ struct RadarRepositoryTests {
         let metadataHashAfter = sha256(try Data(contentsOf: metadataFile))
         let rawHashAfter = try await rawHash(rawStore, sourceIDs: [target, sibling])
 
-        #expect(targetCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1, 1])
-        #expect(siblingCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1, 1])
-        #expect(targetCountsAfter == [0, 0, 0, 0, 0, 0, 0, 0, 0])
-        #expect(siblingCountsAfter == [1, 1, 1, 1, 1, 1, 1, 1, 1])
+        // v0.6.0 retired the crowdtest-IQ dataset (ADR-0006): the type set is
+        // eight entries, one per surviving normalized plane.
+        #expect(types.count == 8)
+        #expect(targetCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1])
+        #expect(siblingCountsBefore == [1, 1, 1, 1, 1, 1, 1, 1])
+        #expect(targetCountsAfter == [0, 0, 0, 0, 0, 0, 0, 0])
+        #expect(siblingCountsAfter == [1, 1, 1, 1, 1, 1, 1, 1])
         for type in types {
             #expect(try await restarted.metadata(sourceID: target, datasetType: type) == .empty)
             #expect(try await restarted.metadata(sourceID: sibling, datasetType: type).lastSuccessfulAt != nil)
@@ -459,31 +461,6 @@ struct RadarRepositoryTests {
             fetchedAt: Date(timeIntervalSince1970: 10),
             benchmarkID: RadarInsightsParser.expectedBenchmarkID,
             comprehensivePoints: [.init(model: "m", effort: "high", iq: 80)]
-        )
-    }
-
-    private func crowdtestIQ(sourceID: RadarSourceID) throws -> CodexRenderedCrowdtestIQSnapshot {
-        let harness = CodexRenderedCrowdtestIQHarness(
-            harness: "grok",
-            model: "grok-4.6",
-            cells: [CodexRenderedCrowdtestIQCell(
-                model: "grok-4.6", effort: "xhigh", iqScore: 108, iqP: 9, iqN: 11,
-                countP: 9, countN: 11, coveredTasks: 10, totalTasks: 112,
-                coverageInsufficient: false, methodTitle: ""
-            )],
-            trend: []
-        )
-        return CodexRenderedCrowdtestIQSnapshot(
-            sourceID: sourceID,
-            parserRevision: CodexRenderedCrowdtestIQDOMParser.parserRevision,
-            finalOrigin: "https://deng.codexradar.com",
-            capturedAt: Date(timeIntervalSince1970: 10),
-            harnesses: [harness],
-            semanticFingerprint: try CodexRenderedCrowdtestIQSemanticFingerprint.make(
-                harnesses: [harness],
-                finalOrigin: "https://deng.codexradar.com",
-                parserRevision: CodexRenderedCrowdtestIQDOMParser.parserRevision
-            )
         )
     }
 

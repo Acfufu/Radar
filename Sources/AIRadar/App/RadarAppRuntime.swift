@@ -24,7 +24,6 @@ final class RadarAppRuntime {
     private(set) var stationStatus: CodexStationStatusDataset?
     private(set) var intelligenceEfficiencyState: SegmentState<IntelligenceEfficiencyDataset>?
     private(set) var radarInsightsState: SegmentState<RadarInsightsDataset>?
-    private(set) var crowdtestIQProjection: SegmentState<CodexRenderedCrowdtestIQSnapshot>?
     private(set) var visualSpatialReasoningState: SegmentState<VisualSpatialReasoningDataset>?
     private(set) var fastRadarHistoryState: SegmentState<FastRadarHistoryDataset>?
     private(set) var refreshIntervalMinutes: Int
@@ -33,7 +32,6 @@ final class RadarAppRuntime {
     private var renderedWarningCoordinator: CodexRenderedWarningCoordinator?
     private var intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?
     private var radarInsightsCoordinator: RadarInsightsCoordinator?
-    private var crowdtestIQCoordinator: CodexRenderedCrowdtestIQCoordinator?
     private var visualSpatialReasoningCoordinator: VisualSpatialReasoningCoordinator?
     private var fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
     private var repository: RadarRepository?
@@ -47,14 +45,12 @@ final class RadarAppRuntime {
     private let renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)?
     private let intelligenceEfficiencyReaderFactory: (@MainActor @Sendable () -> any IntelligenceEfficiencyReading)?
     private let radarInsightsReaderFactory: (@MainActor @Sendable () -> any RadarInsightsReading)?
-    private let crowdtestIQReaderFactory: (@MainActor @Sendable () -> any CodexRenderedCrowdtestIQReading)?
     private let visualSpatialReasoningReaderFactory: (@MainActor @Sendable () -> any VisualSpatialReasoningReading)?
     private let fastRadarHistoryReaderFactory: (@MainActor @Sendable () -> any FastRadarHistoryReading)?
     private let primaryPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let renderedWarningPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let intelligenceEfficiencyPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let radarInsightsPersistenceCheckpoint: (@Sendable () async -> Void)?
-    private let crowdtestIQPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let visualSpatialReasoningPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let fastRadarHistoryPersistenceCheckpoint: (@Sendable () async -> Void)?
     private let deleteNormalizedHistory: @Sendable (RadarRepository, RadarSourceID) async throws -> Void
@@ -76,14 +72,12 @@ final class RadarAppRuntime {
         renderedWarningReaderFactory: (@MainActor @Sendable () -> any CodexRenderedWarningReading)? = nil,
         intelligenceEfficiencyReaderFactory: (@MainActor @Sendable () -> any IntelligenceEfficiencyReading)? = nil,
         radarInsightsReaderFactory: (@MainActor @Sendable () -> any RadarInsightsReading)? = nil,
-        crowdtestIQReaderFactory: (@MainActor @Sendable () -> any CodexRenderedCrowdtestIQReading)? = nil,
         visualSpatialReasoningReaderFactory: (@MainActor @Sendable () -> any VisualSpatialReasoningReading)? = nil,
         fastRadarHistoryReaderFactory: (@MainActor @Sendable () -> any FastRadarHistoryReading)? = nil,
         primaryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         renderedWarningPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         intelligenceEfficiencyPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         radarInsightsPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
-        crowdtestIQPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         visualSpatialReasoningPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         fastRadarHistoryPersistenceCheckpoint: (@Sendable () async -> Void)? = nil,
         deleteNormalizedHistory: @escaping @Sendable (RadarRepository, RadarSourceID) async throws -> Void = { repository, sourceID in
@@ -99,14 +93,12 @@ final class RadarAppRuntime {
         self.renderedWarningReaderFactory = renderedWarningReaderFactory
         self.intelligenceEfficiencyReaderFactory = intelligenceEfficiencyReaderFactory
         self.radarInsightsReaderFactory = radarInsightsReaderFactory
-        self.crowdtestIQReaderFactory = crowdtestIQReaderFactory
         self.visualSpatialReasoningReaderFactory = visualSpatialReasoningReaderFactory
         self.fastRadarHistoryReaderFactory = fastRadarHistoryReaderFactory
         self.primaryPersistenceCheckpoint = primaryPersistenceCheckpoint
         self.renderedWarningPersistenceCheckpoint = renderedWarningPersistenceCheckpoint
         self.intelligenceEfficiencyPersistenceCheckpoint = intelligenceEfficiencyPersistenceCheckpoint
         self.radarInsightsPersistenceCheckpoint = radarInsightsPersistenceCheckpoint
-        self.crowdtestIQPersistenceCheckpoint = crowdtestIQPersistenceCheckpoint
         self.visualSpatialReasoningPersistenceCheckpoint = visualSpatialReasoningPersistenceCheckpoint
         self.fastRadarHistoryPersistenceCheckpoint = fastRadarHistoryPersistenceCheckpoint
         self.deleteNormalizedHistory = deleteNormalizedHistory
@@ -144,7 +136,6 @@ final class RadarAppRuntime {
         let activeRenderedWarningCoordinator = renderedWarningCoordinator
         let activeIntelligenceEfficiencyCoordinator = intelligenceEfficiencyCoordinator
         let activeRadarInsightsCoordinator = radarInsightsCoordinator
-        let activeCrowdtestIQCoordinator = crowdtestIQCoordinator
         let activeVisualSpatialReasoningCoordinator = visualSpatialReasoningCoordinator
         let activeFastRadarHistoryCoordinator = fastRadarHistoryCoordinator
         let activeClear = clearHistoryOperation
@@ -159,17 +150,14 @@ final class RadarAppRuntime {
             if let activeFastRadarHistoryCoordinator { await activeFastRadarHistoryCoordinator.stop() }
             if let activeIntelligenceEfficiencyCoordinator { await activeIntelligenceEfficiencyCoordinator.stop() }
             if let activeRadarInsightsCoordinator { await activeRadarInsightsCoordinator.stop() }
-            if let activeCrowdtestIQCoordinator { await activeCrowdtestIQCoordinator.stop() }
             if let activeVisualSpatialReasoningCoordinator { await activeVisualSpatialReasoningCoordinator.stop() }
             if let activeRenderedWarningCoordinator { await activeRenderedWarningCoordinator.stop() }
             if let activeCoordinator { await activeCoordinator.stop() }
             guard generation == self.lifecycleGeneration else { return }
             self.coordinator = nil
             self.renderedWarningCoordinator = nil
-            self.crowdtestIQCoordinator = nil
             self.intelligenceEfficiencyCoordinator = nil
             self.radarInsightsCoordinator = nil
-            self.crowdtestIQCoordinator = nil
             self.visualSpatialReasoningCoordinator = nil
             self.fastRadarHistoryCoordinator = nil
             self.repository = nil
@@ -244,31 +232,6 @@ final class RadarAppRuntime {
                 }
             } else {
                 renderedWarningCoordinator = nil
-            }
-            let crowdtestIQCoordinator: CodexRenderedCrowdtestIQCoordinator?
-            if sourceID == .codexRadar, let crowdtestIQReaderFactory {
-                let crowdtestCoordinator = CodexRenderedCrowdtestIQCoordinator(
-                    reader: crowdtestIQReaderFactory(),
-                    repository: repository,
-                    policy: SyncPolicy(refreshInterval: TimeInterval(refreshIntervalMinutes * 60)),
-                    projectionDidChange: { [weak self] state, history in
-                        await self?.acceptCrowdtestIQ(
-                            state,
-                            history: history,
-                            generation: generation
-                        )
-                    },
-                    persistenceCheckpoint: crowdtestIQPersistenceCheckpoint
-                )
-                crowdtestIQCoordinator = crowdtestCoordinator
-                self.crowdtestIQCoordinator = crowdtestCoordinator
-                _ = try? await crowdtestCoordinator.loadPersistedProjection()
-                guard isStarting(generation) else {
-                    await crowdtestCoordinator.stop()
-                    return
-                }
-            } else {
-                crowdtestIQCoordinator = nil
             }
             let intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?
             if sourceID == .codexRadar, let intelligenceEfficiencyReaderFactory {
@@ -371,13 +334,10 @@ final class RadarAppRuntime {
                 fastRadarHistoryCoordinator = nil
             }
             let renderedTriggerObserver: (@Sendable (SyncTrigger) -> Void)?
-            if renderedWarningCoordinator != nil || crowdtestIQCoordinator != nil || intelligenceEfficiencyCoordinator != nil || radarInsightsCoordinator != nil || visualSpatialReasoningCoordinator != nil || fastRadarHistoryCoordinator != nil {
+            if renderedWarningCoordinator != nil || intelligenceEfficiencyCoordinator != nil || radarInsightsCoordinator != nil || visualSpatialReasoningCoordinator != nil || fastRadarHistoryCoordinator != nil {
                 renderedTriggerObserver = { trigger in
                     if let renderedWarningCoordinator {
                         Task { await renderedWarningCoordinator.refresh(trigger: trigger) }
-                    }
-                    if let crowdtestIQCoordinator {
-                        Task { await crowdtestIQCoordinator.refresh(trigger: trigger) }
                     }
                     if let intelligenceEfficiencyCoordinator {
                         Task { await intelligenceEfficiencyCoordinator.refresh(trigger: trigger) }
@@ -457,14 +417,11 @@ final class RadarAppRuntime {
             if let radarInsightsCoordinator { await radarInsightsCoordinator.stop() }
             if let visualSpatialReasoningCoordinator { await visualSpatialReasoningCoordinator.stop() }
             if let renderedWarningCoordinator { await renderedWarningCoordinator.stop() }
-            if let crowdtestIQCoordinator { await crowdtestIQCoordinator.stop() }
             guard isStarting(generation) else { return }
             self.coordinator = nil
             self.renderedWarningCoordinator = nil
-            self.crowdtestIQCoordinator = nil
             self.intelligenceEfficiencyCoordinator = nil
             self.radarInsightsCoordinator = nil
-            self.crowdtestIQCoordinator = nil
             self.visualSpatialReasoningCoordinator = nil
             self.fastRadarHistoryCoordinator = nil
             self.repository = nil
@@ -493,7 +450,6 @@ final class RadarAppRuntime {
         refreshIntervalMinutes = normalized
         await coordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await renderedWarningCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
-        await crowdtestIQCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await intelligenceEfficiencyCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await radarInsightsCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
         await visualSpatialReasoningCoordinator?.updateRefreshInterval(TimeInterval(normalized * 60))
@@ -507,7 +463,6 @@ final class RadarAppRuntime {
         guard lifecycleState == .running, let repository, let coordinator else { return false }
         historyGeneration += 1
         let renderedWarningCoordinator = renderedWarningCoordinator
-        let crowdtestIQCoordinator = crowdtestIQCoordinator
         let intelligenceEfficiencyCoordinator = intelligenceEfficiencyCoordinator
         let radarInsightsCoordinator = radarInsightsCoordinator
         let visualSpatialReasoningCoordinator = visualSpatialReasoningCoordinator
@@ -518,7 +473,6 @@ final class RadarAppRuntime {
                 repository: repository,
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
-                crowdtestIQCoordinator: crowdtestIQCoordinator,
                 intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
                 radarInsightsCoordinator: radarInsightsCoordinator,
                 visualSpatialReasoningCoordinator: visualSpatialReasoningCoordinator,
@@ -535,14 +489,12 @@ final class RadarAppRuntime {
         repository: RadarRepository,
         coordinator: RadarSyncCoordinator,
         renderedWarningCoordinator: CodexRenderedWarningCoordinator?,
-        crowdtestIQCoordinator: CodexRenderedCrowdtestIQCoordinator?,
         intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?,
         radarInsightsCoordinator: RadarInsightsCoordinator?,
         visualSpatialReasoningCoordinator: VisualSpatialReasoningCoordinator?,
         fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
     ) async -> Bool {
         await renderedWarningCoordinator?.pauseAndDrain()
-        await crowdtestIQCoordinator?.pauseAndDrain()
         await intelligenceEfficiencyCoordinator?.pauseAndDrain()
         await radarInsightsCoordinator?.pauseAndDrain()
         await visualSpatialReasoningCoordinator?.pauseAndDrain()
@@ -555,7 +507,6 @@ final class RadarAppRuntime {
             await resume(
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
-                crowdtestIQCoordinator: crowdtestIQCoordinator,
                 intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
                 radarInsightsCoordinator: radarInsightsCoordinator,
                 visualSpatialReasoningCoordinator: visualSpatialReasoningCoordinator,
@@ -569,7 +520,6 @@ final class RadarAppRuntime {
             await resume(
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
-                crowdtestIQCoordinator: crowdtestIQCoordinator,
                 intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
                 radarInsightsCoordinator: radarInsightsCoordinator,
                 visualSpatialReasoningCoordinator: visualSpatialReasoningCoordinator,
@@ -581,7 +531,6 @@ final class RadarAppRuntime {
             await resume(
                 coordinator: coordinator,
                 renderedWarningCoordinator: renderedWarningCoordinator,
-                crowdtestIQCoordinator: crowdtestIQCoordinator,
                 intelligenceEfficiencyCoordinator: intelligenceEfficiencyCoordinator,
                 radarInsightsCoordinator: radarInsightsCoordinator,
                 visualSpatialReasoningCoordinator: visualSpatialReasoningCoordinator,
@@ -597,7 +546,6 @@ final class RadarAppRuntime {
         stationStatus = nil
         renderedWarningProjection = nil
         renderedWarningHistory = []
-        crowdtestIQProjection = nil
         intelligenceEfficiencyState = nil
         radarInsightsState = nil
         visualSpatialReasoningState = nil
@@ -607,14 +555,12 @@ final class RadarAppRuntime {
     private func resume(
         coordinator: RadarSyncCoordinator,
         renderedWarningCoordinator: CodexRenderedWarningCoordinator?,
-        crowdtestIQCoordinator: CodexRenderedCrowdtestIQCoordinator?,
         intelligenceEfficiencyCoordinator: IntelligenceEfficiencyCoordinator?,
         radarInsightsCoordinator: RadarInsightsCoordinator?,
         visualSpatialReasoningCoordinator: VisualSpatialReasoningCoordinator?,
         fastRadarHistoryCoordinator: FastRadarHistoryCoordinator?
     ) async {
         await renderedWarningCoordinator?.resume()
-        await crowdtestIQCoordinator?.resume()
         await intelligenceEfficiencyCoordinator?.resume()
         await radarInsightsCoordinator?.resume()
         await visualSpatialReasoningCoordinator?.resume()
@@ -625,7 +571,6 @@ final class RadarAppRuntime {
     func synchronizationLifecycleStates() async -> (
         primary: SyncLifecycleState?,
         renderedWarning: CodexRenderedWarningLifecycleState?,
-        crowdtestIQ: CodexRenderedCrowdtestIQLifecycleState?,
         intelligenceEfficiency: IntelligenceEfficiencyLifecycleState?,
         radarInsights: RadarInsightsLifecycleState?,
         visualSpatialReasoning: VisualSpatialReasoningLifecycleState?,
@@ -634,7 +579,6 @@ final class RadarAppRuntime {
         (
             await coordinator?.lifecycleState(),
             await renderedWarningCoordinator?.lifecycleState(),
-            await crowdtestIQCoordinator?.lifecycleState(),
             await intelligenceEfficiencyCoordinator?.lifecycleState(),
             await radarInsightsCoordinator?.lifecycleState(),
             await visualSpatialReasoningCoordinator?.lifecycleState(),
@@ -698,16 +642,6 @@ final class RadarAppRuntime {
               lifecycleState == .starting || lifecycleState == .running else { return }
         renderedWarningProjection = state
         renderedWarningHistory = history
-    }
-
-    private func acceptCrowdtestIQ(
-        _ state: SegmentState<CodexRenderedCrowdtestIQSnapshot>,
-        history: [CodexRenderedCrowdtestIQSnapshot],
-        generation: Int
-    ) {
-        guard lifecycleGeneration == generation,
-              lifecycleState == .starting || lifecycleState == .running else { return }
-        crowdtestIQProjection = state
     }
 
     private func acceptIntelligenceEfficiency(

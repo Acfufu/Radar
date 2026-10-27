@@ -29,11 +29,6 @@ struct WhitelistStationPage: View {
                 } else {
                     emptyState
                 }
-                // Spec §4.1 v1.2 (ADR-0004): the station's crowdtest IQ card.
-                CrowdtestIQCard(
-                    model: CrowdtestIQCardMapper.model(harness: harnessKey, state: projection?.crowdtestIQState),
-                    attributionText: "数据来自分布式雷达 deng.codexradar.com · powered by codexradar"
-                )
                 Text(attributionText)
                     .font(.caption2)
                     .foregroundStyle(palette.secondaryText.color)
