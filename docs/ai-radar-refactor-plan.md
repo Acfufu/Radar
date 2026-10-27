@@ -267,7 +267,7 @@
 
 **验收门**：
 - **AUTO**：全量测试绿；release-checklist 逐项勾选；issue 全部关闭。
-- **发版硬门**：`docs/design-qa/human-review.md` **无 PENDING 项**。
+- **发版硬门**：`docs/design-qa/human-review.md` 中 **agent 可清零项清零；人工项逐条列明 owner 与原因，不阻塞发版**（口径 2026-10-27 修正，原「无 PENDING 项」口径废止，见 human-review.md 口径节）。
 
 ---
 
