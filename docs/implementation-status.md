@@ -241,3 +241,15 @@ Reusable, repo-specific findings from the v0.4.0 implementation round:
 - Version surface: plist 0.5.0 (build 4); UA `AIRadar/0.5.0` in the five adapters + five test-side literals.
 - Screenshots: `docs/design-qa/baseline/v050/` (7 shots, manifest v0.5.0 section).
 - Test baseline: full suite 417 tests / 52 suites exit 0 at the N7 freeze (baseline at round start: 408 / 51).
+
+## v0.6.0 round (2026-10-28, goal `v060-implementation`, issue #6 / spec v1.4)
+
+- Rendered-warning soft retirement executed (ADR-0005): production scheduling stops at the app entry (the sole `renderedWarningReaderFactory` injection removed); both card mounts gated behind `CodexRenderedWarningSoftRetire.isActive`. Reader/parser/coordinator, the frozen v2 contract, fixtures, and all reader tests stay green — unfreeze is a one-line re-add. Gate tests: Phase4 source assertions + a production-shape LKG-retention runtime test (red half captured).
+- 额度雷达 two verbatim cards + schema-3 DTO tolerance: `QuotaRadar.rows` Optional (the 2026-10-27 payload decodes again — pre-fix current.json failed wholesale), `QuotaCheck.checkedAt/windows` and `QuotaCalibration.checkedAtBefore/After/…` decoded; parser no longer throws on an empty estimate set; the page renders「当前核查」and「校准信息」with per-field `DataAgeBadge` (07-06 / 07-16 anchors); the three-tier estimate rows, trend placeholder, and old top badge are gone. Fixture `codex-radar-public-summary-v3.json` (from the recon archive) + tolerance/nil-state tests (red half captured).
+- ie sidecar cap 8MiB→16MiB (transport + source sites via the shared constant); Fast-Radar keeps an independent 8MiB; oversize→LKG path unchanged (behavior-driven test).
+- Crowdtest IQ hard retirement (ADR-0006): reader trio, domain type, five station cards, SwiftData entity + `RadarDatasetType` case, repository read/write paths, runtime wiring/lifecycle, DebugUISeed branch, parser/card tests, fixture dir, Package.swift exclude — all removed; `grep -rni crowdtest Sources Tests Package.swift` = 0; the Phase4 deng-API negative assertion stays as a ban pin. `speed-api.codexradar.com` ban-understanding recorded.
+- HR gate re-worded (ADR-0005 Consequences):「agent 可清零项清零 + 人工项列明 owner」replaces the zero-PENDING gate (human-review.md 口径节 + refactor-plan + spec P0/执行顺序 lines).
+- hero.gif / hero-zh.gif regenerated (HR-5 closed): ffmpeg two-pass palette synthesis over 19 dual-theme frames from `baseline/v040|v050` in §4.2 axis order, 1.2s/frame, 880px, 1.66MB; build record `.lazyzcode/evidence/v060/hero-build/`; frame provenance differences recorded.
+- Screenshots: `docs/design-qa/baseline/v060/` (5 shots — quota two-card light/dark, alerts structured-only, codex overview post-crowdtest, DSH ranking post-crowdtest; window-id capture recipe with a two-phase whitelist-seed pass).
+- Version surface: plist 0.6.0 (build 5); UA `AIRadar/0.6.0` in five adapters + five test literals (zero 0.5.0 remnants).
+- Test baseline: full suite 413 tests / 50 suites exit 0 at the N9 freeze (round start 417/52; the -8/-2 delta is the ADR-0006 retirement).

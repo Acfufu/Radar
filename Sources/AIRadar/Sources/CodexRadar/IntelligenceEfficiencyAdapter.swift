@@ -51,7 +51,7 @@ actor IntelligenceEfficiencyAdapter: IntelligenceEfficiencyReading {
         var request = URLRequest(url: Self.endpoint, timeoutInterval: 15)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("AIRadar/0.5.0 (macOS; +https://github.com/Acfufu/Radar)", forHTTPHeaderField: "User-Agent")
+        request.setValue("AIRadar/0.6.0 (macOS; +https://github.com/Acfufu/Radar)", forHTTPHeaderField: "User-Agent")
 
         let payload: HTTPTransportResponse
         do {
