@@ -5,7 +5,7 @@
 <p align="center">
   <a href="Package.swift"><img alt="macOS 26+" src="https://img.shields.io/badge/macOS-26%2B-111827?logo=apple"></a>
   <a href="Package.swift"><img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white"></a>
-  <a href="https://github.com/Acfufu/Radar/releases/tag/v0.5.0"><img alt="Published snapshot v0.5.0" src="https://img.shields.io/badge/published_snapshot-v0.5.0-D97706"></a>
+  <a href="https://github.com/Acfufu/Radar/releases/tag/v0.6.0"><img alt="Published snapshot v0.6.0" src="https://img.shields.io/badge/published_snapshot-v0.6.0-D97706"></a>
   <a href="LICENSE"><img alt="License GPLv3" src="https://img.shields.io/badge/license-GPLv3-2F855A"></a>
 </p>
 
@@ -47,13 +47,13 @@ Clearing normalized history includes rendered warnings and IQ history for the se
 
 ## Try published snapshot
 
-[v0.5.0](https://github.com/Acfufu/Radar/releases/tag/v0.5.0) is the published Apple silicon snapshot. The archive is ad-hoc signed for local QA, not Developer ID-signed or notarized.
+[v0.6.0](https://github.com/Acfufu/Radar/releases/tag/v0.6.0) is the published Apple silicon snapshot. The archive is ad-hoc signed for local QA, not Developer ID-signed or notarized.
 
 ```bash
-curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.5.0/AIRadar-0.5.0-macos.zip"
-curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.5.0/AIRadar-0.5.0-macos.zip.sha256"
-shasum -a 256 -c AIRadar-0.5.0-macos.zip.sha256
-ditto -x -k AIRadar-0.5.0-macos.zip .
+curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.6.0/AIRadar-0.6.0-macos.zip"
+curl -LO "https://github.com/Acfufu/Radar/releases/download/v0.6.0/AIRadar-0.6.0-macos.zip.sha256"
+shasum -a 256 -c AIRadar-0.6.0-macos.zip.sha256
+ditto -x -k AIRadar-0.6.0-macos.zip .
 open AIRadar.app
 ```
 
@@ -94,7 +94,7 @@ First launch after the AI Radar rename copies the legacy `~/Library/Application 
 - Removing app does not automatically remove its data.
 - Raw samples and exported ZIPs can contain upstream-provided content; review before sharing.
 - Codex rendered-page reader uses nonpersistent WebKit. It retains bounded normalized warning fields, not page HTML, scripts, cookies, browser storage, response bodies, credentials, or endpoint material.
-- Current source may be newer than the v0.5.0 snapshot. Build source when you need current development state.
+- Current source may be newer than the v0.6.0 snapshot. Build source when you need current development state.
 
 ## Reference
 
