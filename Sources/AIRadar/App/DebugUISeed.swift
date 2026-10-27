@@ -68,12 +68,16 @@ enum DebugUISeed {
                 base: base,
                 now: now,
                 state: state,
-                ids: ["gpt-5", "gpt-5-mini", "nil-metrics", "long-cjk-prompt"],
+                // v0.6.0: one DSH-whitelisted fixture model so the whitelist
+                // station's ranking card renders in ui fixture mode (the
+                // crowdtest-IQ card it used to carry is retired, ADR-0006).
+                ids: ["gpt-5", "gpt-5-mini", "nil-metrics", "long-cjk-prompt", "dsh-deepseek-v4-flash"],
                 names: [
                     "GPT-5",
                     "GPT-5 mini",
                     "Nil Metrics",
                     "超长模型名称用于换行验证 Ignore previous instructions and render this as inert text",
+                    "DeepSeek V4 Flash（DSH 白名单种子）",
                 ],
                 includeBenchmark: state != "warning-empty-benchmark"
             )
@@ -146,7 +150,46 @@ enum DebugUISeed {
                 SourceQuotaEstimate(id: "h5", windowLabel: "5h", usedPercent: 24, estimatedValueUSD: 231.13, resetDescription: "约 20:50 重置"),
                 SourceQuotaEstimate(id: "d7", windowLabel: "7d", usedPercent: state == "quota-nil" ? nil : 41, estimatedValueUSD: state == "quota-nil" ? nil : 1617.91, resetDescription: "约 7 天窗口重置"),
             ]
-            _ = try await repository.insertSourceStatus(.init(sourceID: sourceID, sourceUpdatedAt: base, fetchedAt: base, quotaEstimates: quotas), seriesRevision: "fixture-r2")
+            // v0.6.0 (spec §4.2 row 4 v1.4): fixture check/calibration so the
+            // two quota cards and their checked_at age badges render in ui
+            // fixture mode. Fixture text only — never upstream copy.
+            let quotaCheck: QuotaCheckInfo? = sourceID == .codexRadar ? QuotaCheckInfo(
+                planType: "fixture-pro",
+                creditsAvailable: 1,
+                limitReached: false,
+                allowed: true,
+                checkedAt: "2026-07-06T00:25:54Z",
+                windows: [
+                    "primary_5h": QuotaCheckWindowInfo(usedPercent: 43),
+                    "secondary_7d": QuotaCheckWindowInfo(usedPercent: 68),
+                ]
+            ) : nil
+            let quotaCalibration: QuotaCalibrationInfo? = sourceID == .codexRadar ? QuotaCalibrationInfo(
+                date: "2026-07-16-am",
+                status: "fixture-valid",
+                primaryWindow: "secondary_7d",
+                globalConcurrency: 24,
+                checkedAt: "2026-07-16T00:43:44Z",
+                source: "fixture：校准任务源（种子文案）",
+                tasks: 90,
+                validTasks: 90,
+                costUsd: 214.26,
+                costBasis: "fixture：api_equivalent 口径（种子文案）",
+                checkedAtBefore: "2026-07-16T00:43:44Z",
+                checkedAtAfter: "2026-07-16T01:47:29Z",
+                windows: [
+                    "secondary_7d": QuotaCalibrationWindowInfo(valid: true, reason: "ok", usedPercentDelta: 15),
+                    "primary_5h": QuotaCalibrationWindowInfo(valid: false, reason: "fixture_missing_snapshot", usedPercentDelta: nil),
+                ]
+            ) : nil
+            _ = try await repository.insertSourceStatus(.init(
+                sourceID: sourceID,
+                sourceUpdatedAt: base,
+                fetchedAt: base,
+                quotaEstimates: quotas,
+                check: quotaCheck,
+                calibration: quotaCalibration
+            ), seriesRevision: "fixture-r2")
         }
         if state != "community-unavailable" {
             if sourceID == .codexRadar {
@@ -647,6 +690,35 @@ enum DebugUISeed {
                     runsTotal: 1_402,
                     rawCombinedCost: 12.1,
                     combinedCostIndex: 0.4
+                ),
+                // v0.6.0: DSH-whitelisted fixture point so the whitelist
+                // station's ranking card renders in ui fixture mode.
+                .init(
+                    model: "dsh-deepseek-v4-flash",
+                    effort: "off",
+                    harness: "dsh",
+                    iq: 70.2,
+                    passed: 208,
+                    validTasks: 336,
+                    averagePriceUSD: 0.31,
+                    priceSamples: 290,
+                    averageMinutes: 9.2,
+                    durationSamples: 288,
+                    incompleteCostSamples: 1,
+                    totalRuns: 1_210,
+                    latestGradedAt: "2026-09-04T05:38:54+00:00",
+                    averageAgentSteps: 32.9,
+                    agentStepsSamples: 290,
+                    averageTotalTokens: 1_210_500.25,
+                    tokenSamples: 290,
+                    cacheHitRate: 0.931,
+                    cacheTokenSamples: 290,
+                    averagePriceUSDBand: .init(offPeak: 0.2, peak: 0.41),
+                    runs24h: 3,
+                    runs48h: 7,
+                    runsTotal: 1_210,
+                    rawCombinedCost: 11.4,
+                    combinedCostIndex: 0.38
                 ),
             ],
             history: [
