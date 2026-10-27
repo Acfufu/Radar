@@ -33,3 +33,24 @@ packaged-app QA or editing the version surface.
    empties the grid client-side (2026-09-25): a `curl` marker count can be
    green while the rendered surface is dead. Probe with a real browser
    (ego-browser) before trusting marker-based readers.
+7. **Window-id screenshots, not `-R` regions.** `screencapture -x -R<bounds>`
+   bakes any overlapping foreign window into the shot; query the window id
+   instead (`CGWindowListCopyWindowInfo`, owner name is **"AI Radar"** — the
+   bundle display name, not "AIRadar") and capture `screencapture -x -o
+   -l<id>`. Launch the app with stdout/stderr redirected to a file or the
+   orphaned process holds the shell pipe and the command never returns.
+   (v060 N8.)
+8. **Whitelist-station fixture shots need a two-phase seed.** A fresh
+   `RADAR_DATA_ROOT` + `RADAR_UI_SOURCE=dsh|zcode|grok` never starts the
+   codex runtime, so the shared ie face stays empty; seed it first (launch
+   with `RADAR_UI_SOURCE=codexRadar`, quit), then reopen the same root on
+   the station. The seed also needs whitelist-matching ie points
+   (`dsh-deepseek-v4-flash` etc.) — benchmark rows don't feed 效能排行.
+   (v060 N8.)
+9. **Release builds overwrite the debug bundle.** `build-app.sh release`
+   replaces `.build/app/AIRadar.app`; any later env-driven QA silently runs
+   the release binary — RADAR_* env vars are ignored and syncs write the
+   real `~/Library/Application Support/ClaudeRadar`. Rebuild debug before
+   any fixture/online QA after a release packaging step. (v060 F2 first
+   run synced into the real user store; non-destructive, but isolation
+   was void.)
